@@ -1,7 +1,13 @@
 # REQ-020: Dashboard HTML surface server
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.50714
+**Claimed at:** 2026-07-13T23:27:11Z
+**Heartbeat:** 2026-07-13T23:27:11Z
+<!-- claimed-end -->
+
 **UR:** UR-001
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-14
 **Layer:** surfaces
 **Entry point:** 
