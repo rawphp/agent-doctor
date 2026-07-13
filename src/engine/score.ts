@@ -61,6 +61,9 @@ export function findingsBlockGreen(findings: readonly Finding[]): boolean {
   );
 }
 
+/** @deprecated Prefer findingsBlockGreen — same predicate. */
+export const hasDesyncFindings = findingsBlockGreen;
+
 export type DesyncCapOptions = {
   /** False when any non-ignored first-class agent is off hub. */
   aligned: boolean;

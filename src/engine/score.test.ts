@@ -82,7 +82,7 @@ describe("capGradeForDesync", () => {
 
 describe("findingsBlockGreen / DESYNC_FINDING_IDS", () => {
   it("documents desync finding ids that cap overall grade", () => {
-    expect(DESYNC_FINDING_IDS).toEqual([
+    expect([...DESYNC_FINDING_IDS]).toEqual([
       "skills.agent_not_on_hub",
       "skills.hub_conflict",
     ]);
@@ -185,7 +185,7 @@ describe("computeOverall", () => {
 });
 
 /**
- * Exit grade mapping (design §7):
+ * Exit grade mapping (design §7) — also documented on score.ts module header:
  *   green  → 0
  *   yellow → 1
  *   red    → 2
