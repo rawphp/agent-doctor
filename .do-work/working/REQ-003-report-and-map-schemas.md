@@ -1,7 +1,13 @@
 # REQ-003: Report and map schemas
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.71328
+**Claimed at:** 2026-07-13T22:48:50Z
+**Heartbeat:** 2026-07-13T22:48:50Z
+<!-- claimed-end -->
+
 **UR:** UR-001
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-14
 **Layer:** engine
 **Entry point:** 
