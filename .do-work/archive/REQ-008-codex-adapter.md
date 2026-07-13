@@ -1,19 +1,13 @@
 # REQ-008: Codex adapter
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.94509
-**Claimed at:** 2026-07-13T22:57:22Z
-**Heartbeat:** 2026-07-13T22:57:22Z
-<!-- claimed-end -->
-
 **UR:** UR-001
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-14
 **Layer:** adapters
 **Entry point:** 
 **Terminal state:** 
 **Parent:** REQ-004
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:8a65e74 all 1 checkpoints passed (0 deferred)
 **Criteria approved:** agent-drafted
 **Priority:** 3
 **Size:** M
@@ -30,10 +24,10 @@ Design §8; clarification symlink when cannot natively share hub.
 
 ## Acceptance Criteria
 
-- [ ] detect works against Codex fixture layout documented in adapter file header
-- [ ] skillsRoots and instructionFiles return real fixture paths
-- [ ] proposeWireToSkillsHub can emit symlink FixAction to sync target
-- [ ] Unit tests do not require live Codex install
+- [x] detect works against Codex fixture layout documented in adapter file header
+- [x] skillsRoots and instructionFiles return real fixture paths
+- [x] proposeWireToSkillsHub can emit symlink FixAction to sync target
+- [x] Unit tests do not require live Codex install
 
 ## Verification Steps
 
@@ -48,3 +42,8 @@ Design §8; clarification symlink when cannot natively share hub.
 
 **Service dependencies:** AgentAdapter interface
 
+## Outputs
+
+- src/adapters/codex.ts — Codex deep adapter (detect, skillsRoots, instructionFiles, memoryPointers, proposeWire*)
+- src/adapters/codex.test.ts — Fixture-based TDD tests for Codex adapter ACs
+- fixtures/agents/codex/ — Fake ~/.codex home and project trees for adapter tests
