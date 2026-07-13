@@ -86,6 +86,27 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request:
 
 Matrix: Node **20** and **22** on `ubuntu-latest`.
 
+### Releases (tag-driven)
+
+Pushing a version tag `v*` runs [`.github/workflows/release.yml`](.github/workflows/release.yml):
+
+1. Check tag `vX.Y.Z` matches `package.json` version  
+2. Format check, test, build, smoke CLI  
+3. Create a **GitHub Release** with notes + assets (`dist` tarball + `npm pack` `.tgz`)  
+4. **Optional npm publish** if repo secret `NPM_TOKEN` is set (skipped otherwise)
+
+Ship a release:
+
+```bash
+# bumps package.json, commits, tags vX.Y.Z
+npm version patch -m "chore(release): %s"
+# or: minor | major
+
+git push origin main --follow-tags
+```
+
+> Registry name `agent-doctor` is taken by another project. Prefer GitHub Releases / git install until you publish under a scoped name (e.g. `@rawphp/agent-doctor`) and set `NPM_TOKEN`.
+
 ## License
 
 MIT

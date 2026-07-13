@@ -1,0 +1,100 @@
+# Pattern A: tag-driven release
+# Create a tag matching package.json, then CI builds and publishes a GitHub Release.
+#
+#   npm version patch -m "chore(release): %s"
+#   git push origin main --follow-tags
+#
+# Optional npm publish: set repo secret NPM_TOKEN (Automation token).
+# Note: registry name "agent-doctor" is taken — rename/scope package.json
+# before enabling publish, or publish will fail.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and release ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify tag matches package.json version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          TAG_VERSION="${TAG#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          echo "Tag: ${TAG} → ${TAG_VERSION}"
+          echo "package.json version: ${PKG_VERSION}"
+          if [ "${TAG_VERSION}" != "${PKG_VERSION}" ]; then
+            echo "::error::Tag version (${TAG_VERSION}) must match package.json (${PKG_VERSION})."
+            echo "Use: npm version patch|minor|major  (then push --follow-tags)"
+            exit 1
+          fi
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Smoke CLI
+        run: node dist/cli.js --help
+
+      - name: Pack release assets
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          tar -czf "agent-doctor-${GITHUB_REF_NAME}-dist.tar.gz" -C dist .
+          # npm pack produces agent-doctor-<version>.tgz from package name + version
+          npm pack
+          ls -la agent-doctor-*.tgz "agent-doctor-${GITHUB_REF_NAME}-dist.tar.gz"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            agent-doctor-*-dist.tar.gz
+            agent-doctor-*.tgz
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to npm (optional)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN}" ]; then
+            echo "NPM_TOKEN secret not set — skipping npm publish (GitHub Release only)."
+            echo "To enable: rename/scope package if needed, then add NPM_TOKEN repo secret."
+            exit 0
+          fi
+          npm publish --access public
