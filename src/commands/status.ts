@@ -57,6 +57,9 @@ export type StatusResult = {
  * Run hybrid (or machine) status and print terminal dashboard or JSON.
  * Exit codes: 0 green, 1 yellow, 2 red, 3 tool error.
  * By default also sets `process.exitCode` to that value (design §5).
+ *
+ * `--all` → machine scope: engine walks every project under map.projects.roots
+ * with no v1 project-count cap (REQ-018).
  */
 export async function runStatus(
   options: StatusRunOptions = {},
@@ -71,6 +74,7 @@ export async function runStatus(
 
   try {
     // Flag-derived scope is default; checks.scope can override in unit tests.
+    // Machine (--all) enumeration of map.projects.roots lives in runChecks.
     const report = await runChecks({
       ...options.checks,
       scope: options.checks?.scope ?? scope,

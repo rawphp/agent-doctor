@@ -10,8 +10,8 @@
  *   - Permission denied → access.denied finding; do not abort whole report
  */
 
-import { existsSync, realpathSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, readdirSync, realpathSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
 import {
   FULL_ADAPTER_IDS,
   createAdapterRegistry,
@@ -21,6 +21,8 @@ import {
 import type { AdapterContext } from "../adapters/types.js";
 import {
   agentsInScope,
+  checkInstructions,
+  checkProduct,
   runAllDomainChecks,
   type DomainCheckContext,
 } from "../domains/index.js";
@@ -94,6 +96,114 @@ function resolvePath(path: string): string {
     // fall through
   }
   return resolve(path);
+}
+
+function isDirectory(path: string): boolean {
+  try {
+    return existsSync(path) && statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/** Stable identity so case-insensitive FS does not double-count projects. */
+function projectKey(path: string): string {
+  try {
+    const st = statSync(path);
+    return `${st.dev}:${st.ino}`;
+  } catch {
+    return resolvePath(path).toLowerCase();
+  }
+}
+
+/**
+ * Immediate project directories under mapped project roots (status --all / machine).
+ * No artificial max count in v1 — walk everything mapped (UR clarification).
+ */
+export function enumerateProjectsUnderRoots(
+  roots: readonly string[],
+): string[] {
+  const seen = new Set<string>();
+  const projects: string[] = [];
+
+  for (const root of roots) {
+    if (!isDirectory(root)) continue;
+    let children: string[] = [];
+    try {
+      children = readdirSync(root);
+    } catch {
+      // Unreadable root: skip; permission surfaces may still appear elsewhere.
+      continue;
+    }
+    for (const name of children) {
+      // Skip hidden entries (.git, .DS_Store directories, etc.)
+      if (name.startsWith(".")) continue;
+      const abs = join(root, name);
+      if (!isDirectory(abs)) continue;
+      const key = projectKey(abs);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      projects.push(abs);
+    }
+  }
+
+  // Intentionally no .slice() / MAX_PROJECTS — v1 walks all mapped projects.
+  return projects;
+}
+
+/** Ensure findings list the project root in evidence for multi-project reports. */
+function ensureProjectInEvidence(
+  findings: readonly Finding[],
+  projectPath: string,
+): Finding[] {
+  return findings.map((f) => {
+    if (
+      f.evidence.includes(projectPath) ||
+      f.evidence.some((e) => e.startsWith(projectPath))
+    ) {
+      return { ...f, evidence: [...f.evidence] };
+    }
+    return { ...f, evidence: [projectPath, ...f.evidence] };
+  });
+}
+
+/**
+ * Run instruction + product domain checks for each project (no count cap).
+ * Used by machine scope after global domain suite.
+ */
+async function runProjectScopedDomains(
+  baseCtx: DomainCheckContext,
+  projects: readonly string[],
+  onAccessDenied: (finding: Finding) => void,
+): Promise<{ instructions: Finding[]; product: Finding[] }> {
+  const instructions: Finding[] = [];
+  const product: Finding[] = [];
+
+  for (const proj of projects) {
+    const projCtx: DomainCheckContext = { ...baseCtx, projectRoot: proj };
+    try {
+      const instr = await checkInstructions(projCtx);
+      instructions.push(...ensureProjectInEvidence(instr, proj));
+    } catch (err) {
+      if (isPermissionError(err)) {
+        onAccessDenied(accessDeniedFinding("", err, `instructions:${proj}`));
+      } else {
+        throw err;
+      }
+    }
+    try {
+      const prod = await checkProduct(projCtx);
+      product.push(...ensureProjectInEvidence(prod, proj));
+    } catch (err) {
+      if (isPermissionError(err)) {
+        onAccessDenied(accessDeniedFinding("", err, `product:${proj}`));
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  return { instructions, product };
 }
 
 /**
@@ -385,10 +495,12 @@ export async function runChecks(
   );
 
   // 5. DomainCheckContext + runAllDomainChecks
+  // Hybrid: single projectRoot. Machine: global suite without project overlay first;
+  // project-scoped domains (instructions/product) run per enumerated project below.
   const domainCtx: DomainCheckContext = {
     map,
     agents,
-    projectRoot,
+    projectRoot: scope === "machine" ? undefined : projectRoot,
     hub,
     agentRoots: hubResolution.agentRoots,
     adapters,
@@ -419,6 +531,42 @@ export async function runChecks(
     } else {
       throw err;
     }
+  }
+
+  // 5b. Machine scope: walk every project under map.projects.roots (no v1 cap)
+  if (scope === "machine") {
+    const projects = enumerateProjectsUnderRoots(map.projects.roots);
+    // Hybrid layer of machine view: also check cwd when provided and not already listed
+    if (projectRoot && isDirectory(projectRoot)) {
+      const key = projectKey(projectRoot);
+      const already = projects.some((p) => projectKey(p) === key);
+      if (!already) {
+        projects.push(projectRoot);
+      }
+    }
+
+    const projectDomains = await runProjectScopedDomains(
+      { ...domainCtx, adapters },
+      projects,
+      recordAccess,
+    );
+
+    domainSuite = {
+      findings: [
+        ...(domainSuite.byDomain.presence ?? []),
+        ...(domainSuite.byDomain.skills ?? []),
+        ...projectDomains.instructions,
+        ...projectDomains.product,
+        ...(domainSuite.byDomain.obsidian ?? []),
+        ...(domainSuite.byDomain.consistency ?? []),
+      ],
+      fix_actions: domainSuite.fix_actions,
+      byDomain: {
+        ...domainSuite.byDomain,
+        instructions: projectDomains.instructions,
+        product: projectDomains.product,
+      },
+    };
   }
 
   // 6. Collect findings; score domains + overall
