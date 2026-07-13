@@ -1,19 +1,14 @@
 # REQ-014: Scoring cannot be green on desync
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.32072
-**Claimed at:** 2026-07-13T23:16:10Z
-**Heartbeat:** 2026-07-13T23:16:10Z
-<!-- claimed-end -->
 
 **UR:** UR-001
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-14
 **Layer:** engine
 **Entry point:** 
 **Terminal state:** 
 **Parent:** REQ-011
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:10629fc verification npm test -- src/engine/score (21 passed); merge:bf64eba
 **Criteria approved:** agent-drafted
 **Priority:** 3
 **Size:** S
@@ -30,9 +25,9 @@ UR-001 clarification on grade cap.
 
 ## Acceptance Criteria
 
-- [ ] Given finding skills.agent_not_on_hub or skills.hub_conflict for a non-ignored first-class agent, grade !== green
-- [ ] All aligned fleet with only info findings can be green
-- [ ] Exit grade mapping documented in score module
+- [x] Given finding skills.agent_not_on_hub or skills.hub_conflict for a non-ignored first-class agent, grade !== green
+- [x] All aligned fleet with only info findings can be green
+- [x] Exit grade mapping documented in score module
 
 ## Verification Steps
 
@@ -46,4 +41,9 @@ UR-001 clarification on grade cap.
 **Data dependencies:** Finding[]
 
 **Service dependencies:** Report.overall
+
+## Outputs
+
+- src/engine/score.ts — Overall scoring with findings-based desync cap and documented exit grade mapping
+- src/engine/score.test.ts — Scoring matrix tests covering never-green on desync, green path, exit codes
 
