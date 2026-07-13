@@ -1,7 +1,13 @@
 # REQ-004: Path init and map
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.82866
+**Claimed at:** 2026-07-13T22:53:36Z
+**Heartbeat:** 2026-07-13T22:53:36Z
+<!-- claimed-end -->
+
 **UR:** UR-001
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-14
 **Layer:** none
 **Entry point:** `agent-doctor init` or `agent-doctor map`
