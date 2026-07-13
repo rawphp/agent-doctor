@@ -1,19 +1,13 @@
 # REQ-009: Grok adapter
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.95431
-**Claimed at:** 2026-07-13T22:57:33Z
-**Heartbeat:** 2026-07-13T22:57:33Z
-<!-- claimed-end -->
-
 **UR:** UR-001
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-14
 **Layer:** adapters
 **Entry point:** 
 **Terminal state:** 
 **Parent:** REQ-004
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:ce2e35c all 1 checkpoints passed (0 deferred)
 **Criteria approved:** agent-drafted
 **Priority:** 3
 **Size:** M
@@ -30,10 +24,10 @@ Design §8; always multi-agent — Grok is peer, not default patient.
 
 ## Acceptance Criteria
 
-- [ ] detect present when fixture/home exists
-- [ ] skillsRoots lists configured or conventional skill paths
-- [ ] proposeWireToSkillsHub emits non-copy fix actions
-- [ ] Tests use fixtures only
+- [x] detect present when fixture/home exists
+- [x] skillsRoots lists configured or conventional skill paths
+- [x] proposeWireToSkillsHub emits non-copy fix actions
+- [x] Tests use fixtures only
 
 ## Verification Steps
 
@@ -48,3 +42,8 @@ Design §8; always multi-agent — Grok is peer, not default patient.
 
 **Service dependencies:** AgentAdapter interface
 
+## Outputs
+
+- src/adapters/grok.ts — Grok deep adapter (detect, skillsRoots, instructionFiles, memoryPointers, proposeWire*)
+- src/adapters/grok.test.ts — Fixture-based TDD tests for Grok adapter acceptance criteria
+- fixtures/agents/grok/ — Fake ~/.grok home (skills, bundled), home-no-skills, and project trees for adapter tests
