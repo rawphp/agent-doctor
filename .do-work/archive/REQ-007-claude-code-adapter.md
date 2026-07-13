@@ -1,19 +1,13 @@
 # REQ-007: Claude Code adapter
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.80348
-**Claimed at:** 2026-07-13T22:52:42Z
-**Heartbeat:** 2026-07-13T22:52:42Z
-<!-- claimed-end -->
-
 **UR:** UR-001
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-14
 **Layer:** adapters
 **Entry point:** 
 **Terminal state:** 
 **Parent:** REQ-004
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:b447be3 all 1 checkpoints passed (0 deferred)
 **Criteria approved:** agent-drafted
 **Priority:** 3
 **Size:** M
@@ -30,10 +24,10 @@ Design §8 first-class adapter. Sync-first: contribute roots to fleet comparison
 
 ## Acceptance Criteria
 
-- [ ] detect returns present=true when config home exists in fixture
-- [ ] skillsRoots returns discovered paths without inventing missing dirs as healthy
-- [ ] instructionFiles finds project CLAUDE.md when projectRoot provided
-- [ ] proposeWireToSkillsHub returns FixAction(s) that prefer hub wiring or symlink, never content copy
+- [x] detect returns present=true when config home exists in fixture
+- [x] skillsRoots returns discovered paths without inventing missing dirs as healthy
+- [x] instructionFiles finds project CLAUDE.md when projectRoot provided
+- [x] proposeWireToSkillsHub returns FixAction(s) that prefer hub wiring or symlink, never content copy
 
 ## Verification Steps
 
@@ -48,3 +42,9 @@ Design §8 first-class adapter. Sync-first: contribute roots to fleet comparison
 
 **Service dependencies:** src/adapters/types.ts AgentAdapter interface
 
+## Outputs
+
+- src/adapters/claude-code.ts — Claude Code deep adapter (detect, skillsRoots, instructionFiles, memoryPointers, proposeWire*)
+- src/adapters/types.ts — AgentAdapter interface and AdapterContext (design §8)
+- src/adapters/claude-code.test.ts — Fixture-based TDD tests for Claude Code adapter ACs
+- fixtures/agents/claude-code/ — Fake ~/.claude home and project trees for adapter tests
