@@ -8,8 +8,11 @@ import {
   existsSync,
   lstatSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   readlinkSync,
+  rmSync,
+  rmdirSync,
   symlinkSync,
 } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
@@ -26,6 +29,12 @@ export type ApplyContext = {
   /** When true, report would-apply without writing. */
   dryRun?: boolean;
   projectRoot?: string;
+  /**
+   * When true, allow replacing an existing non-empty non-link path with a
+   * symlink. Default false — never overwrite non-empty non-link dirs without
+   * this explicit opt-in.
+   */
+  force?: boolean;
 };
 
 export type ActionApplyStatus = "applied" | "skipped" | "rejected";
@@ -42,9 +51,19 @@ function resolveHub(action: FixAction, ctx: ApplyContext): string | undefined {
   return undefined;
 }
 
+/** True if path exists (including broken symlinks). */
+function pathExists(path: string): boolean {
+  try {
+    lstatSync(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function alreadyCorrectSymlink(path: string, hub: string): boolean {
   try {
-    if (!existsSync(path)) return false;
+    if (!pathExists(path)) return false;
     const st = lstatSync(path);
     if (!st.isSymbolicLink()) return false;
     const link = readlinkSync(path);
@@ -52,6 +71,70 @@ function alreadyCorrectSymlink(path: string, hub: string): boolean {
     return resolve(resolved) === resolve(hub) || link === hub;
   } catch {
     return false;
+  }
+}
+
+/** Empty real directory is safe to replace with a hub symlink. */
+function isEmptyDirectory(path: string): boolean {
+  try {
+    const st = lstatSync(path);
+    if (!st.isDirectory() || st.isSymbolicLink()) return false;
+    return readdirSync(path).length === 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Decide whether an existing path may be cleared for a hub symlink.
+ * - Correct symlink: handled earlier as already applied.
+ * - Empty non-link directory: always safe (no force needed).
+ * - Non-empty non-link dir/file or wrong symlink: only when force is true.
+ */
+function canReplaceExisting(path: string, force: boolean): {
+  ok: boolean;
+  reason?: string;
+} {
+  try {
+    const st = lstatSync(path);
+    if (st.isSymbolicLink()) {
+      if (force) return { ok: true };
+      return {
+        ok: false,
+        reason: `conflict: ${path} already exists (not replaced)`,
+      };
+    }
+    if (st.isDirectory() && isEmptyDirectory(path)) {
+      return { ok: true };
+    }
+    // Non-empty dir or regular file — require explicit force (default off)
+    if (!force) {
+      return {
+        ok: false,
+        reason: `conflict: ${path} already exists (not replaced; pass force to overwrite non-empty path)`,
+      };
+    }
+    return { ok: true };
+  } catch {
+    return {
+      ok: false,
+      reason: `conflict: ${path} already exists (not replaced)`,
+    };
+  }
+}
+
+function clearPathForSymlink(path: string): void {
+  const st = lstatSync(path);
+  if (st.isSymbolicLink() || st.isFile()) {
+    rmSync(path, { force: true });
+    return;
+  }
+  if (st.isDirectory()) {
+    if (isEmptyDirectory(path)) {
+      rmdirSync(path);
+      return;
+    }
+    rmSync(path, { recursive: true, force: true });
   }
 }
 
@@ -74,13 +157,19 @@ function applySymlink(action: FixAction, ctx: ApplyContext): ActionResult {
     return { action, status: "applied", reason: "already linked to hub" };
   }
 
-  if (existsSync(target)) {
-    // Conflict: real file/dir or wrong symlink — never delete skill trees
-    return {
-      action,
-      status: "skipped",
-      reason: `conflict: ${target} already exists (not replaced)`,
-    };
+  const force = ctx.force === true;
+  let mustClear = false;
+
+  if (pathExists(target)) {
+    const decision = canReplaceExisting(target, force);
+    if (!decision.ok) {
+      return {
+        action,
+        status: "skipped",
+        reason: decision.reason,
+      };
+    }
+    mustClear = true;
   }
 
   if (ctx.dryRun) {
@@ -88,7 +177,11 @@ function applySymlink(action: FixAction, ctx: ApplyContext): ActionResult {
   }
 
   try {
-    mkdirSync(dirname(target), { recursive: true });
+    if (mustClear) {
+      clearPathForSymlink(target);
+    } else {
+      mkdirSync(dirname(target), { recursive: true });
+    }
     symlinkSync(hub, target);
     return { action, status: "applied" };
   } catch (err: unknown) {
@@ -96,7 +189,6 @@ function applySymlink(action: FixAction, ctx: ApplyContext): ActionResult {
     return { action, status: "skipped", reason: message };
   }
 }
-
 function linkBlock(productPath: string): string {
   const base = basename(productPath);
   return [
@@ -136,7 +228,11 @@ function applyAppendLink(action: FixAction, ctx: ApplyContext): ActionResult {
   }
 
   const base = basename(product);
-  if (content.toLowerCase().includes(base.toLowerCase())) {
+  // Idempotent: marker block already present, or product basename already linked
+  if (
+    content.includes("<!-- agent-doctor:link -->") ||
+    content.toLowerCase().includes(base.toLowerCase())
+  ) {
     return { action, status: "applied", reason: "link already present" };
   }
 
