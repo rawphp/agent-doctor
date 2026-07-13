@@ -26,6 +26,12 @@ export type StatusRunOptions = {
   /** Capture writers (tests). Defaults to console. */
   stdout?: (line: string) => void;
   stderr?: (line: string) => void;
+  /**
+   * When true (default), assign `process.exitCode` from the grade mapping
+   * (0 green / 1 yellow / 2 red / 3 tool error). Set false in unit tests
+   * that must not leak exit codes into the test runner.
+   */
+  applyProcessExitCode?: boolean;
 };
 
 /**
@@ -50,6 +56,7 @@ export type StatusResult = {
 /**
  * Run hybrid (or machine) status and print terminal dashboard or JSON.
  * Exit codes: 0 green, 1 yellow, 2 red, 3 tool error.
+ * By default also sets `process.exitCode` to that value (design §5).
  */
 export async function runStatus(
   options: StatusRunOptions = {},
@@ -57,6 +64,7 @@ export async function runStatus(
   const writeOut = options.stdout ?? ((line: string) => console.log(line));
   const writeErr =
     options.stderr ?? ((line: string) => console.error(line));
+  const applyExit = options.applyProcessExitCode !== false;
 
   const flags = parseStatusFlags(options.args ?? []);
   const scope = scopeFromFlags(flags);
@@ -69,18 +77,23 @@ export async function runStatus(
     });
 
     if (flags.json) {
+      // Raw Report JSON only — no terminal decoration (Overall:/matrix/etc.).
       writeOut(JSON.stringify(report, null, 2));
     } else {
       writeOut(formatTerminalReport(report));
     }
 
-    return {
-      report,
-      exitCode: exitCodeForGrade(report.overall.grade),
-    };
+    const exitCode = exitCodeForGrade(report.overall.grade);
+    if (applyExit) {
+      process.exitCode = exitCode;
+    }
+    return { report, exitCode };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     writeErr(`agent-doctor status: ${message}`);
+    if (applyExit) {
+      process.exitCode = EXIT_TOOL_ERROR;
+    }
     return {
       report: {
         generated_at: new Date().toISOString(),
