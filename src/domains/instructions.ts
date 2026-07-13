@@ -3,11 +3,11 @@
  * Expected user/project instruction files exist.
  */
 
-import { join } from "node:path";
-import type { AgentAdapter } from "../adapters/types.js";
-import type { Finding } from "../engine/types.js";
-import { agentsInScope, type DomainCheckContext } from "./context.js";
-import { pathExists } from "./paths.js";
+import { join } from 'node:path';
+import type { AgentAdapter } from '../adapters/types.js';
+import type { Finding } from '../engine/types.js';
+import { agentsInScope, type DomainCheckContext } from './context.js';
+import { pathExists } from './paths.js';
 
 /**
  * Optional extension: adapters may declare expected instruction paths
@@ -19,9 +19,9 @@ type AdapterWithExpected = AgentAdapter & {
 
 /** Default expected project-level instruction basenames per adapter id. */
 const DEFAULT_PROJECT_INSTRUCTIONS: Record<string, string[]> = {
-  "claude-code": ["CLAUDE.md"],
-  codex: ["AGENTS.md"],
-  grok: ["AGENTS.md", "GROK.md"],
+  'claude-code': ['CLAUDE.md'],
+  codex: ['AGENTS.md'],
+  grok: ['AGENTS.md', 'GROK.md'],
 };
 
 function expectedFiles(
@@ -40,9 +40,7 @@ function expectedFiles(
   }
 
   const basenames =
-    DEFAULT_PROJECT_INSTRUCTIONS[agentId] ??
-    DEFAULT_PROJECT_INSTRUCTIONS[adapter?.id ?? ""] ??
-    [];
+    DEFAULT_PROJECT_INSTRUCTIONS[agentId] ?? DEFAULT_PROJECT_INSTRUCTIONS[adapter?.id ?? ''] ?? [];
 
   // At least one of the basenames is enough for agents with alternatives (grok)
   return basenames.map((b) => join(projectRoot, b));
@@ -51,14 +49,12 @@ function expectedFiles(
 /**
  * Check that expected instruction files exist for non-ignored installed agents.
  */
-export async function checkInstructions(
-  ctx: DomainCheckContext,
-): Promise<Finding[]> {
+export async function checkInstructions(ctx: DomainCheckContext): Promise<Finding[]> {
   const findings: Finding[] = [];
   const inScope = agentsInScope(ctx.agents).filter((a) => a.installed);
 
   for (const agent of inScope) {
-    if (agent.depth === "presence-only") {
+    if (agent.depth === 'presence-only') {
       continue;
     }
 
@@ -73,9 +69,9 @@ export async function checkInstructions(
     // All missing — report each path (or the set)
     for (const path of expected) {
       findings.push({
-        id: "instructions.missing_file",
-        severity: "warn",
-        domain: "instructions",
+        id: 'instructions.missing_file',
+        severity: 'warn',
+        domain: 'instructions',
         message: `Expected instruction file missing for ${agent.id}: ${path}`,
         evidence: [path],
         agents_affected: [agent.id],

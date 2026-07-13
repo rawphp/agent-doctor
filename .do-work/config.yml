@@ -10,3 +10,80 @@ layers: [cli, engine, adapters, surfaces]
 
 test:
   suite_command: "npm test"
+
+
+log:
+  enabled: true
+  platforms: []
+  drafts_per_platform: 2
+  batch_size: 2
+  audience: ""
+  voice: ""
+  max_chars:
+    x: 280
+    blog: 500
+    linkedin: 1300
+
+next_steps:
+  enabled: false
+
+feedback:
+  enabled: false
+  repo: tomkaczocha/do-work
+  label: auto:do-work-feedback
+  project_repo: ""
+
+parallel:
+  stale_threshold_seconds: 900
+  max_workers: 1
+
+review:
+  required: true
+  adversarial: false
+
+acceptance:
+  evidence_required: true
+
+risk:
+  require_review:
+    - migrations
+    - auth
+    - billing
+    - payments
+    - files_changed_over: 8
+    - acceptance_criteria_over: 6
+
+security:
+  blocked_paths:
+    - .env
+    - .env.*
+  blocked_commands:
+    - rm -rf
+    - git push --force
+    - git push -f
+    - git reset --hard
+    - git checkout --
+
+model:
+  default: sonnet
+  escalation: opus
+
+cost:
+  budget: ""
+
+ledger:
+  enabled: true
+
+delivery:
+  mode: merge
+  pr:
+    granularity: req
+
+worktree:
+  link_paths: []
+  setup_command: ""
+
+verify:
+  threshold: 90
+
+routing: []

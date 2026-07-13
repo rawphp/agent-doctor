@@ -4,11 +4,11 @@
  * Emits symlink-capable fix metadata when private tree cannot use hub natively.
  */
 
-import { existsSync, readdirSync, statSync } from "node:fs";
-import type { AgentAdapter } from "../adapters/types.js";
-import type { Finding, FixAction } from "../engine/types.js";
-import { agentsInScope, type DomainCheckContext } from "./context.js";
-import { resolvePath } from "./paths.js";
+import { existsSync, readdirSync, statSync } from 'node:fs';
+import type { AgentAdapter } from '../adapters/types.js';
+import type { Finding, FixAction } from '../engine/types.js';
+import { agentsInScope, type DomainCheckContext } from './context.js';
+import { resolvePath } from './paths.js';
 
 export type SkillsCheckResult = {
   findings: Finding[];
@@ -41,19 +41,14 @@ function isOnHub(roots: string[], hub: string): boolean {
   return false;
 }
 
-function adapterById(
-  adapters: AgentAdapter[] | undefined,
-  id: string,
-): AgentAdapter | undefined {
+function adapterById(adapters: AgentAdapter[] | undefined, id: string): AgentAdapter | undefined {
   return adapters?.find((a) => a.id === id);
 }
 
 /**
  * Check skills hub alignment and duplication for non-ignored installed agents.
  */
-export async function checkSkills(
-  ctx: DomainCheckContext,
-): Promise<SkillsCheckResult> {
+export async function checkSkills(ctx: DomainCheckContext): Promise<SkillsCheckResult> {
   const findings: Finding[] = [];
   const fix_actions: FixAction[] = [];
   const inScope = agentsInScope(ctx.agents).filter((a) => a.installed);
@@ -87,14 +82,14 @@ export async function checkSkills(
         // If only empty roots and no private content, still off-hub when deep
         // Presence-only agents: note as not on hub only when they report roots off-hub;
         // with empty roots we skip (limited checks — presence domain owns depth note).
-        if (agent.depth === "presence-only" || agent.depth === "shallow") {
+        if (agent.depth === 'presence-only' || agent.depth === 'shallow') {
           continue;
         }
 
         findings.push({
-          id: "skills.agent_not_on_hub",
-          severity: "error",
-          domain: "skills",
+          id: 'skills.agent_not_on_hub',
+          severity: 'error',
+          domain: 'skills',
           message: `Agent ${agent.id} is not on the skills hub (${hub}).`,
           evidence: roots.length > 0 ? roots : [],
           agents_affected: [agent.id],
@@ -105,22 +100,19 @@ export async function checkSkills(
         if (adapter) {
           const proposals = adapter.proposeWireToSkillsHub(hub).map((action) => ({
             ...action,
-            finding_ids: [
-              ...(action.finding_ids ?? []),
-              "skills.agent_not_on_hub",
-            ],
+            finding_ids: [...(action.finding_ids ?? []), 'skills.agent_not_on_hub'],
           }));
           fix_actions.push(...proposals);
         } else {
           // No adapter — still emit symlink-capable metadata for apply layer
-          const target = roots[0] ?? `${agent.config_home ?? ""}/skills`;
+          const target = roots[0] ?? `${agent.config_home ?? ''}/skills`;
           fix_actions.push({
             id: `fix.wire_${agent.id}_skills`,
-            kind: "symlink_skills_hub",
+            kind: 'symlink_skills_hub',
             description: `Symlink ${target} → ${hub} (hub wiring via symlink; no content copy)`,
             target,
             agent_id: agent.id,
-            finding_ids: ["skills.agent_not_on_hub"],
+            finding_ids: ['skills.agent_not_on_hub'],
           });
         }
       }
@@ -132,7 +124,7 @@ export async function checkSkills(
   // Duplication: distinct populated skill trees across agent homes
   const treeOwners = new Map<string, string[]>();
   for (const agent of inScope) {
-    if (agent.depth === "presence-only" || agent.depth === "shallow") continue;
+    if (agent.depth === 'presence-only' || agent.depth === 'shallow') continue;
     const roots = agentRoots[agent.id] ?? [];
     for (const root of roots) {
       if (!isPopulated(root)) continue;
@@ -146,16 +138,14 @@ export async function checkSkills(
   // Distinct physical trees used by different agents (not all sharing one path)
   const distinctTrees = [...treeOwners.entries()];
   if (distinctTrees.length >= 2) {
-    const agentsInvolved = [
-      ...new Set(distinctTrees.flatMap(([, owners]) => owners)),
-    ].sort();
+    const agentsInvolved = [...new Set(distinctTrees.flatMap(([, owners]) => owners))].sort();
     if (agentsInvolved.length >= 2) {
       findings.push({
-        id: "skills.duplicated_trees",
-        severity: "warn",
-        domain: "skills",
+        id: 'skills.duplicated_trees',
+        severity: 'warn',
+        domain: 'skills',
         message:
-          "Duplicated skill trees across agent homes; wire agents to one hub (symlink, no content copy).",
+          'Duplicated skill trees across agent homes; wire agents to one hub (symlink, no content copy).',
         evidence: distinctTrees.map(([path]) => path),
         agents_affected: agentsInvolved,
         sync_target: hub,

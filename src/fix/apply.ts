@@ -14,12 +14,12 @@ import {
   rmSync,
   rmdirSync,
   symlinkSync,
-} from "node:fs";
-import { basename, dirname, resolve } from "node:path";
-import type { FixAction, HomeMap } from "../engine/types.js";
-import { loadMap } from "../map/load.js";
-import { saveMap } from "../map/save.js";
-import { isRejectedCopyAction } from "./plan.js";
+} from 'node:fs';
+import { basename, dirname, resolve } from 'node:path';
+import type { FixAction, HomeMap } from '../engine/types.js';
+import { loadMap } from '../map/load.js';
+import { saveMap } from '../map/save.js';
+import { isRejectedCopyAction } from './plan.js';
 
 export type ApplyContext = {
   /** Resolved skills hub for symlink actions. */
@@ -37,7 +37,7 @@ export type ApplyContext = {
   force?: boolean;
 };
 
-export type ActionApplyStatus = "applied" | "skipped" | "rejected";
+export type ActionApplyStatus = 'applied' | 'skipped' | 'rejected';
 
 export type ActionResult = {
   action: FixAction;
@@ -46,8 +46,8 @@ export type ActionResult = {
 };
 
 function resolveHub(action: FixAction, ctx: ApplyContext): string | undefined {
-  if (action.value != null && action.value !== "") return action.value;
-  if (ctx.hub != null && ctx.hub !== "") return ctx.hub;
+  if (action.value != null && action.value !== '') return action.value;
+  if (ctx.hub != null && ctx.hub !== '') return ctx.hub;
   return undefined;
 }
 
@@ -91,7 +91,10 @@ function isEmptyDirectory(path: string): boolean {
  * - Empty non-link directory: always safe (no force needed).
  * - Non-empty non-link dir/file or wrong symlink: only when force is true.
  */
-function canReplaceExisting(path: string, force: boolean): {
+function canReplaceExisting(
+  path: string,
+  force: boolean,
+): {
   ok: boolean;
   reason?: string;
 } {
@@ -141,20 +144,20 @@ function clearPathForSymlink(path: string): void {
 function applySymlink(action: FixAction, ctx: ApplyContext): ActionResult {
   const target = action.target;
   if (!target) {
-    return { action, status: "skipped", reason: "missing target path" };
+    return { action, status: 'skipped', reason: 'missing target path' };
   }
 
   const hub = resolveHub(action, ctx);
   if (!hub) {
     return {
       action,
-      status: "skipped",
-      reason: "no hub / sync_target (refusing silent hub pick)",
+      status: 'skipped',
+      reason: 'no hub / sync_target (refusing silent hub pick)',
     };
   }
 
   if (alreadyCorrectSymlink(target, hub)) {
-    return { action, status: "applied", reason: "already linked to hub" };
+    return { action, status: 'applied', reason: 'already linked to hub' };
   }
 
   const force = ctx.force === true;
@@ -165,7 +168,7 @@ function applySymlink(action: FixAction, ctx: ApplyContext): ActionResult {
     if (!decision.ok) {
       return {
         action,
-        status: "skipped",
+        status: 'skipped',
         reason: decision.reason,
       };
     }
@@ -173,7 +176,7 @@ function applySymlink(action: FixAction, ctx: ApplyContext): ActionResult {
   }
 
   if (ctx.dryRun) {
-    return { action, status: "applied", reason: "dry-run" };
+    return { action, status: 'applied', reason: 'dry-run' };
   }
 
   try {
@@ -183,21 +186,21 @@ function applySymlink(action: FixAction, ctx: ApplyContext): ActionResult {
       mkdirSync(dirname(target), { recursive: true });
     }
     symlinkSync(hub, target);
-    return { action, status: "applied" };
+    return { action, status: 'applied' };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    return { action, status: "skipped", reason: message };
+    return { action, status: 'skipped', reason: message };
   }
 }
 function linkBlock(productPath: string): string {
   const base = basename(productPath);
   return [
-    "",
-    "<!-- agent-doctor:link -->",
+    '',
+    '<!-- agent-doctor:link -->',
     `Product context: [${base}](${base})`,
-    "<!-- /agent-doctor:link -->",
-    "",
-  ].join("\n");
+    '<!-- /agent-doctor:link -->',
+    '',
+  ].join('\n');
 }
 
 function applyAppendLink(action: FixAction, ctx: ApplyContext): ActionResult {
@@ -206,64 +209,61 @@ function applyAppendLink(action: FixAction, ctx: ApplyContext): ActionResult {
   if (!target || !product) {
     return {
       action,
-      status: "skipped",
-      reason: "missing target or link path",
+      status: 'skipped',
+      reason: 'missing target or link path',
     };
   }
 
   if (!existsSync(target)) {
     return {
       action,
-      status: "skipped",
+      status: 'skipped',
       reason: `instruction file missing: ${target}`,
     };
   }
 
-  let content = "";
+  let content = '';
   try {
-    content = readFileSync(target, "utf8");
+    content = readFileSync(target, 'utf8');
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    return { action, status: "skipped", reason: message };
+    return { action, status: 'skipped', reason: message };
   }
 
   const base = basename(product);
   // Idempotent: marker block already present, or product basename already linked
   if (
-    content.includes("<!-- agent-doctor:link -->") ||
+    content.includes('<!-- agent-doctor:link -->') ||
     content.toLowerCase().includes(base.toLowerCase())
   ) {
-    return { action, status: "applied", reason: "link already present" };
+    return { action, status: 'applied', reason: 'link already present' };
   }
 
   if (ctx.dryRun) {
-    return { action, status: "applied", reason: "dry-run" };
+    return { action, status: 'applied', reason: 'dry-run' };
   }
 
   try {
-    appendFileSync(target, linkBlock(product), "utf8");
-    return { action, status: "applied" };
+    appendFileSync(target, linkBlock(product), 'utf8');
+    return { action, status: 'applied' };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    return { action, status: "skipped", reason: message };
+    return { action, status: 'skipped', reason: message };
   }
 }
 
-function applySetSyncTarget(
-  action: FixAction,
-  ctx: ApplyContext,
-): ActionResult {
+function applySetSyncTarget(action: FixAction, ctx: ApplyContext): ActionResult {
   const value = action.value;
   if (!value) {
     return {
       action,
-      status: "skipped",
-      reason: "no sync_target value (refusing silent hub pick)",
+      status: 'skipped',
+      reason: 'no sync_target value (refusing silent hub pick)',
     };
   }
 
   if (ctx.dryRun) {
-    return { action, status: "applied", reason: "dry-run" };
+    return { action, status: 'applied', reason: 'dry-run' };
   }
 
   try {
@@ -272,8 +272,8 @@ function applySetSyncTarget(
     if (!map) {
       return {
         action,
-        status: "skipped",
-        reason: "map.yml not found — run agent-doctor init first",
+        status: 'skipped',
+        reason: 'map.yml not found — run agent-doctor init first',
       };
     }
     map = {
@@ -281,31 +281,28 @@ function applySetSyncTarget(
       skills: { ...map.skills, sync_target: value },
     };
     saveMap(map, home ? { home } : {});
-    return { action, status: "applied" };
+    return { action, status: 'applied' };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    return { action, status: "skipped", reason: message };
+    return { action, status: 'skipped', reason: message };
   }
 }
 
-function applyMemoryPointer(
-  action: FixAction,
-  ctx: ApplyContext,
-): ActionResult {
+function applyMemoryPointer(action: FixAction, ctx: ApplyContext): ActionResult {
   // Wire memory is link-only append when target instruction file is set
   if (action.target && action.value) {
     return applyAppendLink(
       {
         ...action,
-        kind: "append_instruction_link",
+        kind: 'append_instruction_link',
       },
       ctx,
     );
   }
   return {
     action,
-    status: "skipped",
-    reason: "wire_memory_pointer requires target instruction file and vault path",
+    status: 'skipped',
+    reason: 'wire_memory_pointer requires target instruction file and vault path',
   };
 }
 
@@ -313,42 +310,39 @@ function applyMemoryPointer(
  * Apply each safe action. On conflict/error: skip and continue.
  * Copy-tree kinds are always rejected (never content-copy skill trees).
  */
-export function applyFixPlan(
-  actions: FixAction[],
-  ctx: ApplyContext = {},
-): ActionResult[] {
+export function applyFixPlan(actions: FixAction[], ctx: ApplyContext = {}): ActionResult[] {
   const results: ActionResult[] = [];
 
   for (const action of actions) {
     if (isRejectedCopyAction(action)) {
       results.push({
         action,
-        status: "rejected",
-        reason: "content-copy of skill trees is forbidden (use symlink-to-hub)",
+        status: 'rejected',
+        reason: 'content-copy of skill trees is forbidden (use symlink-to-hub)',
       });
       continue;
     }
 
     let result: ActionResult;
     switch (action.kind) {
-      case "symlink_skills_hub":
-      case "wire_skills_hub":
+      case 'symlink_skills_hub':
+      case 'wire_skills_hub':
         result = applySymlink(action, ctx);
         break;
-      case "append_instruction_link":
-      case "append_link_block":
+      case 'append_instruction_link':
+      case 'append_link_block':
         result = applyAppendLink(action, ctx);
         break;
-      case "set_sync_target":
+      case 'set_sync_target':
         result = applySetSyncTarget(action, ctx);
         break;
-      case "wire_memory_pointer":
+      case 'wire_memory_pointer':
         result = applyMemoryPointer(action, ctx);
         break;
       default:
         result = {
           action,
-          status: "skipped",
+          status: 'skipped',
           reason: `unsupported kind: ${action.kind}`,
         };
     }
@@ -361,16 +355,13 @@ export function applyFixPlan(
 /** Format apply results for terminal. */
 export function formatApplyResults(results: ActionResult[]): string {
   if (results.length === 0) {
-    return "No actions applied.\n";
+    return 'No actions applied.\n';
   }
-  const lines = ["Apply results:"];
+  const lines = ['Apply results:'];
   for (const r of results) {
-    const mark =
-      r.status === "applied" ? "✓" : r.status === "rejected" ? "✗" : "–";
-    lines.push(
-      `  ${mark} [${r.status}] ${r.action.id}${r.reason ? ` — ${r.reason}` : ""}`,
-    );
+    const mark = r.status === 'applied' ? '✓' : r.status === 'rejected' ? '✗' : '–';
+    lines.push(`  ${mark} [${r.status}] ${r.action.id}${r.reason ? ` — ${r.reason}` : ''}`);
   }
-  lines.push("");
-  return lines.join("\n");
+  lines.push('');
+  return lines.join('\n');
 }

@@ -9,7 +9,9 @@
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
-    "cli": "tsx src/cli.ts"
+    "cli": "tsx src/cli.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "engines": {
     "node": ">=20"
@@ -29,6 +31,7 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^22.20.1",
+    "prettier": "^3.9.5",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"

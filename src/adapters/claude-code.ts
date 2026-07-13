@@ -4,13 +4,13 @@
  * and proposes hub wiring via symlink — never content copy.
  */
 
-import { access, lstat, readlink } from "node:fs/promises";
-import { homedir } from "node:os";
-import { join, resolve } from "node:path";
-import type { AgentPresence, FixAction } from "../engine/types.js";
-import type { AdapterContext, AgentAdapter } from "./types.js";
+import { access, lstat, readlink } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { join, resolve } from 'node:path';
+import type { AgentPresence, FixAction } from '../engine/types.js';
+import type { AdapterContext, AgentAdapter } from './types.js';
 
-const ADAPTER_ID = "claude-code";
+const ADAPTER_ID = 'claude-code';
 
 export type ClaudeCodeAdapterOptions = {
   /**
@@ -40,17 +40,15 @@ async function isSymlinkToHub(path: string, hub: string): Promise<boolean> {
       return false;
     }
     const target = await readlink(path);
-    const resolvedTarget = resolve(path, "..", target);
+    const resolvedTarget = resolve(path, '..', target);
     return resolve(resolvedTarget) === resolve(hub);
   } catch {
     return false;
   }
 }
 
-export function createClaudeCodeAdapter(
-  options: ClaudeCodeAdapterOptions = {},
-): AgentAdapter {
-  const home = options.home ?? join(homedir(), ".claude");
+export function createClaudeCodeAdapter(options: ClaudeCodeAdapterOptions = {}): AgentAdapter {
+  const home = options.home ?? join(homedir(), '.claude');
 
   return {
     id: ADAPTER_ID,
@@ -62,7 +60,7 @@ export function createClaudeCodeAdapter(
           id: ADAPTER_ID,
           adapter: ADAPTER_ID,
           installed: false,
-          depth: "deep",
+          depth: 'deep',
         };
       }
       return {
@@ -70,19 +68,19 @@ export function createClaudeCodeAdapter(
         adapter: ADAPTER_ID,
         installed: true,
         config_home: home,
-        depth: "deep",
+        depth: 'deep',
       };
     },
 
     async skillsRoots(ctx: AdapterContext = {}): Promise<string[]> {
       const roots: string[] = [];
-      const globalSkills = join(home, "skills");
+      const globalSkills = join(home, 'skills');
       if (await pathExists(globalSkills)) {
         roots.push(globalSkills);
       }
 
       if (ctx.projectRoot) {
-        const projectSkills = join(ctx.projectRoot, ".claude", "skills");
+        const projectSkills = join(ctx.projectRoot, '.claude', 'skills');
         if (await pathExists(projectSkills)) {
           roots.push(projectSkills);
         }
@@ -94,22 +92,22 @@ export function createClaudeCodeAdapter(
     async instructionFiles(projectRoot?: string): Promise<string[]> {
       const files: string[] = [];
 
-      const userClaudeMd = join(home, "CLAUDE.md");
+      const userClaudeMd = join(home, 'CLAUDE.md');
       if (await pathExists(userClaudeMd)) {
         files.push(userClaudeMd);
       }
 
       if (projectRoot) {
-        const projectClaudeMd = join(projectRoot, "CLAUDE.md");
+        const projectClaudeMd = join(projectRoot, 'CLAUDE.md');
         if (await pathExists(projectClaudeMd)) {
           files.push(projectClaudeMd);
         }
 
-        const projectClaudeDir = join(projectRoot, ".claude");
+        const projectClaudeDir = join(projectRoot, '.claude');
         if (await pathExists(projectClaudeDir)) {
           // Known instruction-related surfaces under .claude/
-          const settings = join(projectClaudeDir, "settings.json");
-          const settingsLocal = join(projectClaudeDir, "settings.local.json");
+          const settings = join(projectClaudeDir, 'settings.json');
+          const settingsLocal = join(projectClaudeDir, 'settings.local.json');
           if (await pathExists(settings)) {
             files.push(settings);
           }
@@ -132,13 +130,13 @@ export function createClaudeCodeAdapter(
     },
 
     proposeWireToSkillsHub(hub: string): FixAction[] {
-      const agentSkillsPath = join(home, "skills");
+      const agentSkillsPath = join(home, 'skills');
       // Sync proposal is plan-only; apply layer will create the symlink.
       // Prefer symlink-to-hub — never content copy (UR decision / design §9).
       return [
         {
-          id: "fix.wire_claude-code_skills",
-          kind: "symlink_skills_hub",
+          id: 'fix.wire_claude-code_skills',
+          kind: 'symlink_skills_hub',
           description: `Symlink ${agentSkillsPath} → ${hub} (hub wiring via symlink)`,
           target: agentSkillsPath,
           agent_id: ADAPTER_ID,
@@ -149,7 +147,7 @@ export function createClaudeCodeAdapter(
     proposeWireMemory(paths: string[]): FixAction[] {
       return paths.map((vaultPath, index) => ({
         id: `fix.wire_claude-code_memory_${index + 1}`,
-        kind: "wire_memory_pointer",
+        kind: 'wire_memory_pointer',
         description: `Add memory/vault pointer to ${vaultPath} in Claude Code instructions (link only)`,
         target: vaultPath,
         agent_id: ADAPTER_ID,
@@ -162,11 +160,8 @@ export function createClaudeCodeAdapter(
  * Async helper used by fix apply later: whether skills path already points at hub.
  * Exported for tests / apply planner; detect path does not call this.
  */
-export async function claudeSkillsAlreadyWired(
-  home: string,
-  hub: string,
-): Promise<boolean> {
-  return isSymlinkToHub(join(home, "skills"), hub);
+export async function claudeSkillsAlreadyWired(home: string, hub: string): Promise<boolean> {
+  return isSymlinkToHub(join(home, 'skills'), hub);
 }
 
 /** Default adapter bound to real ~/.claude */

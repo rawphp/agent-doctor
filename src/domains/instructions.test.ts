@@ -1,20 +1,15 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-import type { AgentAdapter, AdapterContext } from "../adapters/types.js";
-import type { AgentPresence, FixAction, HomeMap } from "../engine/types.js";
-import type { DomainCheckContext } from "./context.js";
-import { checkInstructions } from "./instructions.js";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import type { AgentAdapter, AdapterContext } from '../adapters/types.js';
+import type { AgentPresence, FixAction, HomeMap } from '../engine/types.js';
+import type { DomainCheckContext } from './context.js';
+import { checkInstructions } from './instructions.js';
 
 const temps: string[] = [];
 
-function tempDir(prefix = "instr-domain-"): string {
+function tempDir(prefix = 'instr-domain-'): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
   temps.push(dir);
   return dir;
@@ -41,7 +36,7 @@ function presence(id: string): AgentPresence {
     id,
     adapter: id,
     installed: true,
-    depth: "deep",
+    depth: 'deep',
     config_home: `/tmp/${id}`,
   };
 }
@@ -75,113 +70,97 @@ function stubAdapter(
       return expected.length > 0
         ? expected
         : projectRoot
-          ? [join(projectRoot, id === "claude-code" ? "CLAUDE.md" : "AGENTS.md")]
+          ? [join(projectRoot, id === 'claude-code' ? 'CLAUDE.md' : 'AGENTS.md')]
           : [];
     },
   };
 }
 
-describe("checkInstructions", () => {
-  it("returns findings with stable ids and agents_affected", async () => {
+describe('checkInstructions', () => {
+  it('returns findings with stable ids and agents_affected', async () => {
     const project = tempDir();
     const findings = await checkInstructions({
       map: emptyMap(),
-      agents: [presence("claude-code")],
+      agents: [presence('claude-code')],
       projectRoot: project,
-      adapters: [
-        stubAdapter("claude-code", [], [join(project, "CLAUDE.md")]),
-      ],
+      adapters: [stubAdapter('claude-code', [], [join(project, 'CLAUDE.md')])],
     });
 
     for (const f of findings) {
       expect(f.id).toMatch(/^instructions\./);
-      expect(f.domain).toBe("instructions");
+      expect(f.domain).toBe('instructions');
       expect(Array.isArray(f.agents_affected)).toBe(true);
     }
   });
 
-  it("flags missing expected project instruction files", async () => {
+  it('flags missing expected project instruction files', async () => {
     const project = tempDir();
     // no CLAUDE.md created
 
     const findings = await checkInstructions({
       map: emptyMap(),
-      agents: [presence("claude-code")],
+      agents: [presence('claude-code')],
       projectRoot: project,
-      adapters: [
-        stubAdapter("claude-code", [], [join(project, "CLAUDE.md")]),
-      ],
+      adapters: [stubAdapter('claude-code', [], [join(project, 'CLAUDE.md')])],
     });
 
-    const missing = findings.filter(
-      (f) => f.id === "instructions.missing_file",
-    );
+    const missing = findings.filter((f) => f.id === 'instructions.missing_file');
     expect(missing.length).toBeGreaterThanOrEqual(1);
-    expect(missing[0]!.agents_affected).toContain("claude-code");
-    expect(missing[0]!.evidence.some((e) => e.endsWith("CLAUDE.md"))).toBe(
-      true,
-    );
+    expect(missing[0]!.agents_affected).toContain('claude-code');
+    expect(missing[0]!.evidence.some((e) => e.endsWith('CLAUDE.md'))).toBe(true);
   });
 
-  it("does not flag when expected instruction files exist", async () => {
+  it('does not flag when expected instruction files exist', async () => {
     const project = tempDir();
-    const claudeMd = join(project, "CLAUDE.md");
-    writeFileSync(claudeMd, "# project\n");
+    const claudeMd = join(project, 'CLAUDE.md');
+    writeFileSync(claudeMd, '# project\n');
 
     const findings = await checkInstructions({
       map: emptyMap(),
-      agents: [presence("claude-code")],
+      agents: [presence('claude-code')],
       projectRoot: project,
-      adapters: [stubAdapter("claude-code", [claudeMd], [claudeMd])],
+      adapters: [stubAdapter('claude-code', [claudeMd], [claudeMd])],
     });
 
-    expect(
-      findings.filter((f) => f.id === "instructions.missing_file"),
-    ).toEqual([]);
+    expect(findings.filter((f) => f.id === 'instructions.missing_file')).toEqual([]);
   });
 
-  it("without projectRoot, only checks user-level expected files when provided", async () => {
+  it('without projectRoot, only checks user-level expected files when provided', async () => {
     const home = tempDir();
-    const userAgents = join(home, "AGENTS.md");
+    const userAgents = join(home, 'AGENTS.md');
     // missing on purpose
 
     const findings = await checkInstructions({
       map: emptyMap(),
-      agents: [presence("codex")],
-      adapters: [stubAdapter("codex", [], [userAgents])],
+      agents: [presence('codex')],
+      adapters: [stubAdapter('codex', [], [userAgents])],
     });
 
     expect(
       findings.some(
-        (f) =>
-          f.id === "instructions.missing_file" &&
-          f.agents_affected.includes("codex"),
+        (f) => f.id === 'instructions.missing_file' && f.agents_affected.includes('codex'),
       ),
     ).toBe(true);
   });
 
-  it("skips ignored agents", async () => {
+  it('skips ignored agents', async () => {
     const project = tempDir();
     const findings = await checkInstructions({
       map: emptyMap(),
-      agents: [{ ...presence("claude-code"), ignored: true }],
+      agents: [{ ...presence('claude-code'), ignored: true }],
       projectRoot: project,
-      adapters: [
-        stubAdapter("claude-code", [], [join(project, "CLAUDE.md")]),
-      ],
+      adapters: [stubAdapter('claude-code', [], [join(project, 'CLAUDE.md')])],
     });
     expect(findings).toEqual([]);
   });
 
-  it("skips uninstalled agents", async () => {
+  it('skips uninstalled agents', async () => {
     const project = tempDir();
     const findings = await checkInstructions({
       map: emptyMap(),
-      agents: [{ ...presence("claude-code"), installed: false }],
+      agents: [{ ...presence('claude-code'), installed: false }],
       projectRoot: project,
-      adapters: [
-        stubAdapter("claude-code", [], [join(project, "CLAUDE.md")]),
-      ],
+      adapters: [stubAdapter('claude-code', [], [join(project, 'CLAUDE.md')])],
     });
     expect(findings).toEqual([]);
   });

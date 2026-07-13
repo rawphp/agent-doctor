@@ -16,13 +16,10 @@
  * average the report up to green past this cap.
  */
 
-import type { Finding, Grade } from "./types.js";
+import type { Finding, Grade } from './types.js';
 
 /** Finding ids that force a non-green overall grade. */
-export const DESYNC_FINDING_IDS = [
-  "skills.agent_not_on_hub",
-  "skills.hub_conflict",
-] as const;
+export const DESYNC_FINDING_IDS = ['skills.agent_not_on_hub', 'skills.hub_conflict'] as const;
 
 /** Score thresholds for overall / domain grades. */
 export const GRADE_THRESHOLDS = {
@@ -36,9 +33,9 @@ export const GRADE_THRESHOLDS = {
  */
 export function scoreToGrade(score: number): Grade {
   const clamped = Math.max(0, Math.min(100, score));
-  if (clamped >= GRADE_THRESHOLDS.green) return "green";
-  if (clamped >= GRADE_THRESHOLDS.yellow) return "yellow";
-  return "red";
+  if (clamped >= GRADE_THRESHOLDS.green) return 'green';
+  if (clamped >= GRADE_THRESHOLDS.yellow) return 'yellow';
+  return 'red';
 }
 
 /**
@@ -56,9 +53,7 @@ export function averageScore(scores: number[]): number {
  * presence of either id means overall grade must not be green.
  */
 export function findingsBlockGreen(findings: readonly Finding[]): boolean {
-  return findings.some((f) =>
-    (DESYNC_FINDING_IDS as readonly string[]).includes(f.id),
-  );
+  return findings.some((f) => (DESYNC_FINDING_IDS as readonly string[]).includes(f.id));
 }
 
 export type DesyncCapOptions = {
@@ -72,15 +67,12 @@ export type DesyncCapOptions = {
  * Overall grade cannot be green on skills desync or unresolved multi-hub conflict.
  * Other domains cannot average up past this cap (UR clarification).
  */
-export function capGradeForDesync(
-  grade: Grade,
-  options: DesyncCapOptions,
-): Grade {
+export function capGradeForDesync(grade: Grade, options: DesyncCapOptions): Grade {
   if (options.aligned && !options.hubConflict) {
     return grade;
   }
-  if (grade === "green") {
-    return "yellow";
+  if (grade === 'green') {
+    return 'yellow';
   }
   return grade;
 }
@@ -96,9 +88,7 @@ export type ComputeOverallInput = {
  * (never green), and score is capped below the green threshold when needed
  * so score and grade stay consistent.
  */
-export function computeOverall(
-  input: ComputeOverallInput,
-): { score: number; grade: Grade } {
+export function computeOverall(input: ComputeOverallInput): { score: number; grade: Grade } {
   const { domainScores, findings } = input;
   let score = averageScore([...domainScores]);
   let grade = scoreToGrade(score);
@@ -107,7 +97,7 @@ export function computeOverall(
     return { score, grade };
   }
 
-  const hubConflict = findings.some((f) => f.id === "skills.hub_conflict");
+  const hubConflict = findings.some((f) => f.id === 'skills.hub_conflict');
 
   // Cap: never green on desync / hub conflict.
   grade = capGradeForDesync(grade, {
@@ -116,7 +106,7 @@ export function computeOverall(
   });
 
   // Keep score consistent with non-green grade.
-  if (grade !== "green" && score >= GRADE_THRESHOLDS.green) {
+  if (grade !== 'green' && score >= GRADE_THRESHOLDS.green) {
     score = GRADE_THRESHOLDS.green - 1;
   }
 
@@ -136,11 +126,11 @@ export function computeOverall(
  */
 export function exitCodeForGrade(grade: Grade): number {
   switch (grade) {
-    case "green":
+    case 'green':
       return 0;
-    case "yellow":
+    case 'yellow':
       return 1;
-    case "red":
+    case 'red':
       return 2;
   }
 }

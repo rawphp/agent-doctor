@@ -5,12 +5,12 @@
  * - createPresenceAdapter: presence-only AgentAdapter for unknown agents (gemini, cursor, …)
  */
 
-import { existsSync, statSync } from "node:fs";
-import { access } from "node:fs/promises";
-import { homedir } from "node:os";
-import { join } from "node:path";
-import type { AgentPresence, FixAction, MapAgent } from "../engine/types.js";
-import type { AdapterContext, AgentAdapter } from "./types.js";
+import { existsSync, statSync } from 'node:fs';
+import { access } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import type { AgentPresence, FixAction, MapAgent } from '../engine/types.js';
+import type { AdapterContext, AgentAdapter } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Map inventory (first-class agents) — used by init/map
@@ -23,18 +23,16 @@ export type PresenceDetectOptions = {
 
 /** Known first-class agent homes relative to the user home. */
 const FIRST_CLASS_HOMES = [
-  { id: "claude-code", adapter: "claude-code", rel: ".claude" },
-  { id: "codex", adapter: "codex", rel: ".codex" },
-  { id: "grok", adapter: "grok", rel: ".grok" },
+  { id: 'claude-code', adapter: 'claude-code', rel: '.claude' },
+  { id: 'codex', adapter: 'codex', rel: '.codex' },
+  { id: 'grok', adapter: 'grok', rel: '.grok' },
 ] as const;
 
 /**
  * Detect Claude Code, Codex, and Grok config homes when present on disk.
  * Returns only installed agents (no stubs for missing homes).
  */
-export function detectFirstClassAgents(
-  options: PresenceDetectOptions = {},
-): MapAgent[] {
+export function detectFirstClassAgents(options: PresenceDetectOptions = {}): MapAgent[] {
   const homeDir = options.homeDir ?? homedir();
   const found: MapAgent[] = [];
 
@@ -69,8 +67,7 @@ function isDirectory(path: string): boolean {
  * Honest v1 limitation for presence-only agents (design §8).
  * Surface this in fleet / agents listings.
  */
-export const PRESENCE_ONLY_LIMITATION =
-  "detected; limited checks / limited auto-fix in v1";
+export const PRESENCE_ONLY_LIMITATION = 'detected; limited checks / limited auto-fix in v1';
 
 export type PresenceAdapterOptions = {
   /** Agent / adapter id (e.g. gemini, cursor). */
@@ -99,10 +96,7 @@ async function pathExists(path: string): Promise<boolean> {
  * Presence-only adapters never gather hub/skills evidence in v1.
  * Always false — call sites must not treat detection as hub alignment.
  */
-export function reportsSkillsOnHub(
-  _adapter: AgentAdapter,
-  _hub?: string,
-): boolean {
+export function reportsSkillsOnHub(_adapter: AgentAdapter, _hub?: string): boolean {
   return false;
 }
 
@@ -110,9 +104,7 @@ export function reportsSkillsOnHub(
  * Create a presence-only AgentAdapter for an unknown / shallow agent.
  * Still listed in the fleet when detected; no deep skills claims.
  */
-export function createPresenceAdapter(
-  options: PresenceAdapterOptions,
-): AgentAdapter {
+export function createPresenceAdapter(options: PresenceAdapterOptions): AgentAdapter {
   const id = options.id;
   const home = options.home ?? join(homedir(), `.${id}`);
   const markers = options.markers ?? [];
@@ -128,7 +120,7 @@ export function createPresenceAdapter(
           adapter: id,
           installed: true,
           config_home: home,
-          depth: "presence-only",
+          depth: 'presence-only',
         };
       }
 
@@ -139,7 +131,7 @@ export function createPresenceAdapter(
             adapter: id,
             installed: true,
             config_home: path,
-            depth: "presence-only",
+            depth: 'presence-only',
           };
         }
       }
@@ -148,7 +140,7 @@ export function createPresenceAdapter(
         id,
         adapter: id,
         installed: false,
-        depth: "presence-only",
+        depth: 'presence-only',
       };
     },
 
@@ -178,4 +170,4 @@ export function createPresenceAdapter(
 }
 
 /** Built-in unknown agent ids registered as presence-only by default. */
-export const DEFAULT_PRESENCE_AGENT_IDS = ["gemini", "cursor"] as const;
+export const DEFAULT_PRESENCE_AGENT_IDS = ['gemini', 'cursor'] as const;

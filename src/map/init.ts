@@ -4,18 +4,13 @@
  * map: refresh discovery only — no vault prompt / wizard chrome.
  */
 
-import { createInterface } from "node:readline/promises";
-import { stdin as input, stdout as output } from "node:process";
-import {
-  HOME_MAP_VERSION,
-  type HomeMap,
-  type MapAgent,
-  type VaultEntry,
-} from "../engine/types.js";
-import { detectFirstClassAgents } from "../adapters/presence.js";
-import { discover } from "./discover.js";
-import { agentDoctorHome, loadMap, type MapIoOptions } from "./load.js";
-import { saveMap } from "./save.js";
+import { createInterface } from 'node:readline/promises';
+import { stdin as input, stdout as output } from 'node:process';
+import { HOME_MAP_VERSION, type HomeMap, type MapAgent, type VaultEntry } from '../engine/types.js';
+import { detectFirstClassAgents } from '../adapters/presence.js';
+import { discover } from './discover.js';
+import { agentDoctorHome, loadMap, type MapIoOptions } from './load.js';
+import { saveMap } from './save.js';
 
 export type VaultPromptFn = (message: string) => Promise<string | null>;
 
@@ -93,8 +88,7 @@ export async function runMap(options: MapRunOptions = {}): Promise<HomeMap> {
 
   const vaults = mergeVaults(discovered.vaults, previous?.vaults ?? []);
   // Clear skip marker once any vault is present; otherwise keep prior choice.
-  const vaults_skipped =
-    vaults.length > 0 ? false : (previous?.vaults_skipped ?? false);
+  const vaults_skipped = vaults.length > 0 ? false : (previous?.vaults_skipped ?? false);
 
   const map = buildMap({
     skills_roots: discovered.skills_roots,
@@ -109,10 +103,7 @@ export async function runMap(options: MapRunOptions = {}): Promise<HomeMap> {
   return map;
 }
 
-function detectAndMergeAgents(
-  homeDir: string | undefined,
-  previous: HomeMap | null,
-): MapAgent[] {
+function detectAndMergeAgents(homeDir: string | undefined, previous: HomeMap | null): MapAgent[] {
   const live = detectFirstClassAgents({ homeDir });
   if (!previous) return live;
 
@@ -132,14 +123,11 @@ function detectAndMergeAgents(
  * Prefer live discovered vaults; keep manual vaults that are not already
  * represented by a discovered path.
  */
-function mergeVaults(
-  discovered: VaultEntry[],
-  previous: VaultEntry[],
-): VaultEntry[] {
+function mergeVaults(discovered: VaultEntry[], previous: VaultEntry[]): VaultEntry[] {
   const seen = new Set(discovered.map((v) => v.path));
   const merged: VaultEntry[] = [...discovered];
   for (const vault of previous) {
-    if (vault.source !== "manual") continue;
+    if (vault.source !== 'manual') continue;
     if (seen.has(vault.path)) continue;
     seen.add(vault.path);
     merged.push(vault);
@@ -184,19 +172,14 @@ function buildMap(input: {
   return map;
 }
 
-function resolveSyncTarget(
-  roots: string[],
-  previous: string | null,
-): string | null {
+function resolveSyncTarget(roots: string[], previous: string | null): string | null {
   if (previous && roots.includes(previous)) return previous;
   if (roots.length === 1) return roots[0] ?? null;
   // Multiple or zero roots: leave unresolved (design §6)
   return previous && roots.length === 0 ? previous : null;
 }
 
-async function resolveVaultPrompt(
-  options: InitRunOptions,
-): Promise<VaultResolution> {
+async function resolveVaultPrompt(options: InitRunOptions): Promise<VaultResolution> {
   if (options.nonInteractive) {
     // Explicit skip in non-interactive / --yes / test mode
     return { vaults: [], skipped: true };
@@ -211,11 +194,11 @@ async function resolveVaultPrompt(
     return { vaults: [], skipped: true };
   }
   const trimmed = answer.trim();
-  if (trimmed === "" || trimmed.toLowerCase() === "skip") {
+  if (trimmed === '' || trimmed.toLowerCase() === 'skip') {
     return { vaults: [], skipped: true };
   }
 
-  return { vaults: [{ path: trimmed, source: "manual" }], skipped: false };
+  return { vaults: [{ path: trimmed, source: 'manual' }], skipped: false };
 }
 
 async function defaultVaultPrompt(message: string): Promise<string | null> {

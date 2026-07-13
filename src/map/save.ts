@@ -1,8 +1,8 @@
-import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
-import { stringify as stringifyYaml } from "yaml";
-import type { HomeMap } from "../engine/types.js";
-import { agentDoctorHome, mapPath, type MapIoOptions } from "./load.js";
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { stringify as stringifyYaml } from 'yaml';
+import type { HomeMap } from '../engine/types.js';
+import { agentDoctorHome, mapPath, type MapIoOptions } from './load.js';
 
 /**
  * Persist HomeMap to map.yml under AGENT_DOCTOR_HOME (or ~/.agent-doctor).
@@ -43,9 +43,9 @@ export function saveMap(map: HomeMap, options: MapIoOptions = {}): void {
 
   const yaml = stringifyYaml(document, {
     lineWidth: 0,
-    defaultStringType: "PLAIN",
-    defaultKeyType: "PLAIN",
+    defaultStringType: 'PLAIN',
+    defaultKeyType: 'PLAIN',
   });
 
-  writeFileSync(path, yaml.endsWith("\n") ? yaml : `${yaml}\n`, "utf8");
+  writeFileSync(path, yaml.endsWith('\n') ? yaml : `${yaml}\n`, 'utf8');
 }

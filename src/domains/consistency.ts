@@ -3,19 +3,14 @@
  * Same hubs and pointers across non-ignored first-class agents.
  */
 
-import type { Finding } from "../engine/types.js";
-import {
-  firstClassInScope,
-  type DomainCheckContext,
-} from "./context.js";
-import { resolvePath } from "./paths.js";
+import type { Finding } from '../engine/types.js';
+import { firstClassInScope, type DomainCheckContext } from './context.js';
+import { resolvePath } from './paths.js';
 
 /**
  * Flag divergent skills roots / memory pointers across the first-class fleet.
  */
-export async function checkConsistency(
-  ctx: DomainCheckContext,
-): Promise<Finding[]> {
+export async function checkConsistency(ctx: DomainCheckContext): Promise<Finding[]> {
   const findings: Finding[] = [];
   const fleet = firstClassInScope(ctx.agents);
   if (fleet.length < 2) return findings;
@@ -44,7 +39,7 @@ export async function checkConsistency(
   const signatures = new Map<string, string>();
   for (const [agentId, roots] of rootByAgent) {
     if (roots.length === 0) {
-      signatures.set(agentId, "");
+      signatures.set(agentId, '');
       continue;
     }
     // If hub is known and agent is on it, signature = hub
@@ -56,22 +51,19 @@ export async function checkConsistency(
       }
     }
     // Otherwise use sorted join of roots as signature
-    signatures.set(agentId, [...roots].sort().join("|"));
+    signatures.set(agentId, [...roots].sort().join('|'));
   }
 
   const signatureValues = [...new Set(signatures.values())];
   // Empty signature for agents with no roots: if some have roots and others don't, divergent
   if (signatureValues.length >= 2) {
     const agentsInvolved = [...signatures.keys()].sort();
-    const evidence = [...signatures.entries()].map(
-      ([id, sig]) => `${id}:${sig || "(none)"}`,
-    );
+    const evidence = [...signatures.entries()].map(([id, sig]) => `${id}:${sig || '(none)'}`);
     findings.push({
-      id: "consistency.divergent_skills_roots",
-      severity: "error",
-      domain: "consistency",
-      message:
-        "First-class agents have divergent skills roots/hubs; fleet is not aligned.",
+      id: 'consistency.divergent_skills_roots',
+      severity: 'error',
+      domain: 'consistency',
+      message: 'First-class agents have divergent skills roots/hubs; fleet is not aligned.',
       evidence,
       agents_affected: agentsInvolved,
       sync_target: ctx.hub,
@@ -85,21 +77,20 @@ export async function checkConsistency(
       const adapter = ctx.adapters.find((a) => a.id === agent.id);
       if (!adapter) continue;
       const pointers = await adapter.memoryPointers(ctx.projectRoot);
-      const sig = [...new Set(pointers.map(resolvePath))].sort().join("|");
+      const sig = [...new Set(pointers.map(resolvePath))].sort().join('|');
       memByAgent.set(agent.id, sig);
     }
 
     // Only compare agents that reported at least one pointer
-    const withPointers = [...memByAgent.entries()].filter(([, s]) => s !== "");
+    const withPointers = [...memByAgent.entries()].filter(([, s]) => s !== '');
     if (withPointers.length >= 2) {
       const memSigs = new Set(withPointers.map(([, s]) => s));
       if (memSigs.size >= 2) {
         findings.push({
-          id: "consistency.divergent_memory_pointers",
-          severity: "warn",
-          domain: "consistency",
-          message:
-            "First-class agents have divergent memory/vault pointers.",
+          id: 'consistency.divergent_memory_pointers',
+          severity: 'warn',
+          domain: 'consistency',
+          message: 'First-class agents have divergent memory/vault pointers.',
           evidence: withPointers.map(([id, s]) => `${id}:${s}`),
           agents_affected: withPointers.map(([id]) => id).sort(),
         });

@@ -3,8 +3,8 @@
  * runChecks() will build this once and pass it to each domain.
  */
 
-import type { AgentAdapter } from "../adapters/types.js";
-import type { AgentPresence, HomeMap } from "../engine/types.js";
+import type { AgentAdapter } from '../adapters/types.js';
+import type { AgentPresence, HomeMap } from '../engine/types.js';
 
 export type DomainCheckContext = {
   map: HomeMap;
@@ -27,7 +27,5 @@ export function agentsInScope(agents: AgentPresence[]): AgentPresence[] {
 
 /** First-class deep agents that are non-ignored (consistency fleet). */
 export function firstClassInScope(agents: AgentPresence[]): AgentPresence[] {
-  return agentsInScope(agents).filter(
-    (a) => a.depth === "deep" && a.installed,
-  );
+  return agentsInScope(agents).filter((a) => a.depth === 'deep' && a.installed);
 }

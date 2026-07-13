@@ -4,21 +4,21 @@
  */
 
 /** Overall / domain grade. Exit codes: 0 green, 1 yellow, 2 red. */
-export const REPORT_GRADES = ["green", "yellow", "red"] as const;
+export const REPORT_GRADES = ['green', 'yellow', 'red'] as const;
 export type Grade = (typeof REPORT_GRADES)[number];
 
 /** hybrid = default status; machine = --all */
-export const REPORT_SCOPES = ["hybrid", "machine"] as const;
+export const REPORT_SCOPES = ['hybrid', 'machine'] as const;
 export type ReportScope = (typeof REPORT_SCOPES)[number];
 
-export const FINDING_SEVERITIES = ["info", "warn", "error"] as const;
+export const FINDING_SEVERITIES = ['info', 'warn', 'error'] as const;
 export type FindingSeverity = (typeof FINDING_SEVERITIES)[number];
 
 /** map.yml schema version */
 export const HOME_MAP_VERSION = 1 as const;
 
 /** How deeply an adapter inspects an agent. */
-export type AdapterDepth = "deep" | "shallow" | "presence-only";
+export type AdapterDepth = 'deep' | 'shallow' | 'presence-only';
 
 /**
  * Live detection result for one agent on the machine.
@@ -98,7 +98,7 @@ export type Report = {
   fix_plan?: FixAction[];
 };
 
-export type VaultSource = "discovered" | "manual";
+export type VaultSource = 'discovered' | 'manual';
 
 export type VaultEntry = {
   path: string;

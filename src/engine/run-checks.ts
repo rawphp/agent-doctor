@@ -10,26 +10,26 @@
  *   - Permission denied → access.denied finding; do not abort whole report
  */
 
-import { existsSync, readdirSync, realpathSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import {
   FULL_ADAPTER_IDS,
   createAdapterRegistry,
   type AdapterRegistry,
   type AgentAdapter,
-} from "../adapters/index.js";
-import type { AdapterContext } from "../adapters/types.js";
+} from '../adapters/index.js';
+import type { AdapterContext } from '../adapters/types.js';
 import {
   agentsInScope,
   checkInstructions,
   checkProduct,
   runAllDomainChecks,
   type DomainCheckContext,
-} from "../domains/index.js";
-import { discover } from "../map/discover.js";
-import { agentDoctorHome, loadMap } from "../map/load.js";
-import { computeOverall, scoreToGrade } from "./score.js";
-import { resolveSkillsHub } from "./skills-hub.js";
+} from '../domains/index.js';
+import { discover } from '../map/discover.js';
+import { agentDoctorHome, loadMap } from '../map/load.js';
+import { computeOverall, scoreToGrade } from './score.js';
+import { resolveSkillsHub } from './skills-hub.js';
 import {
   HOME_MAP_VERSION,
   type AgentPresence,
@@ -40,7 +40,7 @@ import {
   type Recommendation,
   type Report,
   type ReportScope,
-} from "./types.js";
+} from './types.js';
 
 export type RunChecksOptions = {
   /** hybrid (default status) or machine (--all). */
@@ -63,15 +63,15 @@ export type RunChecksOptions = {
 
 /** Stable domain keys matching runAllDomainChecks.byDomain + display names. */
 const DOMAIN_SPECS = [
-  { key: "presence", domain: "agent_presence" },
-  { key: "skills", domain: "shared_skills_path" },
-  { key: "instructions", domain: "instruction_files" },
-  { key: "product", domain: "product_context" },
-  { key: "obsidian", domain: "obsidian" },
-  { key: "consistency", domain: "cross_agent_consistency" },
+  { key: 'presence', domain: 'agent_presence' },
+  { key: 'skills', domain: 'shared_skills_path' },
+  { key: 'instructions', domain: 'instruction_files' },
+  { key: 'product', domain: 'product_context' },
+  { key: 'obsidian', domain: 'obsidian' },
+  { key: 'consistency', domain: 'cross_agent_consistency' },
 ] as const;
 
-const SEVERITY_PENALTY: Record<Finding["severity"], number> = {
+const SEVERITY_PENALTY: Record<Finding['severity'], number> = {
   error: 40,
   warn: 15,
   info: 5,
@@ -120,9 +120,7 @@ function projectKey(path: string): string {
  * Immediate project directories under mapped project roots (status --all / machine).
  * No artificial max count in v1 — walk everything mapped (UR clarification).
  */
-export function enumerateProjectsUnderRoots(
-  roots: readonly string[],
-): string[] {
+export function enumerateProjectsUnderRoots(roots: readonly string[]): string[] {
   const seen = new Set<string>();
   const projects: string[] = [];
 
@@ -137,7 +135,7 @@ export function enumerateProjectsUnderRoots(
     }
     for (const name of children) {
       // Skip hidden entries (.git, .DS_Store directories, etc.)
-      if (name.startsWith(".")) continue;
+      if (name.startsWith('.')) continue;
       const abs = join(root, name);
       if (!isDirectory(abs)) continue;
       const key = projectKey(abs);
@@ -152,15 +150,9 @@ export function enumerateProjectsUnderRoots(
 }
 
 /** Ensure findings list the project root in evidence for multi-project reports. */
-function ensureProjectInEvidence(
-  findings: readonly Finding[],
-  projectPath: string,
-): Finding[] {
+function ensureProjectInEvidence(findings: readonly Finding[], projectPath: string): Finding[] {
   return findings.map((f) => {
-    if (
-      f.evidence.includes(projectPath) ||
-      f.evidence.some((e) => e.startsWith(projectPath))
-    ) {
+    if (f.evidence.includes(projectPath) || f.evidence.some((e) => e.startsWith(projectPath))) {
       return { ...f, evidence: [...f.evidence] };
     }
     return { ...f, evidence: [projectPath, ...f.evidence] };
@@ -186,7 +178,7 @@ async function runProjectScopedDomains(
       instructions.push(...ensureProjectInEvidence(instr, proj));
     } catch (err) {
       if (isPermissionError(err)) {
-        onAccessDenied(accessDeniedFinding("", err, `instructions:${proj}`));
+        onAccessDenied(accessDeniedFinding('', err, `instructions:${proj}`));
       } else {
         throw err;
       }
@@ -196,7 +188,7 @@ async function runProjectScopedDomains(
       product.push(...ensureProjectInEvidence(prod, proj));
     } catch (err) {
       if (isPermissionError(err)) {
-        onAccessDenied(accessDeniedFinding("", err, `product:${proj}`));
+        onAccessDenied(accessDeniedFinding('', err, `product:${proj}`));
       } else {
         throw err;
       }
@@ -251,24 +243,19 @@ export function isAgentOnHub(agentRoots: string[], hub: string): boolean {
 }
 
 function isPermissionError(err: unknown): boolean {
-  if (!err || typeof err !== "object") return false;
+  if (!err || typeof err !== 'object') return false;
   const code = (err as NodeJS.ErrnoException).code;
-  return code === "EACCES" || code === "EPERM";
+  return code === 'EACCES' || code === 'EPERM';
 }
 
-function accessDeniedFinding(
-  agentId: string,
-  err: unknown,
-  surface: string,
-): Finding {
-  const message =
-    err instanceof Error ? err.message : `Permission denied (${surface})`;
+function accessDeniedFinding(agentId: string, err: unknown, surface: string): Finding {
+  const message = err instanceof Error ? err.message : `Permission denied (${surface})`;
   const pathMatch = message.match(/['"]([^'"]+)['"]/);
   const evidence = pathMatch?.[1] ? [pathMatch[1]] : [surface];
   return {
-    id: "access.denied",
-    severity: "error",
-    domain: "access",
+    id: 'access.denied',
+    severity: 'error',
+    domain: 'access',
     message: `Permission denied while checking ${agentId} (${surface}): ${message}`,
     evidence,
     agents_affected: agentId ? [agentId] : [],
@@ -293,11 +280,7 @@ function wrapAdapterForAccess(
   adapter: AgentAdapter,
   onDenied: (finding: Finding) => void,
 ): AgentAdapter {
-  const wrap = <T>(
-    surface: string,
-    fn: () => Promise<T>,
-    fallback: T,
-  ): Promise<T> =>
+  const wrap = <T>(surface: string, fn: () => Promise<T>, fallback: T): Promise<T> =>
     fn().catch((err: unknown) => {
       if (isPermissionError(err)) {
         onDenied(accessDeniedFinding(adapter.id, err, surface));
@@ -309,28 +292,18 @@ function wrapAdapterForAccess(
   return {
     id: adapter.id,
     detect: () =>
-      wrap(
-        "detect",
-        () => adapter.detect(),
-        {
-          id: adapter.id,
-          adapter: adapter.id,
-          installed: false,
-          depth: "presence-only" as const,
-        },
-      ),
-    skillsRoots: (ctx?: AdapterContext) =>
-      wrap("skillsRoots", () => adapter.skillsRoots(ctx), []),
+      wrap('detect', () => adapter.detect(), {
+        id: adapter.id,
+        adapter: adapter.id,
+        installed: false,
+        depth: 'presence-only' as const,
+      }),
+    skillsRoots: (ctx?: AdapterContext) => wrap('skillsRoots', () => adapter.skillsRoots(ctx), []),
     instructionFiles: (projectRoot?: string) =>
-      wrap(
-        "instructionFiles",
-        () => adapter.instructionFiles(projectRoot),
-        [],
-      ),
+      wrap('instructionFiles', () => adapter.instructionFiles(projectRoot), []),
     memoryPointers: (projectRoot?: string) =>
-      wrap("memoryPointers", () => adapter.memoryPointers(projectRoot), []),
-    proposeWireToSkillsHub: (hub: string) =>
-      adapter.proposeWireToSkillsHub(hub),
+      wrap('memoryPointers', () => adapter.memoryPointers(projectRoot), []),
+    proposeWireToSkillsHub: (hub: string) => adapter.proposeWireToSkillsHub(hub),
     proposeWireMemory: (paths: string[]) => adapter.proposeWireMemory(paths),
   };
 }
@@ -342,17 +315,12 @@ function mergeDiscoveredMap(base: HomeMap, homeDir?: string): HomeMap {
       ...base,
       skills: {
         global_roots:
-          base.skills.global_roots.length > 0
-            ? base.skills.global_roots
-            : disc.skills_roots,
+          base.skills.global_roots.length > 0 ? base.skills.global_roots : disc.skills_roots,
         sync_target: base.skills.sync_target,
       },
       vaults: base.vaults.length > 0 ? base.vaults : disc.vaults,
       projects: {
-        roots:
-          base.projects.roots.length > 0
-            ? base.projects.roots
-            : disc.project_roots,
+        roots: base.projects.roots.length > 0 ? base.projects.roots : disc.project_roots,
         entries: base.projects.entries,
       },
     };
@@ -372,16 +340,12 @@ function scoreFromFindings(findings: readonly Finding[]): number {
   return Math.max(0, Math.min(100, score));
 }
 
-function summarizeDomain(
-  domain: string,
-  findings: readonly Finding[],
-  score: number,
-): string {
+function summarizeDomain(domain: string, findings: readonly Finding[], score: number): string {
   if (findings.length === 0) {
     return `${domain}: healthy`;
   }
-  const errors = findings.filter((f) => f.severity === "error").length;
-  const warns = findings.filter((f) => f.severity === "warn").length;
+  const errors = findings.filter((f) => f.severity === 'error').length;
+  const warns = findings.filter((f) => f.severity === 'warn').length;
   if (errors > 0) {
     return `${errors} error(s), ${warns} warning(s) (score ${score})`;
   }
@@ -397,9 +361,7 @@ function buildDomainResults(
 ): DomainResult[] {
   return DOMAIN_SPECS.map(({ key, domain }) => {
     const domainFindings =
-      key === "skills"
-        ? [...hubFindings, ...(byDomain[key] ?? [])]
-        : (byDomain[key] ?? []);
+      key === 'skills' ? [...hubFindings, ...(byDomain[key] ?? [])] : (byDomain[key] ?? []);
     const score = scoreFromFindings(domainFindings);
     return {
       domain,
@@ -411,19 +373,14 @@ function buildDomainResults(
 }
 
 function firstClassDeep(presence: AgentPresence): boolean {
-  return (
-    presence.depth === "deep" &&
-    (FULL_ADAPTER_IDS as readonly string[]).includes(presence.id)
-  );
+  return presence.depth === 'deep' && (FULL_ADAPTER_IDS as readonly string[]).includes(presence.id);
 }
 
 /**
  * Run hybrid/machine checks and build a Report.
  */
-export async function runChecks(
-  options: RunChecksOptions = {},
-): Promise<Report> {
-  const scope: ReportScope = options.scope ?? "hybrid";
+export async function runChecks(options: RunChecksOptions = {}): Promise<Report> {
+  const scope: ReportScope = options.scope ?? 'hybrid';
   const projectRoot = options.projectRoot ?? process.cwd();
   const home = options.home ?? agentDoctorHome();
   const now = options.now ?? (() => new Date());
@@ -451,11 +408,8 @@ export async function runChecks(
   }
 
   // 2. Build adapters from registry + map (or injected)
-  const rawAdapters =
-    options.adapters ?? buildDefaultAdapters(map, registry);
-  const adapters = rawAdapters.map((a) =>
-    wrapAdapterForAccess(a, recordAccess),
-  );
+  const rawAdapters = options.adapters ?? buildDefaultAdapters(map, registry);
+  const adapters = rawAdapters.map((a) => wrapAdapterForAccess(a, recordAccess));
 
   const adapterCtx: AdapterContext = { projectRoot };
 
@@ -476,7 +430,7 @@ export async function runChecks(
     });
   } catch (err) {
     if (isPermissionError(err)) {
-      recordAccess(accessDeniedFinding("", err, "resolveSkillsHub"));
+      recordAccess(accessDeniedFinding('', err, 'resolveSkillsHub'));
       hubResolution = {
         hub: undefined,
         agentRoots: {} as Record<string, string[]>,
@@ -490,9 +444,7 @@ export async function runChecks(
   }
 
   const hub = hubResolution.hub;
-  const hubConflict = hubResolution.findings.some(
-    (f) => f.id === "skills.hub_conflict",
-  );
+  const hubConflict = hubResolution.findings.some((f) => f.id === 'skills.hub_conflict');
 
   // 5. DomainCheckContext + runAllDomainChecks
   // Hybrid: single projectRoot. Machine: global suite without project overlay first;
@@ -500,7 +452,7 @@ export async function runChecks(
   const domainCtx: DomainCheckContext = {
     map,
     agents,
-    projectRoot: scope === "machine" ? undefined : projectRoot,
+    projectRoot: scope === 'machine' ? undefined : projectRoot,
     hub,
     agentRoots: hubResolution.agentRoots,
     adapters,
@@ -515,7 +467,7 @@ export async function runChecks(
     domainSuite = await runAllDomainChecks(domainCtx);
   } catch (err) {
     if (isPermissionError(err)) {
-      recordAccess(accessDeniedFinding("", err, "domainChecks"));
+      recordAccess(accessDeniedFinding('', err, 'domainChecks'));
       domainSuite = {
         findings: [],
         fix_actions: [],
@@ -534,7 +486,7 @@ export async function runChecks(
   }
 
   // 5b. Machine scope: walk every project under map.projects.roots (no v1 cap)
-  if (scope === "machine") {
+  if (scope === 'machine') {
     const projects = enumerateProjectsUnderRoots(map.projects.roots);
     // Hybrid layer of machine view: also check cwd when provided and not already listed
     if (projectRoot && isDirectory(projectRoot)) {
@@ -573,11 +525,11 @@ export async function runChecks(
   const mapFindings: Finding[] = [];
   if (mapWasMissing) {
     mapFindings.push({
-      id: "map.missing",
-      severity: "warn",
-      domain: "map",
+      id: 'map.missing',
+      severity: 'warn',
+      domain: 'map',
       message:
-        "No home map found; ran one-shot discover for this check only. Run init to persist a map.",
+        'No home map found; ran one-shot discover for this check only. Run init to persist a map.',
       evidence: [home],
       agents_affected: [],
     });
@@ -590,23 +542,15 @@ export async function runChecks(
     ...domainSuite.findings,
   ];
 
-  const domains = buildDomainResults(
-    domainSuite.byDomain,
-    hubResolution.findings,
-  );
+  const domains = buildDomainResults(domainSuite.byDomain, hubResolution.findings);
   const overall = computeOverall({
     domainScores: domains.map((d) => d.score),
     findings,
   });
 
-  const firstClassInstalled = agents.filter(
-    (a) => a.installed && !a.ignored && firstClassDeep(a),
-  );
-  const hasOffHub = findings.some((f) => f.id === "skills.agent_not_on_hub");
-  const aligned =
-    !hubConflict &&
-    !hasOffHub &&
-    (firstClassInstalled.length === 0 || Boolean(hub));
+  const firstClassInstalled = agents.filter((a) => a.installed && !a.ignored && firstClassDeep(a));
+  const hasOffHub = findings.some((f) => f.id === 'skills.agent_not_on_hub');
+  const aligned = !hubConflict && !hasOffHub && (firstClassInstalled.length === 0 || Boolean(hub));
 
   // agents_in_scope: detected (installed) and non-ignored
   const agents_in_scope = agentsInScope(agents)
@@ -649,56 +593,53 @@ function buildRecommendations(
   const recs: Recommendation[] = [];
 
   if (mapWasMissing) {
-    const mapFinding = findings.find((f) => f.id === "map.missing");
+    const mapFinding = findings.find((f) => f.id === 'map.missing');
     recs.push({
-      id: "rec.run_init",
-      finding_ids: mapFinding ? [mapFinding.id] : ["map.missing"],
+      id: 'rec.run_init',
+      finding_ids: mapFinding ? [mapFinding.id] : ['map.missing'],
       message:
-        "Run `agent-doctor init` to discover agents/skills/vaults and persist ~/.agent-doctor/map.yml",
+        'Run `agent-doctor init` to discover agents/skills/vaults and persist ~/.agent-doctor/map.yml',
       priority: 1,
     });
   }
 
-  const offHub = findings.filter((f) => f.id === "skills.agent_not_on_hub");
+  const offHub = findings.filter((f) => f.id === 'skills.agent_not_on_hub');
   if (offHub.length > 0 && hub) {
     const agents = [...new Set(offHub.flatMap((f) => f.agents_affected))];
     recs.push({
-      id: "rec.wire_off_hub_agents",
+      id: 'rec.wire_off_hub_agents',
       finding_ids: offHub.map((f) => f.id),
-      message: `Wire ${agents.join(" + ")} to ${hub} (no copy)`,
+      message: `Wire ${agents.join(' + ')} to ${hub} (no copy)`,
       priority: 1,
     });
   }
 
-  const conflict = findings.find((f) => f.id === "skills.hub_conflict");
+  const conflict = findings.find((f) => f.id === 'skills.hub_conflict');
   if (conflict) {
     recs.push({
-      id: "rec.choose_sync_target",
+      id: 'rec.choose_sync_target',
       finding_ids: [conflict.id],
-      message:
-        "Choose one skills hub (set sync_target in map) before wiring agents",
+      message: 'Choose one skills hub (set sync_target in map) before wiring agents',
       priority: 1,
     });
   }
 
-  const noHub = findings.find((f) => f.id === "skills.no_hub");
+  const noHub = findings.find((f) => f.id === 'skills.no_hub');
   if (noHub) {
     recs.push({
-      id: "rec.establish_skills_hub",
+      id: 'rec.establish_skills_hub',
       finding_ids: [noHub.id],
-      message:
-        "Establish a populated skills hub and set sync_target if multiple candidates appear",
+      message: 'Establish a populated skills hub and set sync_target if multiple candidates appear',
       priority: 2,
     });
   }
 
-  const access = findings.filter((f) => f.id === "access.denied");
+  const access = findings.filter((f) => f.id === 'access.denied');
   if (access.length > 0) {
     recs.push({
-      id: "rec.fix_permissions",
+      id: 'rec.fix_permissions',
       finding_ids: access.map((f) => f.id),
-      message:
-        "Fix filesystem permissions on denied paths, then re-run status",
+      message: 'Fix filesystem permissions on denied paths, then re-run status',
       priority: 2,
     });
   }

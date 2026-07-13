@@ -1,14 +1,14 @@
-import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
-import { parse as parseYaml } from "yaml";
+import { existsSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { parse as parseYaml } from 'yaml';
 import {
   HOME_MAP_VERSION,
   type HomeMap,
   type MapAgent,
   type VaultEntry,
   type VaultSource,
-} from "../engine/types.js";
+} from '../engine/types.js';
 
 export type MapIoOptions = {
   /** Override AGENT_DOCTOR_HOME / default ~/.agent-doctor */
@@ -22,12 +22,12 @@ export type MapIoOptions = {
 export function agentDoctorHome(): string {
   const fromEnv = process.env.AGENT_DOCTOR_HOME?.trim();
   if (fromEnv) return fromEnv;
-  return join(homedir(), ".agent-doctor");
+  return join(homedir(), '.agent-doctor');
 }
 
 /** Absolute path to map.yml under the active doctor home. */
 export function mapPath(options: MapIoOptions = {}): string {
-  return join(options.home ?? agentDoctorHome(), "map.yml");
+  return join(options.home ?? agentDoctorHome(), 'map.yml');
 }
 
 /**
@@ -38,14 +38,14 @@ export function loadMap(options: MapIoOptions = {}): HomeMap | null {
   const path = mapPath(options);
   if (!existsSync(path)) return null;
 
-  const raw = readFileSync(path, "utf8");
+  const raw = readFileSync(path, 'utf8');
   const data = parseYaml(raw) as unknown;
   return normalizeHomeMap(data);
 }
 
 function normalizeHomeMap(data: unknown): HomeMap {
-  if (!data || typeof data !== "object" || Array.isArray(data)) {
-    throw new Error("map.yml: expected a mapping at the root");
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('map.yml: expected a mapping at the root');
   }
 
   const root = data as Record<string, unknown>;
@@ -57,7 +57,7 @@ function normalizeHomeMap(data: unknown): HomeMap {
   }
 
   const skillsRaw =
-    root.skills && typeof root.skills === "object" && !Array.isArray(root.skills)
+    root.skills && typeof root.skills === 'object' && !Array.isArray(root.skills)
       ? (root.skills as Record<string, unknown>)
       : {};
 
@@ -71,9 +71,7 @@ function normalizeHomeMap(data: unknown): HomeMap {
   const agents = asAgents(root.agents);
 
   const projectsRaw =
-    root.projects &&
-    typeof root.projects === "object" &&
-    !Array.isArray(root.projects)
+    root.projects && typeof root.projects === 'object' && !Array.isArray(root.projects)
       ? (root.projects as Record<string, unknown>)
       : {};
 
@@ -88,7 +86,7 @@ function normalizeHomeMap(data: unknown): HomeMap {
     },
   };
 
-  if (typeof root.vaults_skipped === "boolean") {
+  if (typeof root.vaults_skipped === 'boolean') {
     map.vaults_skipped = root.vaults_skipped;
   }
 
@@ -103,13 +101,13 @@ function asStringArray(value: unknown): string[] {
 function asVaults(value: unknown): VaultEntry[] {
   if (!Array.isArray(value)) return [];
   return value.map((item) => {
-    if (!item || typeof item !== "object" || Array.isArray(item)) {
-      throw new Error("map.yml: vault entry must be a mapping");
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      throw new Error('map.yml: vault entry must be a mapping');
     }
     const row = item as Record<string, unknown>;
-    const source = row.source === "manual" ? "manual" : "discovered";
+    const source = row.source === 'manual' ? 'manual' : 'discovered';
     return {
-      path: String(row.path ?? ""),
+      path: String(row.path ?? ''),
       source: source as VaultSource,
     };
   });
@@ -118,14 +116,14 @@ function asVaults(value: unknown): VaultEntry[] {
 function asAgents(value: unknown): MapAgent[] {
   if (!Array.isArray(value)) return [];
   return value.map((item) => {
-    if (!item || typeof item !== "object" || Array.isArray(item)) {
-      throw new Error("map.yml: agent entry must be a mapping");
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      throw new Error('map.yml: agent entry must be a mapping');
     }
     const row = item as Record<string, unknown>;
     return {
-      id: String(row.id ?? ""),
-      adapter: String(row.adapter ?? ""),
-      config_home: String(row.config_home ?? ""),
+      id: String(row.id ?? ''),
+      adapter: String(row.adapter ?? ''),
+      config_home: String(row.config_home ?? ''),
       primary: Boolean(row.primary),
       ignored: Boolean(row.ignored),
     };

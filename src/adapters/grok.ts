@@ -8,22 +8,22 @@
  * via AGENTS.md / GROK.md / related; user config at ~/.grok/config.toml.
  */
 
-import { access, lstat, readlink } from "node:fs/promises";
-import { homedir } from "node:os";
-import { join, resolve } from "node:path";
-import type { AgentPresence, FixAction } from "../engine/types.js";
-import type { AdapterContext, AgentAdapter } from "./types.js";
+import { access, lstat, readlink } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { join, resolve } from 'node:path';
+import type { AgentPresence, FixAction } from '../engine/types.js';
+import type { AdapterContext, AgentAdapter } from './types.js';
 
-const ADAPTER_ID = "grok";
+const ADAPTER_ID = 'grok';
 
 /** Project instruction basenames Grok reads (order matches Grok docs). */
 const PROJECT_INSTRUCTION_BASENAMES = [
-  "AGENTS.md",
-  "Agents.md",
-  "AGENT.md",
-  "GROK.md",
-  "Claude.md",
-  "CLAUDE.md",
+  'AGENTS.md',
+  'Agents.md',
+  'AGENT.md',
+  'GROK.md',
+  'Claude.md',
+  'CLAUDE.md',
 ] as const;
 
 export type GrokAdapterOptions = {
@@ -54,17 +54,15 @@ async function isSymlinkToHub(path: string, hub: string): Promise<boolean> {
       return false;
     }
     const target = await readlink(path);
-    const resolvedTarget = resolve(path, "..", target);
+    const resolvedTarget = resolve(path, '..', target);
     return resolve(resolvedTarget) === resolve(hub);
   } catch {
     return false;
   }
 }
 
-export function createGrokAdapter(
-  options: GrokAdapterOptions = {},
-): AgentAdapter {
-  const home = options.home ?? join(homedir(), ".grok");
+export function createGrokAdapter(options: GrokAdapterOptions = {}): AgentAdapter {
+  const home = options.home ?? join(homedir(), '.grok');
 
   return {
     id: ADAPTER_ID,
@@ -76,7 +74,7 @@ export function createGrokAdapter(
           id: ADAPTER_ID,
           adapter: ADAPTER_ID,
           installed: false,
-          depth: "deep",
+          depth: 'deep',
         };
       }
       return {
@@ -84,7 +82,7 @@ export function createGrokAdapter(
         adapter: ADAPTER_ID,
         installed: true,
         config_home: home,
-        depth: "deep",
+        depth: 'deep',
       };
     },
 
@@ -92,20 +90,20 @@ export function createGrokAdapter(
       const roots: string[] = [];
 
       // User skills (~/.grok/skills)
-      const userSkills = join(home, "skills");
+      const userSkills = join(home, 'skills');
       if (await pathExists(userSkills)) {
         roots.push(userSkills);
       }
 
       // Bundled skills (~/.grok/bundled/skills)
-      const bundledSkills = join(home, "bundled", "skills");
+      const bundledSkills = join(home, 'bundled', 'skills');
       if (await pathExists(bundledSkills)) {
         roots.push(bundledSkills);
       }
 
       // Project / local skills (<project>/.grok/skills)
       if (ctx.projectRoot) {
-        const projectSkills = join(ctx.projectRoot, ".grok", "skills");
+        const projectSkills = join(ctx.projectRoot, '.grok', 'skills');
         if (await pathExists(projectSkills)) {
           roots.push(projectSkills);
         }
@@ -118,7 +116,7 @@ export function createGrokAdapter(
       const files: string[] = [];
 
       // User-level config surface
-      const userConfig = join(home, "config.toml");
+      const userConfig = join(home, 'config.toml');
       if (await pathExists(userConfig)) {
         files.push(userConfig);
       }
@@ -142,13 +140,13 @@ export function createGrokAdapter(
     },
 
     proposeWireToSkillsHub(hub: string): FixAction[] {
-      const agentSkillsPath = join(home, "skills");
+      const agentSkillsPath = join(home, 'skills');
       // Sync proposal is plan-only; apply layer will create the symlink.
       // Prefer symlink-to-hub — never content copy (UR decision / design §9).
       return [
         {
-          id: "fix.wire_grok_skills",
-          kind: "symlink_skills_hub",
+          id: 'fix.wire_grok_skills',
+          kind: 'symlink_skills_hub',
           description: `Symlink ${agentSkillsPath} → ${hub} (hub wiring via symlink)`,
           target: agentSkillsPath,
           agent_id: ADAPTER_ID,
@@ -159,7 +157,7 @@ export function createGrokAdapter(
     proposeWireMemory(paths: string[]): FixAction[] {
       return paths.map((vaultPath, index) => ({
         id: `fix.wire_grok_memory_${index + 1}`,
-        kind: "wire_memory_pointer",
+        kind: 'wire_memory_pointer',
         description: `Add memory/vault pointer to ${vaultPath} in Grok instructions (link only)`,
         target: vaultPath,
         agent_id: ADAPTER_ID,
@@ -172,11 +170,8 @@ export function createGrokAdapter(
  * Async helper used by fix apply later: whether skills path already points at hub.
  * Exported for tests / apply planner; detect path does not call this.
  */
-export async function grokSkillsAlreadyWired(
-  home: string,
-  hub: string,
-): Promise<boolean> {
-  return isSymlinkToHub(join(home, "skills"), hub);
+export async function grokSkillsAlreadyWired(home: string, hub: string): Promise<boolean> {
+  return isSymlinkToHub(join(home, 'skills'), hub);
 }
 
 /** Default adapter bound to real ~/.grok */

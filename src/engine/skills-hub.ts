@@ -8,10 +8,10 @@
  * - empty / unpopulated roots → explicit no-hub finding (never invent a path)
  */
 
-import { existsSync, readdirSync, realpathSync, statSync } from "node:fs";
-import { resolve } from "node:path";
-import type { AdapterContext, AgentAdapter } from "../adapters/types.js";
-import type { Finding, HomeMap } from "./types.js";
+import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs';
+import { resolve } from 'node:path';
+import type { AdapterContext, AgentAdapter } from '../adapters/types.js';
+import type { Finding, HomeMap } from './types.js';
 
 export type ResolveSkillsHubOptions = {
   map: HomeMap;
@@ -80,11 +80,10 @@ function dedupeResolved(paths: string[]): string[] {
 
 function noHubFinding(candidates: string[]): Finding {
   return {
-    id: "skills.no_hub",
-    severity: "warn",
-    domain: "skills",
-    message:
-      "No skills hub resolved: no populated skills roots and no sync_target set.",
+    id: 'skills.no_hub',
+    severity: 'warn',
+    domain: 'skills',
+    message: 'No skills hub resolved: no populated skills roots and no sync_target set.',
     evidence: candidates,
     agents_affected: [],
   };
@@ -92,11 +91,11 @@ function noHubFinding(candidates: string[]): Finding {
 
 function hubConflictFinding(populated: string[]): Finding {
   return {
-    id: "skills.hub_conflict",
-    severity: "error",
-    domain: "skills",
+    id: 'skills.hub_conflict',
+    severity: 'error',
+    domain: 'skills',
     message:
-      "Multiple populated skills roots with no sync_target; choose one hub before wire fixes.",
+      'Multiple populated skills roots with no sync_target; choose one hub before wire fixes.',
     evidence: [...populated],
     agents_affected: [],
   };
@@ -130,7 +129,7 @@ export async function resolveSkillsHub(
 
   // 1. Explicit sync target always wins
   const syncTarget = map.skills.sync_target;
-  if (syncTarget != null && syncTarget !== "") {
+  if (syncTarget != null && syncTarget !== '') {
     const hub = resolvePath(syncTarget);
     return {
       hub,

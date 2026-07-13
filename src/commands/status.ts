@@ -3,13 +3,10 @@
  * Default hybrid scope → run checks → terminal or JSON → exit by grade.
  */
 
-import {
-  EXIT_TOOL_ERROR,
-  exitCodeForGrade,
-} from "../engine/score.js";
-import { runChecks, type RunChecksOptions } from "../engine/run-checks.js";
-import type { Report, ReportScope } from "../engine/types.js";
-import { formatTerminalReport } from "../surfaces/terminal.js";
+import { EXIT_TOOL_ERROR, exitCodeForGrade } from '../engine/score.js';
+import { runChecks, type RunChecksOptions } from '../engine/run-checks.js';
+import type { Report, ReportScope } from '../engine/types.js';
+import { formatTerminalReport } from '../surfaces/terminal.js';
 
 export type StatusFlags = {
   /** Machine-readable Report JSON on stdout. */
@@ -39,13 +36,13 @@ export type StatusRunOptions = {
  */
 export function parseStatusFlags(args: string[]): StatusFlags {
   return {
-    json: args.includes("--json"),
-    all: args.includes("--all"),
+    json: args.includes('--json'),
+    all: args.includes('--all'),
   };
 }
 
 export function scopeFromFlags(flags: StatusFlags): ReportScope {
-  return flags.all ? "machine" : "hybrid";
+  return flags.all ? 'machine' : 'hybrid';
 }
 
 export type StatusResult = {
@@ -61,12 +58,9 @@ export type StatusResult = {
  * `--all` → machine scope: engine walks every project under map.projects.roots
  * with no v1 project-count cap (REQ-018).
  */
-export async function runStatus(
-  options: StatusRunOptions = {},
-): Promise<StatusResult> {
+export async function runStatus(options: StatusRunOptions = {}): Promise<StatusResult> {
   const writeOut = options.stdout ?? ((line: string) => console.log(line));
-  const writeErr =
-    options.stderr ?? ((line: string) => console.error(line));
+  const writeErr = options.stderr ?? ((line: string) => console.error(line));
   const applyExit = options.applyProcessExitCode !== false;
 
   const flags = parseStatusFlags(options.args ?? []);
@@ -107,7 +101,7 @@ export async function runStatus(
           agents_in_scope: [],
           aligned: false,
         },
-        overall: { score: 0, grade: "red" },
+        overall: { score: 0, grade: 'red' },
         agents: [],
         domains: [],
         findings: [],

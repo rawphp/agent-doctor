@@ -2,8 +2,8 @@
  * Shared path helpers for domain checkers.
  */
 
-import { existsSync, realpathSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, realpathSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 /** Resolve for comparison: realpath when present, else path.resolve. */
 export function resolvePath(path: string): string {

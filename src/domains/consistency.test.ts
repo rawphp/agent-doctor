@@ -1,20 +1,14 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-import type { AgentAdapter, AdapterContext } from "../adapters/types.js";
-import type { AgentPresence, FixAction, HomeMap } from "../engine/types.js";
-import { checkConsistency } from "./consistency.js";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import type { AgentAdapter, AdapterContext } from '../adapters/types.js';
+import type { AgentPresence, FixAction, HomeMap } from '../engine/types.js';
+import { checkConsistency } from './consistency.js';
 
 const temps: string[] = [];
 
-function tempDir(prefix = "consistency-domain-"): string {
+function tempDir(prefix = 'consistency-domain-'): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
   temps.push(dir);
   return dir;
@@ -29,7 +23,7 @@ afterEach(() => {
 function populated(parent: string, name: string): string {
   const root = join(parent, name);
   mkdirSync(root, { recursive: true });
-  writeFileSync(join(root, "skill.md"), "# skill\n");
+  writeFileSync(join(root, 'skill.md'), '# skill\n');
   return root;
 }
 
@@ -44,25 +38,18 @@ function baseMap(overrides: Partial<HomeMap> = {}): HomeMap {
   };
 }
 
-function presence(
-  id: string,
-  overrides: Partial<AgentPresence> = {},
-): AgentPresence {
+function presence(id: string, overrides: Partial<AgentPresence> = {}): AgentPresence {
   return {
     id,
     adapter: id,
     installed: true,
-    depth: "deep",
+    depth: 'deep',
     config_home: `/tmp/${id}`,
     ...overrides,
   };
 }
 
-function stubAdapter(
-  id: string,
-  roots: string[],
-  memory: string[] = [],
-): AgentAdapter {
+function stubAdapter(id: string, roots: string[], memory: string[] = []): AgentAdapter {
   return {
     id,
     async detect(): Promise<AgentPresence> {
@@ -86,160 +73,126 @@ function stubAdapter(
   };
 }
 
-describe("checkConsistency", () => {
-  it("returns findings with stable ids and agents_affected", async () => {
+describe('checkConsistency', () => {
+  it('returns findings with stable ids and agents_affected', async () => {
     const base = tempDir();
-    const a = populated(base, "a");
-    const b = populated(base, "b");
+    const a = populated(base, 'a');
+    const b = populated(base, 'b');
 
     const findings = await checkConsistency({
       map: baseMap(),
-      agents: [presence("claude-code"), presence("codex")],
+      agents: [presence('claude-code'), presence('codex')],
       agentRoots: {
-        "claude-code": [a],
+        'claude-code': [a],
         codex: [b],
       },
-      adapters: [
-        stubAdapter("claude-code", [a]),
-        stubAdapter("codex", [b]),
-      ],
+      adapters: [stubAdapter('claude-code', [a]), stubAdapter('codex', [b])],
     });
 
     for (const f of findings) {
       expect(f.id).toMatch(/^consistency\./);
-      expect(f.domain).toBe("consistency");
+      expect(f.domain).toBe('consistency');
       expect(Array.isArray(f.agents_affected)).toBe(true);
     }
   });
 
-  it("flags divergent skills hubs/roots across non-ignored first-class agents", async () => {
+  it('flags divergent skills hubs/roots across non-ignored first-class agents', async () => {
     const base = tempDir();
-    const claude = populated(base, "claude-skills");
-    const codex = populated(base, "codex-skills");
+    const claude = populated(base, 'claude-skills');
+    const codex = populated(base, 'codex-skills');
 
     const findings = await checkConsistency({
       map: baseMap(),
-      agents: [presence("claude-code"), presence("codex")],
+      agents: [presence('claude-code'), presence('codex')],
       agentRoots: {
-        "claude-code": [claude],
+        'claude-code': [claude],
         codex: [codex],
       },
-      adapters: [
-        stubAdapter("claude-code", [claude]),
-        stubAdapter("codex", [codex]),
-      ],
+      adapters: [stubAdapter('claude-code', [claude]), stubAdapter('codex', [codex])],
     });
 
-    const div = findings.filter(
-      (f) => f.id === "consistency.divergent_skills_roots",
-    );
+    const div = findings.filter((f) => f.id === 'consistency.divergent_skills_roots');
     expect(div).toHaveLength(1);
-    expect(div[0]!.agents_affected.sort()).toEqual(["claude-code", "codex"]);
+    expect(div[0]!.agents_affected.sort()).toEqual(['claude-code', 'codex']);
     expect(div[0]!.severity).toMatch(/warn|error/);
   });
 
-  it("does not flag when all first-class agents share the same hub root", async () => {
+  it('does not flag when all first-class agents share the same hub root', async () => {
     const base = tempDir();
-    const hub = populated(base, "hub");
+    const hub = populated(base, 'hub');
 
     const findings = await checkConsistency({
       map: baseMap({
         skills: { global_roots: [hub], sync_target: hub },
       }),
-      agents: [presence("claude-code"), presence("codex")],
+      agents: [presence('claude-code'), presence('codex')],
       hub: realpathSync(hub),
       agentRoots: {
-        "claude-code": [hub],
+        'claude-code': [hub],
         codex: [hub],
       },
-      adapters: [
-        stubAdapter("claude-code", [hub]),
-        stubAdapter("codex", [hub]),
-      ],
+      adapters: [stubAdapter('claude-code', [hub]), stubAdapter('codex', [hub])],
     });
 
-    expect(
-      findings.filter((f) => f.id === "consistency.divergent_skills_roots"),
-    ).toEqual([]);
+    expect(findings.filter((f) => f.id === 'consistency.divergent_skills_roots')).toEqual([]);
   });
 
-  it("flags divergent memory pointers across agents", async () => {
+  it('flags divergent memory pointers across agents', async () => {
     const base = tempDir();
-    const vaultA = join(base, "vault-a");
-    const vaultB = join(base, "vault-b");
+    const vaultA = join(base, 'vault-a');
+    const vaultB = join(base, 'vault-b');
     mkdirSync(vaultA);
     mkdirSync(vaultB);
 
     const findings = await checkConsistency({
       map: baseMap({
         vaults: [
-          { path: vaultA, source: "manual" },
-          { path: vaultB, source: "manual" },
+          { path: vaultA, source: 'manual' },
+          { path: vaultB, source: 'manual' },
         ],
       }),
-      agents: [presence("claude-code"), presence("codex")],
+      agents: [presence('claude-code'), presence('codex')],
       agentRoots: {},
-      adapters: [
-        stubAdapter("claude-code", [], [vaultA]),
-        stubAdapter("codex", [], [vaultB]),
-      ],
+      adapters: [stubAdapter('claude-code', [], [vaultA]), stubAdapter('codex', [], [vaultB])],
     });
 
-    const mem = findings.filter(
-      (f) => f.id === "consistency.divergent_memory_pointers",
-    );
+    const mem = findings.filter((f) => f.id === 'consistency.divergent_memory_pointers');
     expect(mem).toHaveLength(1);
-    expect(mem[0]!.agents_affected.sort()).toEqual(["claude-code", "codex"]);
+    expect(mem[0]!.agents_affected.sort()).toEqual(['claude-code', 'codex']);
   });
 
-  it("ignores ignored agents when comparing fleet pointers", async () => {
+  it('ignores ignored agents when comparing fleet pointers', async () => {
     const base = tempDir();
-    const claude = populated(base, "claude");
-    const codex = populated(base, "codex");
+    const claude = populated(base, 'claude');
+    const codex = populated(base, 'codex');
 
     const findings = await checkConsistency({
       map: baseMap(),
-      agents: [
-        presence("claude-code"),
-        presence("codex", { ignored: true }),
-      ],
+      agents: [presence('claude-code'), presence('codex', { ignored: true })],
       agentRoots: {
-        "claude-code": [claude],
+        'claude-code': [claude],
         codex: [codex],
       },
-      adapters: [
-        stubAdapter("claude-code", [claude]),
-        stubAdapter("codex", [codex]),
-      ],
+      adapters: [stubAdapter('claude-code', [claude]), stubAdapter('codex', [codex])],
     });
 
-    expect(
-      findings.filter((f) => f.id === "consistency.divergent_skills_roots"),
-    ).toEqual([]);
+    expect(findings.filter((f) => f.id === 'consistency.divergent_skills_roots')).toEqual([]);
   });
 
-  it("ignores presence-only agents for skills divergence", async () => {
+  it('ignores presence-only agents for skills divergence', async () => {
     const base = tempDir();
-    const claude = populated(base, "claude");
+    const claude = populated(base, 'claude');
 
     const findings = await checkConsistency({
       map: baseMap(),
-      agents: [
-        presence("claude-code"),
-        presence("gemini", { depth: "presence-only" }),
-      ],
+      agents: [presence('claude-code'), presence('gemini', { depth: 'presence-only' })],
       agentRoots: {
-        "claude-code": [claude],
+        'claude-code': [claude],
         gemini: [],
       },
-      adapters: [
-        stubAdapter("claude-code", [claude]),
-        stubAdapter("gemini", []),
-      ],
+      adapters: [stubAdapter('claude-code', [claude]), stubAdapter('gemini', [])],
     });
 
-    expect(
-      findings.filter((f) => f.id === "consistency.divergent_skills_roots"),
-    ).toEqual([]);
+    expect(findings.filter((f) => f.id === 'consistency.divergent_skills_roots')).toEqual([]);
   });
 });

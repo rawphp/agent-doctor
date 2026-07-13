@@ -3,21 +3,18 @@
  * Plan-then-apply: dry-run prints plan; apply requires confirm (or --yes).
  */
 
-import { createInterface } from "node:readline/promises";
-import { stdin as input, stdout as output } from "node:process";
-import {
-  EXIT_TOOL_ERROR,
-  exitCodeForGrade,
-} from "../engine/score.js";
-import { runChecks, type RunChecksOptions } from "../engine/run-checks.js";
-import type { FixAction, Report } from "../engine/types.js";
+import { createInterface } from 'node:readline/promises';
+import { stdin as input, stdout as output } from 'node:process';
+import { EXIT_TOOL_ERROR, exitCodeForGrade } from '../engine/score.js';
+import { runChecks, type RunChecksOptions } from '../engine/run-checks.js';
+import type { FixAction, Report } from '../engine/types.js';
 import {
   applyFixPlan,
   buildFixPlan,
   formatApplyResults,
   formatFixPlan,
   type ActionResult,
-} from "../fix/index.js";
+} from '../fix/index.js';
 
 export type FixFlags = {
   dryRun: boolean;
@@ -58,17 +55,16 @@ export type FixResult = {
  * Parse fix subcommand flags.
  */
 export function parseFixFlags(args: string[]): FixFlags {
-  const dryRun = args.includes("--dry-run");
-  const yes =
-    args.includes("--yes") || args.includes("--non-interactive");
+  const dryRun = args.includes('--dry-run');
+  const yes = args.includes('--yes') || args.includes('--non-interactive');
 
   let syncTarget: string | undefined;
-  const eq = args.find((a) => a.startsWith("--sync-target="));
+  const eq = args.find((a) => a.startsWith('--sync-target='));
   if (eq) {
-    syncTarget = eq.slice("--sync-target=".length);
+    syncTarget = eq.slice('--sync-target='.length);
   } else {
-    const idx = args.indexOf("--sync-target");
-    if (idx >= 0 && args[idx + 1] && !args[idx + 1]!.startsWith("-")) {
+    const idx = args.indexOf('--sync-target');
+    if (idx >= 0 && args[idx + 1] && !args[idx + 1]!.startsWith('-')) {
       syncTarget = args[idx + 1];
     }
   }
@@ -76,11 +72,8 @@ export function parseFixFlags(args: string[]): FixFlags {
   return { dryRun, yes, syncTarget };
 }
 
-function writeLines(
-  write: (line: string) => void,
-  text: string,
-): void {
-  for (const line of text.split("\n")) {
+function writeLines(write: (line: string) => void, text: string): void {
+  for (const line of text.split('\n')) {
     write(line);
   }
 }
@@ -97,9 +90,7 @@ export async function defaultConfirm(plan: FixAction[]): Promise<boolean> {
   const count = plan.length;
   const rl = createInterface({ input, output });
   try {
-    const answer = await rl.question(
-      `Apply ${count} fix action(s)? [y/N] `,
-    );
+    const answer = await rl.question(`Apply ${count} fix action(s)? [y/N] `);
     return /^y(es)?$/i.test(answer.trim());
   } finally {
     rl.close();
@@ -109,12 +100,9 @@ export async function defaultConfirm(plan: FixAction[]): Promise<boolean> {
 /**
  * Run fix: build plan → dry-run | confirm → apply → re-check → print grade.
  */
-export async function runFix(
-  options: FixRunOptions = {},
-): Promise<FixResult> {
+export async function runFix(options: FixRunOptions = {}): Promise<FixResult> {
   const writeOut = options.stdout ?? ((line: string) => console.log(line));
-  const writeErr =
-    options.stderr ?? ((line: string) => console.error(line));
+  const writeErr = options.stderr ?? ((line: string) => console.error(line));
 
   const flags = parseFixFlags(options.args ?? []);
   const doctorHome = options.doctorHome ?? options.checks?.home;
@@ -138,7 +126,7 @@ export async function runFix(
     writeLines(writeOut, formatFixPlan(plan, { dryRun: flags.dryRun }));
 
     if (flags.dryRun) {
-      writeOut("Dry-run complete — no files written.");
+      writeOut('Dry-run complete — no files written.');
       return {
         report,
         plan,
@@ -149,7 +137,7 @@ export async function runFix(
     }
 
     if (plan.length === 0) {
-      writeOut("Nothing to apply.");
+      writeOut('Nothing to apply.');
       return {
         report,
         plan,
@@ -162,15 +150,13 @@ export async function runFix(
     // Confirmation required unless --yes
     let confirmed = flags.yes;
     if (!confirmed) {
-      writeOut(
-        "Confirmation required before apply (pass --yes to skip prompt).",
-      );
+      writeOut('Confirmation required before apply (pass --yes to skip prompt).');
       const confirmFn = options.confirm ?? defaultConfirm;
       confirmed = await confirmFn(plan);
     }
 
     if (!confirmed) {
-      writeOut("Apply cancelled — confirmation required (use --yes to apply).");
+      writeOut('Apply cancelled — confirmation required (use --yes to apply).');
       return {
         report,
         plan,
@@ -189,7 +175,7 @@ export async function runFix(
 
     writeLines(writeOut, formatApplyResults(results));
 
-    const anyApplied = results.some((r) => r.status === "applied");
+    const anyApplied = results.some((r) => r.status === 'applied');
 
     // Re-run checks and print new grade
     const afterReport = await runChecks({
@@ -215,13 +201,13 @@ export async function runFix(
     return {
       report: {
         generated_at: new Date().toISOString(),
-        scope: "hybrid",
+        scope: 'hybrid',
         sync: {
           memory_hubs: [],
           agents_in_scope: [],
           aligned: false,
         },
-        overall: { score: 0, grade: "red" },
+        overall: { score: 0, grade: 'red' },
         agents: [],
         domains: [],
         findings: [],

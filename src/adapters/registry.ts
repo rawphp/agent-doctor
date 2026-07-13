@@ -3,18 +3,18 @@
  * Exposes supportLevel for a future `agent-doctor agents` command.
  */
 
-import { createClaudeCodeAdapter } from "./claude-code.js";
-import { createCodexAdapter } from "./codex.js";
-import { createGrokAdapter } from "./grok.js";
+import { createClaudeCodeAdapter } from './claude-code.js';
+import { createCodexAdapter } from './codex.js';
+import { createGrokAdapter } from './grok.js';
 import {
   DEFAULT_PRESENCE_AGENT_IDS,
   PRESENCE_ONLY_LIMITATION,
   createPresenceAdapter,
-} from "./presence.js";
-import type { AgentAdapter } from "./types.js";
+} from './presence.js';
+import type { AgentAdapter } from './types.js';
 
 /** Support level surfaced by `agents` command (design §5). */
-export type AdapterSupportLevel = "full" | "presence";
+export type AdapterSupportLevel = 'full' | 'presence';
 
 export type AdapterSupportEntry = {
   id: string;
@@ -54,18 +54,15 @@ export type AdapterRegistry = {
   ids: () => string[];
 };
 
-const DEEP_IDS = ["claude-code", "codex", "grok"] as const;
+const DEEP_IDS = ['claude-code', 'codex', 'grok'] as const;
 
-function defaultDeepFactory(
-  id: string,
-  options: AdapterFactoryOptions = {},
-): AgentAdapter {
+function defaultDeepFactory(id: string, options: AdapterFactoryOptions = {}): AgentAdapter {
   switch (id) {
-    case "claude-code":
+    case 'claude-code':
       return createClaudeCodeAdapter({ home: options.home });
-    case "codex":
+    case 'codex':
       return createCodexAdapter({ home: options.home });
-    case "grok":
+    case 'grok':
       return createGrokAdapter({ home: options.home });
     default:
       throw new Error(`Unknown deep adapter id: ${id}`);
@@ -75,18 +72,16 @@ function defaultDeepFactory(
 /**
  * Build the adapter registry used by engine detectAll / agents listing.
  */
-export function createAdapterRegistry(
-  options: AdapterRegistryOptions = {},
-): AdapterRegistry {
+export function createAdapterRegistry(options: AdapterRegistryOptions = {}): AdapterRegistry {
   const presenceIds = options.presenceIds ?? [...DEFAULT_PRESENCE_AGENT_IDS];
   const custom = options.factories ?? {};
 
   const support = new Map<string, AdapterSupportLevel>();
   for (const id of DEEP_IDS) {
-    support.set(id, "full");
+    support.set(id, 'full');
   }
   for (const id of presenceIds) {
-    support.set(id, "presence");
+    support.set(id, 'presence');
   }
 
   function getAdapter(
@@ -100,7 +95,7 @@ export function createAdapterRegistry(
       return custom[id]!(factoryOptions);
     }
 
-    if (level === "presence") {
+    if (level === 'presence') {
       return createPresenceAdapter({
         id,
         home: factoryOptions.home,
@@ -118,7 +113,7 @@ export function createAdapterRegistry(
   function listSupport(): AdapterSupportEntry[] {
     return [...support.entries()].map(([id, supportLevel]) => {
       const entry: AdapterSupportEntry = { id, supportLevel };
-      if (supportLevel === "presence") {
+      if (supportLevel === 'presence') {
         entry.limitation = PRESENCE_ONLY_LIMITATION;
       }
       return entry;
@@ -146,10 +141,7 @@ export function listAdapterSupport(
 }
 
 /** Resolve adapter from the default registry. */
-export function getAdapter(
-  id: string,
-  options?: AdapterFactoryOptions,
-): AgentAdapter | undefined {
+export function getAdapter(id: string, options?: AdapterFactoryOptions): AgentAdapter | undefined {
   return defaultRegistry.getAdapter(id, options);
 }
 
@@ -162,4 +154,4 @@ export function getSupportLevel(id: string): AdapterSupportLevel | undefined {
 export const FULL_ADAPTER_IDS: readonly string[] = [...DEEP_IDS];
 
 /** Default presence-only ids (re-export for callers). */
-export { DEFAULT_PRESENCE_AGENT_IDS } from "./presence.js";
+export { DEFAULT_PRESENCE_AGENT_IDS } from './presence.js';

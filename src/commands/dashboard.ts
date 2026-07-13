@@ -4,15 +4,15 @@
  * Apply stays CLI-only; this surface never mutates.
  */
 
-import { spawn } from "node:child_process";
-import { EXIT_TOOL_ERROR } from "../engine/score.js";
-import { runChecks, type RunChecksOptions } from "../engine/run-checks.js";
-import type { Report, ReportScope } from "../engine/types.js";
+import { spawn } from 'node:child_process';
+import { EXIT_TOOL_ERROR } from '../engine/score.js';
+import { runChecks, type RunChecksOptions } from '../engine/run-checks.js';
+import type { Report, ReportScope } from '../engine/types.js';
 import {
   startDashboardServer,
   type DashboardServer,
   type DashboardServerOptions,
-} from "../surfaces/dashboard/server.js";
+} from '../surfaces/dashboard/server.js';
 
 /** Preferred default when --port is omitted (design: configurable port). */
 export const DEFAULT_DASHBOARD_PORT = 4173;
@@ -43,9 +43,7 @@ export type DashboardRunOptions = {
   stdout?: (line: string) => void;
   stderr?: (line: string) => void;
   /** Inject server start (tests). Defaults to startDashboardServer. */
-  startServer?: (
-    options: DashboardServerOptions,
-  ) => Promise<DashboardServer>;
+  startServer?: (options: DashboardServerOptions) => Promise<DashboardServer>;
   /** Inject browser open (tests). Defaults to platform open helper. */
   openBrowser?: (url: string) => Promise<void> | void;
   /**
@@ -72,20 +70,20 @@ export type DashboardResult = {
  * Parse dashboard subcommand flags. Unknown flags ignored for forward compat.
  */
 export function parseDashboardFlags(args: string[]): DashboardFlags {
-  const noOpen = args.includes("--no-open");
-  const all = args.includes("--all");
+  const noOpen = args.includes('--no-open');
+  const all = args.includes('--all');
 
   let port: number | undefined;
-  const eq = args.find((a) => a.startsWith("--port="));
+  const eq = args.find((a) => a.startsWith('--port='));
   if (eq) {
-    const raw = eq.slice("--port=".length);
+    const raw = eq.slice('--port='.length);
     const n = Number(raw);
     if (Number.isFinite(n) && n >= 0) {
       port = Math.floor(n);
     }
   } else {
-    const idx = args.indexOf("--port");
-    if (idx >= 0 && args[idx + 1] && !args[idx + 1]!.startsWith("-")) {
+    const idx = args.indexOf('--port');
+    if (idx >= 0 && args[idx + 1] && !args[idx + 1]!.startsWith('-')) {
       const n = Number(args[idx + 1]);
       if (Number.isFinite(n) && n >= 0) {
         port = Math.floor(n);
@@ -97,15 +95,15 @@ export function parseDashboardFlags(args: string[]): DashboardFlags {
 }
 
 export function scopeFromFlags(flags: DashboardFlags): ReportScope {
-  return flags.all ? "machine" : "hybrid";
+  return flags.all ? 'machine' : 'hybrid';
 }
 
 function isAddrInUse(err: unknown): boolean {
   return (
-    typeof err === "object" &&
+    typeof err === 'object' &&
     err !== null &&
-    "code" in err &&
-    (err as { code?: string }).code === "EADDRINUSE"
+    'code' in err &&
+    (err as { code?: string }).code === 'EADDRINUSE'
   );
 }
 
@@ -114,9 +112,7 @@ function isAddrInUse(err: unknown): boolean {
  * Port 0 (ephemeral) is never retried — the OS already picks a free port.
  */
 async function startWithPortRetry(
-  startServer: (
-    options: DashboardServerOptions,
-  ) => Promise<DashboardServer>,
+  startServer: (options: DashboardServerOptions) => Promise<DashboardServer>,
   report: Report,
   preferredPort: number,
 ): Promise<DashboardServer> {
@@ -137,9 +133,7 @@ async function startWithPortRetry(
       // try next port
     }
   }
-  throw lastErr instanceof Error
-    ? lastErr
-    : new Error(`No free port near ${preferredPort}`);
+  throw lastErr instanceof Error ? lastErr : new Error(`No free port near ${preferredPort}`);
 }
 
 /**
@@ -150,24 +144,24 @@ export async function defaultOpenBrowser(url: string): Promise<void> {
   const platform = process.platform;
   let cmd: string;
   let args: string[];
-  if (platform === "darwin") {
-    cmd = "open";
+  if (platform === 'darwin') {
+    cmd = 'open';
     args = [url];
-  } else if (platform === "win32") {
-    cmd = "cmd";
-    args = ["/c", "start", "", url];
+  } else if (platform === 'win32') {
+    cmd = 'cmd';
+    args = ['/c', 'start', '', url];
   } else {
-    cmd = "xdg-open";
+    cmd = 'xdg-open';
     args = [url];
   }
 
   await new Promise<void>((resolve) => {
     const child = spawn(cmd, args, {
-      stdio: "ignore",
+      stdio: 'ignore',
       detached: true,
     });
-    child.once("error", () => resolve());
-    child.once("spawn", () => {
+    child.once('error', () => resolve());
+    child.once('spawn', () => {
       child.unref();
       resolve();
     });
@@ -183,7 +177,7 @@ function emptyErrorReport(scope: ReportScope): Report {
       agents_in_scope: [],
       aligned: false,
     },
-    overall: { score: 0, grade: "red" },
+    overall: { score: 0, grade: 'red' },
     agents: [],
     domains: [],
     findings: [],
@@ -195,12 +189,9 @@ function emptyErrorReport(scope: ReportScope): Report {
  * Run dashboard: checks (or inject report) → loopback HTML server → print URL.
  * Does not call fix apply. Exit 0 on serve; 3 on tool error.
  */
-export async function runDashboard(
-  options: DashboardRunOptions = {},
-): Promise<DashboardResult> {
+export async function runDashboard(options: DashboardRunOptions = {}): Promise<DashboardResult> {
   const writeOut = options.stdout ?? ((line: string) => console.log(line));
-  const writeErr =
-    options.stderr ?? ((line: string) => console.error(line));
+  const writeErr = options.stderr ?? ((line: string) => console.error(line));
   const applyExit = options.applyProcessExitCode !== false;
   const waitUntilClose = options.waitUntilClose !== false;
   const startServer = options.startServer ?? startDashboardServer;
@@ -248,7 +239,7 @@ export async function runDashboard(
   }
 
   writeOut(`Agent Doctor dashboard: ${server.url}`);
-  writeOut("(read-only — apply stays in CLI: agent-doctor fix)");
+  writeOut('(read-only — apply stays in CLI: agent-doctor fix)');
 
   if (!flags.noOpen) {
     try {
@@ -262,13 +253,13 @@ export async function runDashboard(
     await new Promise<void>((resolve) => {
       const onSignal = () => {
         void server.close().finally(() => {
-          process.off("SIGINT", onSignal);
-          process.off("SIGTERM", onSignal);
+          process.off('SIGINT', onSignal);
+          process.off('SIGTERM', onSignal);
           resolve();
         });
       };
-      process.on("SIGINT", onSignal);
-      process.on("SIGTERM", onSignal);
+      process.on('SIGINT', onSignal);
+      process.on('SIGTERM', onSignal);
     });
   }
 

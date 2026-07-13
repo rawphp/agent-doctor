@@ -3,7 +3,7 @@
  * First-class adapters implement deep detect + skills/instructions/memory wiring.
  */
 
-import type { AgentPresence, FixAction } from "../engine/types.js";
+import type { AgentPresence, FixAction } from '../engine/types.js';
 
 /** Context passed into adapter discovery methods. */
 export type AdapterContext = {

@@ -1,7 +1,7 @@
-import { existsSync, readdirSync, statSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
-import type { VaultEntry } from "../engine/types.js";
+import { existsSync, readdirSync, statSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import type { VaultEntry } from '../engine/types.js';
 
 export type DiscoverOptions = {
   /**
@@ -26,26 +26,26 @@ export type DiscoverResult = {
  * @see design §3 “No hard-coded hero path”
  */
 const SKILLS_ROOT_CANDIDATES = [
-  ".agents/skills",
-  ".claude/skills",
-  ".codex/skills",
-  ".grok/skills",
-  ".config/opencode/skills",
-  ".cursor/skills",
+  '.agents/skills',
+  '.claude/skills',
+  '.codex/skills',
+  '.grok/skills',
+  '.config/opencode/skills',
+  '.cursor/skills',
 ] as const;
 
 /** Common parent folders users keep code under. */
 const PROJECT_ROOT_CANDIDATES = [
-  "Projects",
-  "projects",
-  "Developer",
-  "dev",
-  "Code",
-  "code",
-  "src",
-  "repos",
-  "workspace",
-  "Work",
+  'Projects',
+  'projects',
+  'Developer',
+  'dev',
+  'Code',
+  'code',
+  'src',
+  'repos',
+  'workspace',
+  'Work',
 ] as const;
 
 /**
@@ -53,13 +53,13 @@ const PROJECT_ROOT_CANDIDATES = [
  * Each child (or the parent itself) is a vault if it contains `.obsidian/`.
  */
 const VAULT_SEARCH_PARENTS = [
-  "Documents/Obsidian",
-  "Documents/obsidian",
-  "Obsidian",
-  "obsidian",
-  "Documents",
+  'Documents/Obsidian',
+  'Documents/obsidian',
+  'Obsidian',
+  'obsidian',
+  'Documents',
   // macOS iCloud Obsidian
-  "Library/Mobile Documents/iCloud~md~obsidian/Documents",
+  'Library/Mobile Documents/iCloud~md~obsidian/Documents',
 ] as const;
 
 /**
@@ -77,15 +77,11 @@ export function discover(options: DiscoverOptions = {}): DiscoverResult {
 }
 
 function discoverSkillsRoots(homeDir: string): string[] {
-  return uniqueExistingDirs(
-    SKILLS_ROOT_CANDIDATES.map((rel) => join(homeDir, rel)),
-  );
+  return uniqueExistingDirs(SKILLS_ROOT_CANDIDATES.map((rel) => join(homeDir, rel)));
 }
 
 function discoverProjectRoots(homeDir: string): string[] {
-  return uniqueExistingDirs(
-    PROJECT_ROOT_CANDIDATES.map((name) => join(homeDir, name)),
-  );
+  return uniqueExistingDirs(PROJECT_ROOT_CANDIDATES.map((name) => join(homeDir, name)));
 }
 
 /** Keep first path for each physical directory (inode), skip missing. */
@@ -110,11 +106,11 @@ function discoverVaults(homeDir: string): VaultEntry[] {
 
   const addIfVault = (dir: string) => {
     if (!isDirectory(dir)) return;
-    if (!isDirectory(join(dir, ".obsidian"))) return;
+    if (!isDirectory(join(dir, '.obsidian'))) return;
     const key = resolveKey(dir);
     if (seen.has(key)) return;
     seen.add(key);
-    vaults.push({ path: dir, source: "discovered" });
+    vaults.push({ path: dir, source: 'discovered' });
   };
 
   for (const rel of VAULT_SEARCH_PARENTS) {

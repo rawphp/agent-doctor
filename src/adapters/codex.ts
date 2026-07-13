@@ -19,13 +19,13 @@
  * ~/.codex/skills → hub (standing UR decision).
  */
 
-import { access, lstat, readlink } from "node:fs/promises";
-import { homedir } from "node:os";
-import { join, resolve } from "node:path";
-import type { AgentPresence, FixAction } from "../engine/types.js";
-import type { AdapterContext, AgentAdapter } from "./types.js";
+import { access, lstat, readlink } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { join, resolve } from 'node:path';
+import type { AgentPresence, FixAction } from '../engine/types.js';
+import type { AdapterContext, AgentAdapter } from './types.js';
 
-const ADAPTER_ID = "codex";
+const ADAPTER_ID = 'codex';
 
 export type CodexAdapterOptions = {
   /**
@@ -55,17 +55,15 @@ async function isSymlinkToHub(path: string, hub: string): Promise<boolean> {
       return false;
     }
     const target = await readlink(path);
-    const resolvedTarget = resolve(path, "..", target);
+    const resolvedTarget = resolve(path, '..', target);
     return resolve(resolvedTarget) === resolve(hub);
   } catch {
     return false;
   }
 }
 
-export function createCodexAdapter(
-  options: CodexAdapterOptions = {},
-): AgentAdapter {
-  const home = options.home ?? join(homedir(), ".codex");
+export function createCodexAdapter(options: CodexAdapterOptions = {}): AgentAdapter {
+  const home = options.home ?? join(homedir(), '.codex');
 
   return {
     id: ADAPTER_ID,
@@ -77,7 +75,7 @@ export function createCodexAdapter(
           id: ADAPTER_ID,
           adapter: ADAPTER_ID,
           installed: false,
-          depth: "deep",
+          depth: 'deep',
         };
       }
       return {
@@ -85,20 +83,20 @@ export function createCodexAdapter(
         adapter: ADAPTER_ID,
         installed: true,
         config_home: home,
-        depth: "deep",
+        depth: 'deep',
       };
     },
 
     async skillsRoots(ctx: AdapterContext = {}): Promise<string[]> {
       const roots: string[] = [];
-      const globalSkills = join(home, "skills");
+      const globalSkills = join(home, 'skills');
       if (await pathExists(globalSkills)) {
         roots.push(globalSkills);
       }
 
       if (ctx.projectRoot) {
         // Project overlay: .agents/skills (design hybrid overlay / multi-agent convention)
-        const projectSkills = join(ctx.projectRoot, ".agents", "skills");
+        const projectSkills = join(ctx.projectRoot, '.agents', 'skills');
         if (await pathExists(projectSkills)) {
           roots.push(projectSkills);
         }
@@ -110,18 +108,18 @@ export function createCodexAdapter(
     async instructionFiles(projectRoot?: string): Promise<string[]> {
       const files: string[] = [];
 
-      const userAgentsMd = join(home, "AGENTS.md");
+      const userAgentsMd = join(home, 'AGENTS.md');
       if (await pathExists(userAgentsMd)) {
         files.push(userAgentsMd);
       }
 
-      const configToml = join(home, "config.toml");
+      const configToml = join(home, 'config.toml');
       if (await pathExists(configToml)) {
         files.push(configToml);
       }
 
       if (projectRoot) {
-        const projectAgentsMd = join(projectRoot, "AGENTS.md");
+        const projectAgentsMd = join(projectRoot, 'AGENTS.md');
         if (await pathExists(projectAgentsMd)) {
           files.push(projectAgentsMd);
         }
@@ -137,13 +135,13 @@ export function createCodexAdapter(
     },
 
     proposeWireToSkillsHub(hub: string): FixAction[] {
-      const agentSkillsPath = join(home, "skills");
+      const agentSkillsPath = join(home, 'skills');
       // Codex loads skills from its private home path and cannot natively
       // point at an arbitrary hub — symlink-to-hub (never content copy).
       return [
         {
-          id: "fix.wire_codex_skills",
-          kind: "symlink_skills_hub",
+          id: 'fix.wire_codex_skills',
+          kind: 'symlink_skills_hub',
           description: `Symlink ${agentSkillsPath} → ${hub} (hub wiring via symlink)`,
           target: agentSkillsPath,
           agent_id: ADAPTER_ID,
@@ -154,7 +152,7 @@ export function createCodexAdapter(
     proposeWireMemory(paths: string[]): FixAction[] {
       return paths.map((vaultPath, index) => ({
         id: `fix.wire_codex_memory_${index + 1}`,
-        kind: "wire_memory_pointer",
+        kind: 'wire_memory_pointer',
         description: `Add memory/vault pointer to ${vaultPath} in Codex AGENTS.md (link only)`,
         target: vaultPath,
         agent_id: ADAPTER_ID,
@@ -167,11 +165,8 @@ export function createCodexAdapter(
  * Async helper used by fix apply later: whether skills path already points at hub.
  * Exported for tests / apply planner; detect path does not call this.
  */
-export async function codexSkillsAlreadyWired(
-  home: string,
-  hub: string,
-): Promise<boolean> {
-  return isSymlinkToHub(join(home, "skills"), hub);
+export async function codexSkillsAlreadyWired(home: string, hub: string): Promise<boolean> {
+  return isSymlinkToHub(join(home, 'skills'), hub);
 }
 
 /** Default adapter bound to real ~/.codex */

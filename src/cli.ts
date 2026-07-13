@@ -4,106 +4,99 @@
  * v1 commands (design §5): init, map, status, dashboard, fix, agents, check
  */
 
-import { runInitCommand } from "./commands/init.js";
-import { runMapCommand } from "./commands/map.js";
-import { runStatus } from "./commands/status.js";
-import { runDashboard } from "./commands/dashboard.js";
-import { runFix } from "./commands/fix.js";
-import { runAgents } from "./commands/agents.js";
-import { runCheck } from "./commands/check.js";
+import { runInitCommand } from './commands/init.js';
+import { runMapCommand } from './commands/map.js';
+import { runStatus } from './commands/status.js';
+import { runDashboard } from './commands/dashboard.js';
+import { runFix } from './commands/fix.js';
+import { runAgents } from './commands/agents.js';
+import { runCheck } from './commands/check.js';
 
 const V1_COMMANDS = [
-  { name: "init", description: "Discover environment and write the home map" },
-  { name: "map", description: "Inspect or update the agent/home map" },
-  { name: "status", description: "Run checks and print terminal status report" },
+  { name: 'init', description: 'Discover environment and write the home map' },
+  { name: 'map', description: 'Inspect or update the agent/home map' },
+  { name: 'status', description: 'Run checks and print terminal status report' },
   {
-    name: "dashboard",
-    description: "Serve or open the HTML status dashboard",
+    name: 'dashboard',
+    description: 'Serve or open the HTML status dashboard',
   },
-  { name: "fix", description: "Plan and apply safe setup fixes" },
-  { name: "agents", description: "List detected agents and adapter support" },
-  { name: "check", description: "Run individual domain checks" },
+  { name: 'fix', description: 'Plan and apply safe setup fixes' },
+  { name: 'agents', description: 'List detected agents and adapter support' },
+  { name: 'check', description: 'Run individual domain checks' },
 ] as const;
 
 function printHelp(): void {
   const lines = [
-    "Usage: agent-doctor <command> [options]",
-    "",
-    "Diagnose and fix AI-agent project setup (skills hub, adapters, maps).",
-    "",
-    "Commands:",
-    ...V1_COMMANDS.map(
-      (cmd) => `  ${cmd.name.padEnd(12)} ${cmd.description}`,
-    ),
-    "",
-    "Options:",
-    "  -h, --help            Show help",
-    "  -V, --version         Show version",
-    "  --yes, --non-interactive  Skip prompts (init/map/fix; safe for CI)",
-    "",
-    "fix options:",
-    "  --dry-run             Print fix plan without writing files",
-    "  --yes                 Apply without interactive confirmation",
-    "  --sync-target <path>  Explicit skills hub when hubs conflict",
-    "",
+    'Usage: agent-doctor <command> [options]',
+    '',
+    'Diagnose and fix AI-agent project setup (skills hub, adapters, maps).',
+    '',
+    'Commands:',
+    ...V1_COMMANDS.map((cmd) => `  ${cmd.name.padEnd(12)} ${cmd.description}`),
+    '',
+    'Options:',
+    '  -h, --help            Show help',
+    '  -V, --version         Show version',
+    '  --yes, --non-interactive  Skip prompts (init/map/fix; safe for CI)',
+    '',
+    'fix options:',
+    '  --dry-run             Print fix plan without writing files',
+    '  --yes                 Apply without interactive confirmation',
+    '  --sync-target <path>  Explicit skills hub when hubs conflict',
+    '',
   ];
-  console.log(lines.join("\n"));
+  console.log(lines.join('\n'));
 }
 
 function printVersion(): void {
-  console.log("0.1.0");
+  console.log('0.1.0');
 }
 
 async function main(argv: string[]): Promise<number> {
   const args = argv.slice(2);
   const first = args[0];
 
-  if (
-    args.length === 0 ||
-    first === "--help" ||
-    first === "-h" ||
-    first === "help"
-  ) {
+  if (args.length === 0 || first === '--help' || first === '-h' || first === 'help') {
     printHelp();
     return 0;
   }
 
-  if (first === "--version" || first === "-V") {
+  if (first === '--version' || first === '-V') {
     printVersion();
     return 0;
   }
 
-  if (first === "init") {
+  if (first === 'init') {
     const result = await runInitCommand({ args: args.slice(1) });
     return result.code;
   }
 
-  if (first === "map") {
+  if (first === 'map') {
     const result = await runMapCommand({ args: args.slice(1) });
     return result.code;
   }
 
-  if (first === "status") {
+  if (first === 'status') {
     const { exitCode } = await runStatus({ args: args.slice(1) });
     return exitCode;
   }
 
-  if (first === "dashboard") {
+  if (first === 'dashboard') {
     const { exitCode } = await runDashboard({ args: args.slice(1) });
     return exitCode;
   }
 
-  if (first === "fix") {
+  if (first === 'fix') {
     const { exitCode } = await runFix({ args: args.slice(1) });
     return exitCode;
   }
 
-  if (first === "agents") {
+  if (first === 'agents') {
     const { exitCode } = await runAgents({ args: args.slice(1) });
     return exitCode;
   }
 
-  if (first === "check") {
+  if (first === 'check') {
     const { exitCode } = await runCheck({ args: args.slice(1) });
     return exitCode;
   }

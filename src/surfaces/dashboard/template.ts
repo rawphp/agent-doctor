@@ -4,70 +4,63 @@
  * Apply stays in CLI; this surface is read-only.
  */
 
-import type { Grade, Report } from "../../engine/types.js";
+import type { Grade, Report } from '../../engine/types.js';
 
 function escapeHtml(value: string): string {
   return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 function gradeLabel(grade: Grade): string {
   switch (grade) {
-    case "green":
-      return "GREEN";
-    case "yellow":
-      return "YELLOW";
-    case "red":
-      return "RED";
+    case 'green':
+      return 'GREEN';
+    case 'yellow':
+      return 'YELLOW';
+    case 'red':
+      return 'RED';
   }
 }
 
-function matrixMark(
-  agentId: string,
-  report: Report,
-): { mark: string; note: string } {
+function matrixMark(agentId: string, report: Report): { mark: string; note: string } {
   const presence = report.agents.find((a) => a.id === agentId);
   if (!presence?.installed) {
-    return { mark: "·", note: "not installed" };
+    return { mark: '·', note: 'not installed' };
   }
   if (presence.ignored) {
-    return { mark: "–", note: "ignored" };
+    return { mark: '–', note: 'ignored' };
   }
-  if (presence.depth === "presence-only") {
-    return { mark: "·", note: "presence-only (limited checks)" };
+  if (presence.depth === 'presence-only') {
+    return { mark: '·', note: 'presence-only (limited checks)' };
   }
 
   const offHub = report.findings.some(
-    (f) =>
-      f.id === "skills.agent_not_on_hub" &&
-      f.agents_affected.includes(agentId),
+    (f) => f.id === 'skills.agent_not_on_hub' && f.agents_affected.includes(agentId),
   );
   if (offHub) {
     const finding = report.findings.find(
-      (f) =>
-        f.id === "skills.agent_not_on_hub" &&
-        f.agents_affected.includes(agentId),
+      (f) => f.id === 'skills.agent_not_on_hub' && f.agents_affected.includes(agentId),
     );
-    const evidence = finding?.evidence?.[0] ?? "";
+    const evidence = finding?.evidence?.[0] ?? '';
     const note =
-      evidence.includes("no-skills-path") || evidence === ""
-        ? "no skills path"
-        : "private tree only";
-    return { mark: "✗", note };
+      evidence.includes('no-skills-path') || evidence === ''
+        ? 'no skills path'
+        : 'private tree only';
+    return { mark: '✗', note };
   }
 
   if (!report.sync.skills_hub) {
-    if (report.findings.some((f) => f.id === "skills.hub_conflict")) {
-      return { mark: "✗", note: "hub conflict" };
+    if (report.findings.some((f) => f.id === 'skills.hub_conflict')) {
+      return { mark: '✗', note: 'hub conflict' };
     }
-    return { mark: "✗", note: "no hub" };
+    return { mark: '✗', note: 'no hub' };
   }
 
-  return { mark: "✓", note: "on hub" };
+  return { mark: '✓', note: 'on hub' };
 }
 
 /**
@@ -76,7 +69,7 @@ function matrixMark(
  */
 export function renderDashboardHtml(report: Report): string {
   const grade = report.overall.grade;
-  const hubDisplay = report.sync.skills_hub ?? "(unresolved)";
+  const hubDisplay = report.sync.skills_hub ?? '(unresolved)';
   const matrixAgents = report.agents.filter((a) => a.installed);
 
   const agentRows =
@@ -92,7 +85,7 @@ export function renderDashboardHtml(report: Report): string {
   <td>${escapeHtml(note)}</td>
 </tr>`;
           })
-          .join("\n");
+          .join('\n');
 
   const domainRows = report.domains
     .map(
@@ -100,10 +93,10 @@ export function renderDashboardHtml(report: Report): string {
   <td>${escapeHtml(d.domain)}</td>
   <td>${d.score}</td>
   <td>${escapeHtml(gradeLabel(d.grade))}</td>
-  <td>${escapeHtml(d.summary ?? "")}</td>
+  <td>${escapeHtml(d.summary ?? '')}</td>
 </tr>`,
     )
-    .join("\n");
+    .join('\n');
 
   const findingRows =
     report.findings.length === 0
@@ -117,7 +110,7 @@ export function renderDashboardHtml(report: Report): string {
   <td>${escapeHtml(f.message)}</td>
 </tr>`,
           )
-          .join("\n");
+          .join('\n');
 
   const fixRows =
     !report.fix_plan || report.fix_plan.length === 0
@@ -130,14 +123,12 @@ export function renderDashboardHtml(report: Report): string {
   <td>${escapeHtml(a.description)}</td>
 </tr>`,
           )
-          .join("\n");
+          .join('\n');
 
   const memoryHubs =
     report.sync.memory_hubs.length === 0
-      ? "<li>(none)</li>"
-      : report.sync.memory_hubs
-          .map((v) => `<li><code>${escapeHtml(v)}</code></li>`)
-          .join("\n");
+      ? '<li>(none)</li>'
+      : report.sync.memory_hubs.map((v) => `<li><code>${escapeHtml(v)}</code></li>`).join('\n');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -180,12 +171,8 @@ export function renderDashboardHtml(report: Report): string {
       (${escapeHtml(gradeLabel(grade))})</span>
     </p>
     <p>Generated: <code>${escapeHtml(report.generated_at)}</code></p>
-    ${
-      report.project_root
-        ? `<p>Project: <code>${escapeHtml(report.project_root)}</code></p>`
-        : ""
-    }
-    <p>Sync aligned: <strong>${report.sync.aligned ? "yes" : "no"}</strong></p>
+    ${report.project_root ? `<p>Project: <code>${escapeHtml(report.project_root)}</code></p>` : ''}
+    <p>Sync aligned: <strong>${report.sync.aligned ? 'yes' : 'no'}</strong></p>
     <p>Skills hub: <code>${escapeHtml(hubDisplay)}</code></p>
     <p>Memory hubs:</p>
     <ul>${memoryHubs}</ul>

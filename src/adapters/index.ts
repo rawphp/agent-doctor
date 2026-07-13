@@ -6,7 +6,7 @@ export {
   DEFAULT_PRESENCE_AGENT_IDS,
   type PresenceDetectOptions,
   type PresenceAdapterOptions,
-} from "./presence.js";
+} from './presence.js';
 export {
   createAdapterRegistry,
   listAdapterSupport,
@@ -18,23 +18,23 @@ export {
   type AdapterSupportEntry,
   type AdapterRegistryOptions,
   type AdapterFactoryOptions,
-} from "./registry.js";
-export type { AdapterContext, AgentAdapter } from "./types.js";
+} from './registry.js';
+export type { AdapterContext, AgentAdapter } from './types.js';
 export {
   createClaudeCodeAdapter,
   claudeCodeAdapter,
   claudeSkillsAlreadyWired,
   type ClaudeCodeAdapterOptions,
-} from "./claude-code.js";
+} from './claude-code.js';
 export {
   createCodexAdapter,
   codexAdapter,
   codexSkillsAlreadyWired,
   type CodexAdapterOptions,
-} from "./codex.js";
+} from './codex.js';
 export {
   createGrokAdapter,
   grokAdapter,
   grokSkillsAlreadyWired,
   type GrokAdapterOptions,
-} from "./grok.js";
+} from './grok.js';

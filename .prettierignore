@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+package-lock.json
+.do-work
+.worktrees
+fixtures
+*.md

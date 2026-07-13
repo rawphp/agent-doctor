@@ -1,0 +1,64 @@
+req: REQ-019
+status: done
+commit: e49729d
+reason: ""
+details: "Implemented agent-doctor dashboard CLI path-unit: runChecks (or inject report), loopback HTML server, --port/--no-open/--all, port-in-use retry, URL print, auto-open browser, no fix apply."
+isolation: worktree
+closure_proof: "checkpoint_log:passed commit:e49729d npm test -- src/surfaces/dashboard src/commands/dashboard (18 passed); runtime curl HTML contains Agent Doctor title"
+last_good_step: 2
+failed_step: 0
+checkpoint_log:
+  status: passed
+  checkpoints:
+    - step: 1
+      total: 2
+      type: test
+      command: "npm test -- src/surfaces/dashboard src/commands/dashboard"
+      expected: "Dashboard tests pass"
+      actual: "3 files, 18 tests passed"
+      status: passed
+      handoff: "command -> surface render"
+    - step: 2
+      total: 2
+      type: runtime
+      command: "npx tsx src/cli.ts dashboard --port 0 --no-open; curl -s $URL | head"
+      expected: "HTML contains grade or Agent Doctor title"
+      actual: "Served http://127.0.0.1:63978/; title Agent Doctor — Dashboard"
+      status: passed
+      handoff: "CLI -> HTTP HTML"
+deferred_checks: []
+acceptance:
+  AC1:
+    status: passed
+    evidence:
+      - type: test
+        ref: "src/commands/dashboard.test.ts — runs checks and serves HTML on 127.0.0.1"
+      - type: runtime_check
+        ref: "dashboard --port 0 --no-open; curl returned 200 HTML"
+  AC2:
+    status: passed
+    evidence:
+      - type: test
+        ref: "src/commands/dashboard.test.ts — grade + findings + sync matrix agents in HTML"
+      - type: test
+        ref: "src/surfaces/dashboard/template.test.ts — overall.grade and finding ids"
+  AC3:
+    status: passed
+    evidence:
+      - type: test
+        ref: "src/commands/dashboard.test.ts — port conflict tries next port; URL printed"
+  AC4:
+    status: passed
+    evidence:
+      - type: test
+        ref: "src/commands/dashboard.test.ts — no fix apply import/call; POST not 200"
+milestone_complete: false
+milestone: ""
+retry_count: 0
+outputs:
+  - path: src/commands/dashboard.ts
+    description: "Dashboard CLI path-unit — runChecks/report inject, loopback server, port retry, open browser"
+  - path: src/commands/dashboard.test.ts
+    description: "AC tests for flags, HTML serve, --all, port conflict, no-open, no fix apply"
+  - path: src/cli.ts
+    description: "Wires agent-doctor dashboard to runDashboard"

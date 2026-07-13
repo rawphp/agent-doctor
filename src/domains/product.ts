@@ -3,14 +3,14 @@
  * If product.md / roadmap.md (and variants) exist, instruction files must link them.
  */
 
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
-import type { Finding } from "../engine/types.js";
-import { agentsInScope, type DomainCheckContext } from "./context.js";
-import { pathExists } from "./paths.js";
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import type { Finding } from '../engine/types.js';
+import { agentsInScope, type DomainCheckContext } from './context.js';
+import { pathExists } from './paths.js';
 
 /** Basenames considered product-context files (case variants on disk). */
-const PRODUCT_BASENAMES = ["product.md", "roadmap.md"] as const;
+const PRODUCT_BASENAMES = ['product.md', 'roadmap.md'] as const;
 
 function findProductFiles(projectRoot: string): string[] {
   const found: string[] = [];
@@ -49,9 +49,7 @@ function contentLinksProduct(content: string, productPath: string): boolean {
 /**
  * Flag instruction files that do not link existing product/roadmap docs.
  */
-export async function checkProduct(
-  ctx: DomainCheckContext,
-): Promise<Finding[]> {
+export async function checkProduct(ctx: DomainCheckContext): Promise<Finding[]> {
   const findings: Finding[] = [];
   if (!ctx.projectRoot) return findings;
 
@@ -61,7 +59,7 @@ export async function checkProduct(
   const inScope = agentsInScope(ctx.agents).filter((a) => a.installed);
 
   for (const agent of inScope) {
-    if (agent.depth === "presence-only") continue;
+    if (agent.depth === 'presence-only') continue;
 
     const adapter = ctx.adapters?.find((a) => a.id === agent.id);
     if (!adapter) continue;
@@ -92,9 +90,9 @@ export async function checkProduct(
       for (const product of productFiles) {
         const base = product.split(/[/\\]/).pop() ?? product;
         findings.push({
-          id: "product.missing_link",
-          severity: "warn",
-          domain: "product",
+          id: 'product.missing_link',
+          severity: 'warn',
+          domain: 'product',
           message: `No instruction file for ${agent.id} links ${base}`,
           evidence: [product],
           agents_affected: [agent.id],
@@ -111,11 +109,11 @@ export async function checkProduct(
       for (const instr of targets) {
         if (!pathExists(instr)) continue;
         // Skip pure JSON settings — only markdown-ish instruction surfaces
-        if (instr.endsWith(".json")) continue;
+        if (instr.endsWith('.json')) continue;
         unchecked.push(instr);
-        let content = "";
+        let content = '';
         try {
-          content = readFileSync(instr, "utf8");
+          content = readFileSync(instr, 'utf8');
         } catch {
           continue;
         }
@@ -127,9 +125,9 @@ export async function checkProduct(
 
       if (!linked) {
         findings.push({
-          id: "product.missing_link",
-          severity: "warn",
-          domain: "product",
+          id: 'product.missing_link',
+          severity: 'warn',
+          domain: 'product',
           message: `Instruction file(s) for ${agent.id} missing link to ${base}`,
           evidence: [...unchecked, product],
           agents_affected: [agent.id],

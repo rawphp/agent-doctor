@@ -3,13 +3,9 @@
  * Discovers environment, optional vault prompt, writes map, prints summary.
  */
 
-import {
-  runInit,
-  type InitRunOptions,
-  type VaultPromptFn,
-} from "../map/init.js";
-import { mapPath } from "../map/load.js";
-import type { HomeMap } from "../engine/types.js";
+import { runInit, type InitRunOptions, type VaultPromptFn } from '../map/init.js';
+import { mapPath } from '../map/load.js';
+import type { HomeMap } from '../engine/types.js';
 
 export type LogFn = (line: string) => void;
 
@@ -30,20 +26,16 @@ export type CommandResult = {
 
 /** True when --yes or --non-interactive is present (CI-safe, no prompts). */
 export function parseYesFlag(args: string[]): boolean {
-  return args.includes("--yes") || args.includes("--non-interactive");
+  return args.includes('--yes') || args.includes('--non-interactive');
 }
 
 /** Human-readable map summary printed after init/map. */
-export function formatMapSummary(
-  map: HomeMap,
-  path: string,
-  mode: "init" | "map",
-): string {
-  const verb = mode === "init" ? "Wrote" : "Refreshed";
+export function formatMapSummary(map: HomeMap, path: string, mode: 'init' | 'map'): string {
+  const verb = mode === 'init' ? 'Wrote' : 'Refreshed';
   const lines = [
     `${verb} home map: ${path}`,
     `  version: ${map.version}`,
-    `  agents: ${map.agents.map((a) => a.id).join(", ") || "(none)"}`,
+    `  agents: ${map.agents.map((a) => a.id).join(', ') || '(none)'}`,
     `  skills roots: ${map.skills.global_roots.length} candidate(s)`,
     `  vaults: ${map.vaults.length}`,
     `  project roots: ${map.projects.roots.length}`,
@@ -51,20 +43,18 @@ export function formatMapSummary(
   if (map.skills.sync_target) {
     lines.push(`  sync_target: ${map.skills.sync_target}`);
   } else if (map.skills.global_roots.length > 1) {
-    lines.push("  sync_target: (unresolved — multiple hubs)");
+    lines.push('  sync_target: (unresolved — multiple hubs)');
   }
   if (map.vaults_skipped && map.vaults.length === 0) {
-    lines.push("  vaults_skipped: true");
+    lines.push('  vaults_skipped: true');
   }
-  return lines.join("\n");
+  return lines.join('\n');
 }
 
 /**
  * Run `agent-doctor init`: discovery + optional vault prompt + write map + summary.
  */
-export async function runInitCommand(
-  options: InitCommandOptions = {},
-): Promise<CommandResult> {
+export async function runInitCommand(options: InitCommandOptions = {}): Promise<CommandResult> {
   const args = options.args ?? [];
   const nonInteractive = parseYesFlag(args);
   const log = options.log ?? ((line: string) => console.log(line));
@@ -79,8 +69,8 @@ export async function runInitCommand(
   }
 
   const map = await runInit(initOpts);
-  const summary = formatMapSummary(map, mapPath({ home: options.home }), "init");
-  for (const line of summary.split("\n")) {
+  const summary = formatMapSummary(map, mapPath({ home: options.home }), 'init');
+  for (const line of summary.split('\n')) {
     log(line);
   }
   return { code: 0, map };

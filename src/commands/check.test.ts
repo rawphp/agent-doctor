@@ -1,23 +1,14 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-import type { AgentAdapter, AdapterContext } from "../adapters/types.js";
-import type { AgentPresence, FixAction, HomeMap } from "../engine/types.js";
-import {
-  CHECK_DOMAIN_KEYS,
-  parseCheckArgs,
-  runCheck,
-} from "./check.js";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import type { AgentAdapter, AdapterContext } from '../adapters/types.js';
+import type { AgentPresence, FixAction, HomeMap } from '../engine/types.js';
+import { CHECK_DOMAIN_KEYS, parseCheckArgs, runCheck } from './check.js';
 
 const temps: string[] = [];
 
-function tempDir(prefix = "check-cmd-"): string {
+function tempDir(prefix = 'check-cmd-'): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
   temps.push(dir);
   return dir;
@@ -34,11 +25,11 @@ afterEach(() => {
 function makePopulatedRoot(parent: string, name: string): string {
   const root = join(parent, name);
   mkdirSync(root, { recursive: true });
-  writeFileSync(join(root, "SKILL.md"), "# skill\n");
+  writeFileSync(join(root, 'SKILL.md'), '# skill\n');
   return root;
 }
 
-function baseMap(skills: HomeMap["skills"]): HomeMap {
+function baseMap(skills: HomeMap['skills']): HomeMap {
   return {
     version: 1,
     skills,
@@ -57,7 +48,7 @@ function stubAdapter(id: string, roots: string[]): AgentAdapter {
         adapter: id,
         installed: true,
         config_home: `/tmp/${id}`,
-        depth: "deep",
+        depth: 'deep',
       };
     },
     async skillsRoots(_ctx?: AdapterContext): Promise<string[]> {
@@ -78,45 +69,42 @@ function stubAdapter(id: string, roots: string[]): AgentAdapter {
   };
 }
 
-describe("parseCheckArgs", () => {
-  it("parses domain positional and --json", () => {
-    expect(parseCheckArgs(["skills"])).toEqual({
-      domain: "skills",
+describe('parseCheckArgs', () => {
+  it('parses domain positional and --json', () => {
+    expect(parseCheckArgs(['skills'])).toEqual({
+      domain: 'skills',
       json: false,
     });
-    expect(parseCheckArgs(["skills", "--json"])).toEqual({
-      domain: "skills",
+    expect(parseCheckArgs(['skills', '--json'])).toEqual({
+      domain: 'skills',
       json: true,
     });
-    expect(parseCheckArgs(["--json"])).toEqual({
+    expect(parseCheckArgs(['--json'])).toEqual({
       domain: undefined,
       json: true,
     });
   });
 
-  it("exposes known domain keys", () => {
-    expect(CHECK_DOMAIN_KEYS).toContain("skills");
-    expect(CHECK_DOMAIN_KEYS).toContain("presence");
-    expect(CHECK_DOMAIN_KEYS).toContain("instructions");
+  it('exposes known domain keys', () => {
+    expect(CHECK_DOMAIN_KEYS).toContain('skills');
+    expect(CHECK_DOMAIN_KEYS).toContain('presence');
+    expect(CHECK_DOMAIN_KEYS).toContain('instructions');
   });
 });
 
-describe("runCheck", () => {
-  it("check skills runs skills-related findings only with exit codes", async () => {
+describe('runCheck', () => {
+  it('check skills runs skills-related findings only with exit codes', async () => {
     const lines: string[] = [];
     const base = tempDir();
-    const hub = makePopulatedRoot(base, "hub");
-    const privateRoot = makePopulatedRoot(base, "private");
+    const hub = makePopulatedRoot(base, 'hub');
+    const privateRoot = makePopulatedRoot(base, 'private');
 
     // Off-hub private tree ⇒ skills.agent_not_on_hub finding
     const { report, exitCode } = await runCheck({
-      args: ["skills"],
+      args: ['skills'],
       checks: {
         map: baseMap({ global_roots: [hub], sync_target: hub }),
-        adapters: [
-          stubAdapter("claude-code", [privateRoot]),
-          stubAdapter("codex", [hub]),
-        ],
+        adapters: [stubAdapter('claude-code', [privateRoot]), stubAdapter('codex', [hub])],
       },
       stdout: (line) => lines.push(line),
       applyProcessExitCode: false,
@@ -124,11 +112,9 @@ describe("runCheck", () => {
 
     // Only skills-domain findings (and hub findings under skills)
     for (const f of report.findings) {
-      expect(f.domain).toBe("skills");
+      expect(f.domain).toBe('skills');
     }
-    expect(
-      report.findings.some((f) => f.id === "skills.agent_not_on_hub"),
-    ).toBe(true);
+    expect(report.findings.some((f) => f.id === 'skills.agent_not_on_hub')).toBe(true);
 
     // Domain results filtered to skills
     expect(report.domains.length).toBe(1);
@@ -138,61 +124,59 @@ describe("runCheck", () => {
     expect(exitCode).toBeGreaterThanOrEqual(1);
     expect(exitCode).toBeLessThanOrEqual(2);
 
-    const text = lines.join("\n");
+    const text = lines.join('\n');
     expect(text.toLowerCase()).toMatch(/skill/);
   });
 
-  it("check skills green when all agents on hub", async () => {
+  it('check skills green when all agents on hub', async () => {
     const lines: string[] = [];
     const base = tempDir();
-    const hub = makePopulatedRoot(base, "hub");
+    const hub = makePopulatedRoot(base, 'hub');
 
     const { report, exitCode } = await runCheck({
-      args: ["skills"],
+      args: ['skills'],
       checks: {
         map: baseMap({ global_roots: [hub], sync_target: hub }),
-        adapters: [stubAdapter("claude-code", [hub])],
+        adapters: [stubAdapter('claude-code', [hub])],
       },
       stdout: (line) => lines.push(line),
       applyProcessExitCode: false,
     });
 
-    expect(report.findings.every((f) => f.domain === "skills" || f.domain === "map")).toBe(
-      true,
-    );
+    expect(report.findings.every((f) => f.domain === 'skills' || f.domain === 'map')).toBe(true);
     // With aligned hub and no map missing, skills domain should be healthy
-    expect(report.domains[0]?.grade).toBe("green");
+    expect(report.domains[0]?.grade).toBe('green');
     expect(exitCode).toBe(0);
   });
 
-  it("invalid domain name exits non-zero with helpful error", async () => {
+  it('invalid domain name exits non-zero with helpful error', async () => {
     const errLines: string[] = [];
     const outLines: string[] = [];
 
     const { exitCode } = await runCheck({
-      args: ["not-a-real-domain"],
+      args: ['not-a-real-domain'],
       stdout: (line) => outLines.push(line),
       stderr: (line) => errLines.push(line),
       applyProcessExitCode: false,
     });
 
     expect(exitCode).toBeGreaterThan(0);
-    const err = errLines.join("\n");
+    const err = errLines.join('\n');
     expect(err).toMatch(/not-a-real-domain|unknown domain|invalid domain/i);
     expect(err).toMatch(/skills|presence|instructions/i); // lists known domains
-    expect(outLines.join("\n")).not.toMatch(/Overall:/);
+    expect(outLines.join('\n')).not.toMatch(/Overall:/);
   });
 
-  it("check without domain runs full report", async () => {
+  it('check without domain runs full report', async () => {
     const lines: string[] = [];
     const base = tempDir();
-    const hub = makePopulatedRoot(base, "hub");
+    const hub = makePopulatedRoot(base, 'hub');
 
     const { report, exitCode } = await runCheck({
       args: [],
       checks: {
         map: baseMap({ global_roots: [hub], sync_target: hub }),
-        adapters: [stubAdapter("claude-code", [hub])],
+        adapters: [stubAdapter('claude-code', [hub])],
       },
       stdout: (line) => lines.push(line),
       applyProcessExitCode: false,
@@ -200,6 +184,6 @@ describe("runCheck", () => {
 
     expect(report.domains.length).toBeGreaterThan(1);
     expect(exitCode).toBe(0);
-    expect(lines.join("\n")).toMatch(/Overall:/);
+    expect(lines.join('\n')).toMatch(/Overall:/);
   });
 });
