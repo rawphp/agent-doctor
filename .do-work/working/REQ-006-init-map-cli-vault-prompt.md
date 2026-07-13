@@ -1,7 +1,13 @@
 # REQ-006: Init map CLI vault prompt
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.19127
+**Claimed at:** 2026-07-13T23:09:20Z
+**Heartbeat:** 2026-07-13T23:09:20Z
+<!-- claimed-end -->
+
 **UR:** UR-001
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-14
 **Layer:** cli
 **Entry point:** 
