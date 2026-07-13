@@ -258,6 +258,181 @@ describe("runChecks hybrid scope", () => {
     });
     expect(report.scope).toBe("machine");
   });
+
+  it("returns full Report for hybrid scope with projectRoot and home", async () => {
+    const home = tempDir("run-checks-home-");
+    const projectRoot = tempDir("run-checks-proj-");
+    const hub = makePopulatedRoot(home, "hub");
+    mkdirSync(join(home, "claude"), { recursive: true });
+
+    const report = await runChecks({
+      scope: "hybrid",
+      projectRoot,
+      home,
+      map: baseMap({
+        skills: { global_roots: [hub], sync_target: hub },
+      }),
+      adapters: [
+        stubAdapter("claude-code", {
+          roots: [hub],
+          home: join(home, "claude"),
+        }),
+      ],
+    });
+
+    expect(report.scope).toBe("hybrid");
+    expect(report.project_root).toBe(projectRoot);
+    expect(report.generated_at).toEqual(expect.any(String));
+    expect(report.overall).toMatchObject({
+      score: expect.any(Number),
+      grade: expect.stringMatching(/^(green|yellow|red)$/),
+    });
+    expect(report.sync).toMatchObject({
+      skills_hub: expect.any(String),
+      memory_hubs: expect.any(Array),
+      agents_in_scope: expect.arrayContaining(["claude-code"]),
+      aligned: expect.any(Boolean),
+    });
+    expect(report.agents.length).toBeGreaterThan(0);
+    expect(report.domains).toHaveLength(6);
+    expect(report.domains.every((d) => typeof d.score === "number" && d.grade)).toBe(
+      true,
+    );
+    expect(Array.isArray(report.findings)).toBe(true);
+    expect(Array.isArray(report.recommendations)).toBe(true);
+    // Domain suite ran — findings/domains use real domain checkers
+    expect(
+      report.domains.map((d) => d.domain).sort(),
+    ).toEqual(
+      [
+        "agent_presence",
+        "cross_agent_consistency",
+        "instruction_files",
+        "obsidian",
+        "product_context",
+        "shared_skills_path",
+      ].sort(),
+    );
+  });
+
+  it("missing map does not throw; report recommends running init", async () => {
+    const home = tempDir("run-checks-nomap-");
+    const projectRoot = tempDir("run-checks-nomap-proj-");
+
+    const report = await runChecks({
+      scope: "hybrid",
+      projectRoot,
+      home,
+      // no map injection — load from empty home (map.yml absent)
+      adapters: [],
+    });
+
+    expect(report.scope).toBe("hybrid");
+    expect(report.project_root).toBe(projectRoot);
+    expect(report.overall).toMatchObject({
+      score: expect.any(Number),
+      grade: expect.stringMatching(/^(green|yellow|red)$/),
+    });
+    expect(
+      report.findings.some(
+        (f) => f.id === "map.missing" || f.id === "map.not_found",
+      ),
+    ).toBe(true);
+    expect(
+      report.recommendations.some(
+        (r) =>
+          r.id.includes("init") ||
+          /run\s+.*init|agent-doctor init/i.test(r.message),
+      ),
+    ).toBe(true);
+  });
+
+  it("access.denied on a path does not abort the entire report", async () => {
+    const base = tempDir();
+    const hub = makePopulatedRoot(base, "hub");
+    mkdirSync(join(base, "codex"), { recursive: true });
+
+    const denied: AgentAdapter = {
+      id: "claude-code",
+      async detect(): Promise<AgentPresence> {
+        const err = new Error(
+          "EACCES: permission denied, scandir '/secret/claude'",
+        ) as NodeJS.ErrnoException;
+        err.code = "EACCES";
+        throw err;
+      },
+      async skillsRoots(): Promise<string[]> {
+        return [];
+      },
+      async instructionFiles(): Promise<string[]> {
+        return [];
+      },
+      async memoryPointers(): Promise<string[]> {
+        return [];
+      },
+      proposeWireToSkillsHub(): FixAction[] {
+        return [];
+      },
+      proposeWireMemory(): FixAction[] {
+        return [];
+      },
+    };
+
+    const report = await runChecks({
+      map: baseMap({
+        skills: { global_roots: [hub], sync_target: hub },
+      }),
+      adapters: [
+        denied,
+        stubAdapter("codex", { roots: [hub], home: join(base, "codex") }),
+      ],
+      projectRoot: base,
+    });
+
+    expect(report.findings.some((f) => f.id === "access.denied")).toBe(true);
+    expect(report.agents.some((a) => a.id === "codex")).toBe(true);
+    expect(report.sync.agents_in_scope).toContain("codex");
+    expect(report.overall).toMatchObject({
+      score: expect.any(Number),
+      grade: expect.stringMatching(/^(green|yellow|red)$/),
+    });
+    expect(report.domains.length).toBe(6);
+  });
+
+  it("agents_in_scope excludes ignored agents", async () => {
+    const base = tempDir();
+    const hub = makePopulatedRoot(base, "hub");
+
+    const report = await runChecks({
+      map: baseMap({
+        skills: { global_roots: [hub], sync_target: hub },
+        agents: [
+          {
+            id: "codex",
+            adapter: "codex",
+            config_home: "/x",
+            primary: false,
+            ignored: true,
+          },
+          {
+            id: "claude-code",
+            adapter: "claude-code",
+            config_home: "/c",
+            primary: true,
+            ignored: false,
+          },
+        ],
+      }),
+      adapters: [
+        stubAdapter("claude-code", { roots: [hub] }),
+        stubAdapter("codex", { roots: [hub] }),
+      ],
+    });
+
+    expect(report.sync.agents_in_scope).toContain("claude-code");
+    expect(report.sync.agents_in_scope).not.toContain("codex");
+    expect(report.agents.find((a) => a.id === "codex")?.ignored).toBe(true);
+  });
 });
 
 describe("isAgentOnHub", () => {

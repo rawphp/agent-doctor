@@ -1,7 +1,13 @@
 /**
- * Hybrid / machine check engine — produces a Report (design §4, §7).
- * Path-unit vertical slice: live adapter detect + skills hub alignment + scoring.
- * Domain depth refined by later REQs; cannot-be-green on desync is enforced here.
+ * Hybrid / machine check engine — produces a Report (design §4, §7, §11).
+ *
+ * Data flow:
+ *   map (or one-shot discover) → detect adapters → resolve hub
+ *   → domain checks → score → Report
+ *
+ * Errors (design §11):
+ *   - No map → soft warn + one-shot discover + recommend init
+ *   - Permission denied → access.denied finding; do not abort whole report
  */
 
 import { existsSync, realpathSync } from "node:fs";
@@ -12,18 +18,22 @@ import {
   type AdapterRegistry,
   type AgentAdapter,
 } from "../adapters/index.js";
-import { agentDoctorHome, loadMap } from "../map/load.js";
-import { resolveSkillsHub } from "./skills-hub.js";
+import type { AdapterContext } from "../adapters/types.js";
 import {
-  averageScore,
-  capGradeForDesync,
-  scoreToGrade,
-} from "./score.js";
+  agentsInScope,
+  runAllDomainChecks,
+  type DomainCheckContext,
+} from "../domains/index.js";
+import { discover } from "../map/discover.js";
+import { agentDoctorHome, loadMap } from "../map/load.js";
+import { computeOverall, scoreToGrade } from "./score.js";
+import { resolveSkillsHub } from "./skills-hub.js";
 import {
   HOME_MAP_VERSION,
   type AgentPresence,
   type DomainResult,
   type Finding,
+  type FixAction,
   type HomeMap,
   type Recommendation,
   type Report,
@@ -39,12 +49,30 @@ export type RunChecksOptions = {
   map?: HomeMap | null;
   /** Doctor config home for map load. */
   home?: string;
+  /** User home for one-shot discover when map is missing (tests). */
+  homeDir?: string;
   /** Injected adapters (tests). When omitted, built from registry + map. */
   adapters?: AgentAdapter[];
   /** Adapter registry when building default adapters. */
   registry?: AdapterRegistry;
   /** Clock for generated_at (tests). */
   now?: () => Date;
+};
+
+/** Stable domain keys matching runAllDomainChecks.byDomain + display names. */
+const DOMAIN_SPECS = [
+  { key: "presence", domain: "agent_presence" },
+  { key: "skills", domain: "shared_skills_path" },
+  { key: "instructions", domain: "instruction_files" },
+  { key: "product", domain: "product_context" },
+  { key: "obsidian", domain: "obsidian" },
+  { key: "consistency", domain: "cross_agent_consistency" },
+] as const;
+
+const SEVERITY_PENALTY: Record<Finding["severity"], number> = {
+  error: 40,
+  warn: 15,
+  info: 5,
 };
 
 function emptyMap(): HomeMap {
@@ -104,10 +132,40 @@ export function buildDefaultAdapters(
   return adapters;
 }
 
-function applyMapMeta(
-  presence: AgentPresence,
-  map: HomeMap,
-): AgentPresence {
+/**
+ * True when any of the agent's skill roots resolves to the hub path.
+ */
+export function isAgentOnHub(agentRoots: string[], hub: string): boolean {
+  const hubResolved = resolvePath(hub);
+  return agentRoots.some((root) => resolvePath(root) === hubResolved);
+}
+
+function isPermissionError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const code = (err as NodeJS.ErrnoException).code;
+  return code === "EACCES" || code === "EPERM";
+}
+
+function accessDeniedFinding(
+  agentId: string,
+  err: unknown,
+  surface: string,
+): Finding {
+  const message =
+    err instanceof Error ? err.message : `Permission denied (${surface})`;
+  const pathMatch = message.match(/['"]([^'"]+)['"]/);
+  const evidence = pathMatch?.[1] ? [pathMatch[1]] : [surface];
+  return {
+    id: "access.denied",
+    severity: "error",
+    domain: "access",
+    message: `Permission denied while checking ${agentId} (${surface}): ${message}`,
+    evidence,
+    agents_affected: agentId ? [agentId] : [],
+  };
+}
+
+function applyMapMeta(presence: AgentPresence, map: HomeMap): AgentPresence {
   const row = map.agents.find((a) => a.id === presence.id);
   if (!row) return presence;
   return {
@@ -118,11 +176,128 @@ function applyMapMeta(
 }
 
 /**
- * True when any of the agent's skill roots resolves to the hub path.
+ * Wrap adapter methods so EACCES/EPERM become access.denied findings
+ * instead of aborting the whole report.
  */
-export function isAgentOnHub(agentRoots: string[], hub: string): boolean {
-  const hubResolved = resolvePath(hub);
-  return agentRoots.some((root) => resolvePath(root) === hubResolved);
+function wrapAdapterForAccess(
+  adapter: AgentAdapter,
+  onDenied: (finding: Finding) => void,
+): AgentAdapter {
+  const wrap = <T>(
+    surface: string,
+    fn: () => Promise<T>,
+    fallback: T,
+  ): Promise<T> =>
+    fn().catch((err: unknown) => {
+      if (isPermissionError(err)) {
+        onDenied(accessDeniedFinding(adapter.id, err, surface));
+        return fallback;
+      }
+      throw err;
+    });
+
+  return {
+    id: adapter.id,
+    detect: () =>
+      wrap(
+        "detect",
+        () => adapter.detect(),
+        {
+          id: adapter.id,
+          adapter: adapter.id,
+          installed: false,
+          depth: "presence-only" as const,
+        },
+      ),
+    skillsRoots: (ctx?: AdapterContext) =>
+      wrap("skillsRoots", () => adapter.skillsRoots(ctx), []),
+    instructionFiles: (projectRoot?: string) =>
+      wrap(
+        "instructionFiles",
+        () => adapter.instructionFiles(projectRoot),
+        [],
+      ),
+    memoryPointers: (projectRoot?: string) =>
+      wrap("memoryPointers", () => adapter.memoryPointers(projectRoot), []),
+    proposeWireToSkillsHub: (hub: string) =>
+      adapter.proposeWireToSkillsHub(hub),
+    proposeWireMemory: (paths: string[]) => adapter.proposeWireMemory(paths),
+  };
+}
+
+function mergeDiscoveredMap(base: HomeMap, homeDir?: string): HomeMap {
+  try {
+    const disc = discover(homeDir !== undefined ? { homeDir } : {});
+    return {
+      ...base,
+      skills: {
+        global_roots:
+          base.skills.global_roots.length > 0
+            ? base.skills.global_roots
+            : disc.skills_roots,
+        sync_target: base.skills.sync_target,
+      },
+      vaults: base.vaults.length > 0 ? base.vaults : disc.vaults,
+      projects: {
+        roots:
+          base.projects.roots.length > 0
+            ? base.projects.roots
+            : disc.project_roots,
+        entries: base.projects.entries,
+      },
+    };
+  } catch (err) {
+    if (isPermissionError(err)) {
+      return base;
+    }
+    throw err;
+  }
+}
+
+function scoreFromFindings(findings: readonly Finding[]): number {
+  let score = 100;
+  for (const f of findings) {
+    score -= SEVERITY_PENALTY[f.severity] ?? 10;
+  }
+  return Math.max(0, Math.min(100, score));
+}
+
+function summarizeDomain(
+  domain: string,
+  findings: readonly Finding[],
+  score: number,
+): string {
+  if (findings.length === 0) {
+    return `${domain}: healthy`;
+  }
+  const errors = findings.filter((f) => f.severity === "error").length;
+  const warns = findings.filter((f) => f.severity === "warn").length;
+  if (errors > 0) {
+    return `${errors} error(s), ${warns} warning(s) (score ${score})`;
+  }
+  if (warns > 0) {
+    return `${warns} warning(s) (score ${score})`;
+  }
+  return `${findings.length} info finding(s)`;
+}
+
+function buildDomainResults(
+  byDomain: Record<string, Finding[]>,
+  hubFindings: Finding[],
+): DomainResult[] {
+  return DOMAIN_SPECS.map(({ key, domain }) => {
+    const domainFindings =
+      key === "skills"
+        ? [...hubFindings, ...(byDomain[key] ?? [])]
+        : (byDomain[key] ?? []);
+    const score = scoreFromFindings(domainFindings);
+    return {
+      domain,
+      score,
+      grade: scoreToGrade(score),
+      summary: summarizeDomain(domain, domainFindings, score),
+    };
+  });
 }
 
 function firstClassDeep(presence: AgentPresence): boolean {
@@ -141,267 +316,204 @@ export async function runChecks(
   const scope: ReportScope = options.scope ?? "hybrid";
   const projectRoot = options.projectRoot ?? process.cwd();
   const home = options.home ?? agentDoctorHome();
-  const map =
-    options.map !== undefined
-      ? (options.map ?? emptyMap())
-      : (loadMap({ home }) ?? emptyMap());
-  const registry = options.registry ?? createAdapterRegistry();
-  const adapters =
-    options.adapters ?? buildDefaultAdapters(map, registry);
   const now = options.now ?? (() => new Date());
+  const registry = options.registry ?? createAdapterRegistry();
 
-  const ctx = { projectRoot };
+  const accessFindings: Finding[] = [];
+  const recordAccess = (f: Finding) => {
+    accessFindings.push(f);
+  };
 
-  // Live detect every adapter; merge map ignored/primary flags.
+  // 1. Load map (or empty + one-shot discover when missing)
+  let map: HomeMap;
+  let mapWasMissing = false;
+
+  if (options.map !== undefined) {
+    map = options.map ?? emptyMap();
+  } else {
+    const loaded = loadMap({ home });
+    if (loaded === null) {
+      mapWasMissing = true;
+      map = mergeDiscoveredMap(emptyMap(), options.homeDir);
+    } else {
+      map = loaded;
+    }
+  }
+
+  // 2. Build adapters from registry + map (or injected)
+  const rawAdapters =
+    options.adapters ?? buildDefaultAdapters(map, registry);
+  const adapters = rawAdapters.map((a) =>
+    wrapAdapterForAccess(a, recordAccess),
+  );
+
+  const adapterCtx: AdapterContext = { projectRoot };
+
+  // 3. detect() each adapter → AgentPresence[]
   const agents: AgentPresence[] = [];
   for (const adapter of adapters) {
     const detected = await adapter.detect();
     agents.push(applyMapMeta(detected, map));
   }
 
-  const hubResolution = await resolveSkillsHub({ map, adapters, ctx });
+  // 4. resolveSkillsHub
+  let hubResolution;
+  try {
+    hubResolution = await resolveSkillsHub({
+      map,
+      adapters,
+      ctx: adapterCtx,
+    });
+  } catch (err) {
+    if (isPermissionError(err)) {
+      recordAccess(accessDeniedFinding("", err, "resolveSkillsHub"));
+      hubResolution = {
+        hub: undefined,
+        agentRoots: {} as Record<string, string[]>,
+        candidates: [],
+        populated: [],
+        findings: [],
+      };
+    } else {
+      throw err;
+    }
+  }
+
   const hub = hubResolution.hub;
   const hubConflict = hubResolution.findings.some(
     (f) => f.id === "skills.hub_conflict",
   );
 
-  const findings: Finding[] = [...hubResolution.findings];
-  const agentsInScope: string[] = [];
-  const offHubAgents: string[] = [];
+  // 5. DomainCheckContext + runAllDomainChecks
+  const domainCtx: DomainCheckContext = {
+    map,
+    agents,
+    projectRoot,
+    hub,
+    agentRoots: hubResolution.agentRoots,
+    adapters,
+  };
 
-  for (const presence of agents) {
-    if (!presence.installed) continue;
-    if (presence.ignored) continue;
-    agentsInScope.push(presence.id);
-
-    if (!firstClassDeep(presence)) {
-      // Presence-only / shallow: listed in fleet but do not gate hub green.
-      continue;
-    }
-
-    const roots = hubResolution.agentRoots[presence.id] ?? [];
-    if (!hub) {
-      // No resolved hub: first-class agents with any private root count as off.
-      if (roots.length > 0 || hubConflict) {
-        offHubAgents.push(presence.id);
-      } else if (hubResolution.findings.some((f) => f.id === "skills.no_hub")) {
-        // Installed first-class agent with no skills path and no hub.
-        offHubAgents.push(presence.id);
-      }
-      continue;
-    }
-
-    if (!isAgentOnHub(roots, hub)) {
-      offHubAgents.push(presence.id);
-      const evidence =
-        roots.length > 0 ? roots : [`${presence.config_home ?? presence.id}:no-skills-path`];
-      findings.push({
-        id: "skills.agent_not_on_hub",
-        severity: "error",
-        domain: "shared_skills_path",
-        message: `${presence.id} is not wired to the skills sync target`,
-        evidence,
-        agents_affected: [presence.id],
-        sync_target: hub,
-      });
+  let domainSuite: {
+    findings: Finding[];
+    fix_actions: FixAction[];
+    byDomain: Record<string, Finding[]>;
+  };
+  try {
+    domainSuite = await runAllDomainChecks(domainCtx);
+  } catch (err) {
+    if (isPermissionError(err)) {
+      recordAccess(accessDeniedFinding("", err, "domainChecks"));
+      domainSuite = {
+        findings: [],
+        fix_actions: [],
+        byDomain: {
+          presence: [],
+          skills: [],
+          instructions: [],
+          product: [],
+          obsidian: [],
+          consistency: [],
+        },
+      };
+    } else {
+      throw err;
     }
   }
 
-  // Desync when any first-class agent is off hub, or hub conflict / no shared hub
-  // while first-class agents are in scope.
-  const firstClassInScope = agents.filter(
-    (a) => a.installed && !a.ignored && firstClassDeep(a),
-  );
-  const aligned =
-    !hubConflict &&
-    offHubAgents.length === 0 &&
-    (firstClassInScope.length === 0 || Boolean(hub));
+  // 6. Collect findings; score domains + overall
+  const mapFindings: Finding[] = [];
+  if (mapWasMissing) {
+    mapFindings.push({
+      id: "map.missing",
+      severity: "warn",
+      domain: "map",
+      message:
+        "No home map found; ran one-shot discover for this check only. Run init to persist a map.",
+      evidence: [home],
+      agents_affected: [],
+    });
+  }
 
-  const domains = buildDomains({
-    agents,
-    hub,
-    aligned,
-    hubConflict,
-    offHubAgents,
-    map,
-    hubFindings: hubResolution.findings,
+  const findings: Finding[] = [
+    ...mapFindings,
+    ...accessFindings,
+    ...hubResolution.findings,
+    ...domainSuite.findings,
+  ];
+
+  const domains = buildDomainResults(
+    domainSuite.byDomain,
+    hubResolution.findings,
+  );
+  const overall = computeOverall({
+    domainScores: domains.map((d) => d.score),
+    findings,
   });
 
-  const rawScore = averageScore(domains.map((d) => d.score));
-  let grade = scoreToGrade(rawScore);
-  grade = capGradeForDesync(grade, { aligned, hubConflict });
-  // Keep overall.score consistent with capped grade when desync forces yellow
-  // from an otherwise-green average.
-  let score = rawScore;
-  if (grade !== "green" && aligned === false && score >= 80) {
-    score = 79;
-  }
-  if (hubConflict && score >= 80) {
-    score = Math.min(score, 40);
-    grade = scoreToGrade(score);
-    grade = capGradeForDesync(grade, { aligned, hubConflict });
-  }
+  const firstClassInstalled = agents.filter(
+    (a) => a.installed && !a.ignored && firstClassDeep(a),
+  );
+  const hasOffHub = findings.some((f) => f.id === "skills.agent_not_on_hub");
+  const aligned =
+    !hubConflict &&
+    !hasOffHub &&
+    (firstClassInstalled.length === 0 || Boolean(hub));
 
-  const recommendations = buildRecommendations(findings, hub);
+  // agents_in_scope: detected (installed) and non-ignored
+  const agents_in_scope = agentsInScope(agents)
+    .filter((a) => a.installed)
+    .map((a) => a.id);
 
-  const memoryHubs = map.vaults.map((v) => v.path);
+  // 7. Recommendations (including init when map was missing)
+  const recommendations = buildRecommendations(findings, hub, mapWasMissing);
 
-  return {
+  // 8. Report
+  const report: Report = {
     generated_at: now().toISOString(),
     scope,
     project_root: projectRoot,
     sync: {
       skills_hub: hub,
-      memory_hubs: memoryHubs,
-      agents_in_scope: agentsInScope,
+      memory_hubs: map.vaults.map((v) => v.path),
+      agents_in_scope,
       aligned,
     },
-    overall: { score, grade },
+    overall,
     agents,
     domains,
     findings,
     recommendations,
   };
-}
 
-type DomainBuildInput = {
-  agents: AgentPresence[];
-  hub?: string;
-  aligned: boolean;
-  hubConflict: boolean;
-  offHubAgents: string[];
-  map: HomeMap;
-  hubFindings: Finding[];
-};
-
-function buildDomains(input: DomainBuildInput): DomainResult[] {
-  const installed = input.agents.filter((a) => a.installed);
-  const firstClass = installed.filter((a) => firstClassDeep(a));
-
-  // 1. Agent presence
-  let presenceScore = 100;
-  let presenceSummary = "No agents detected";
-  if (firstClass.length > 0) {
-    presenceScore = 100;
-    presenceSummary = `${firstClass.length} first-class agent(s) detected`;
-  } else if (installed.length > 0) {
-    presenceScore = 80;
-    presenceSummary = `${installed.length} agent(s) detected (presence-only)`;
-  } else {
-    presenceScore = 50;
-    presenceSummary = "No agents detected on this machine";
+  if (domainSuite.fix_actions.length > 0) {
+    report.fix_plan = domainSuite.fix_actions;
   }
 
-  // 2. Shared skills path
-  let skillsScore: number;
-  let skillsSummary: string;
-  if (input.hubConflict) {
-    skillsScore = 20;
-    skillsSummary = "Multiple skills hubs conflict; set sync_target";
-  } else if (!input.hub && firstClass.length > 0) {
-    skillsScore = 30;
-    skillsSummary = "No skills hub resolved";
-  } else if (input.offHubAgents.length > 0) {
-    const total = Math.max(firstClass.filter((a) => !a.ignored).length, 1);
-    const onHub = total - input.offHubAgents.length;
-    skillsScore = Math.round((onHub / total) * 100);
-    skillsSummary = `${input.offHubAgents.length} agent(s) off skills hub`;
-  } else if (input.hub) {
-    skillsScore = 100;
-    skillsSummary = `All in-scope agents on hub ${input.hub}`;
-  } else {
-    skillsScore = 70;
-    skillsSummary = "No hub and no first-class agents requiring sync";
-  }
-
-  // 3. Instruction files (light — deep checks deferred)
-  const instructionScore = installed.length > 0 ? 80 : 60;
-  const instructionSummary =
-    installed.length > 0
-      ? "Instruction surfaces checked at adapter depth"
-      : "No agents to check for instruction files";
-
-  // 4. Product context (light)
-  const productScore = 90;
-  const productSummary = "Product link checks deferred to deep domain suite";
-
-  // 5. Obsidian / vaults
-  let vaultScore: number;
-  let vaultSummary: string;
-  if (input.map.vaults.length > 0) {
-    vaultScore = 90;
-    vaultSummary = `${input.map.vaults.length} vault(s) mapped`;
-  } else {
-    vaultScore = 60;
-    vaultSummary = "No vault configured — re-run init to map a vault path";
-  }
-
-  // 6. Cross-agent consistency
-  let crossScore: number;
-  let crossSummary: string;
-  if (input.hubConflict) {
-    crossScore = 20;
-    crossSummary = "Fleet skills roots diverge (hub conflict)";
-  } else if (!input.aligned && firstClass.length > 1) {
-    crossScore = 40;
-    crossSummary = "Fleet not fully aligned on shared skills hub";
-  } else if (input.aligned) {
-    crossScore = 100;
-    crossSummary = "Cross-agent skills alignment OK";
-  } else {
-    crossScore = 60;
-    crossSummary = "Partial fleet; alignment incomplete";
-  }
-
-  const raw: Array<Omit<DomainResult, "grade"> & { score: number }> = [
-    {
-      domain: "agent_presence",
-      score: presenceScore,
-      summary: presenceSummary,
-    },
-    {
-      domain: "shared_skills_path",
-      score: skillsScore,
-      summary: skillsSummary,
-    },
-    {
-      domain: "instruction_files",
-      score: instructionScore,
-      summary: instructionSummary,
-    },
-    {
-      domain: "product_context",
-      score: productScore,
-      summary: productSummary,
-    },
-    {
-      domain: "obsidian",
-      score: vaultScore,
-      summary: vaultSummary,
-    },
-    {
-      domain: "cross_agent_consistency",
-      score: crossScore,
-      summary: crossSummary,
-    },
-  ];
-
-  return raw.map((d) => ({
-    ...d,
-    grade: scoreToGrade(d.score),
-  }));
+  return report;
 }
 
 function buildRecommendations(
   findings: Finding[],
-  hub?: string,
+  hub: string | undefined,
+  mapWasMissing: boolean,
 ): Recommendation[] {
   const recs: Recommendation[] = [];
+
+  if (mapWasMissing) {
+    const mapFinding = findings.find((f) => f.id === "map.missing");
+    recs.push({
+      id: "rec.run_init",
+      finding_ids: mapFinding ? [mapFinding.id] : ["map.missing"],
+      message:
+        "Run `agent-doctor init` to discover agents/skills/vaults and persist ~/.agent-doctor/map.yml",
+      priority: 1,
+    });
+  }
+
   const offHub = findings.filter((f) => f.id === "skills.agent_not_on_hub");
   if (offHub.length > 0 && hub) {
-    const agents = [
-      ...new Set(offHub.flatMap((f) => f.agents_affected)),
-    ];
+    const agents = [...new Set(offHub.flatMap((f) => f.agents_affected))];
     recs.push({
       id: "rec.wire_off_hub_agents",
       finding_ids: offHub.map((f) => f.id),
@@ -428,6 +540,17 @@ function buildRecommendations(
       finding_ids: [noHub.id],
       message:
         "Establish a populated skills hub and set sync_target if multiple candidates appear",
+      priority: 2,
+    });
+  }
+
+  const access = findings.filter((f) => f.id === "access.denied");
+  if (access.length > 0) {
+    recs.push({
+      id: "rec.fix_permissions",
+      finding_ids: access.map((f) => f.id),
+      message:
+        "Fix filesystem permissions on denied paths, then re-run status",
       priority: 2,
     });
   }
