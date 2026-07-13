@@ -1,7 +1,13 @@
 # REQ-001: Path install and help
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.55939
+**Claimed at:** 2026-07-13T22:41:32Z
+**Heartbeat:** 2026-07-13T22:41:32Z
+<!-- claimed-end -->
+
 **UR:** UR-001
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-14
 **Layer:** none
 **Entry point:** `npx agent-doctor --help` or `node dist/cli.js --help` after install
