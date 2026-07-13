@@ -1,19 +1,14 @@
 # REQ-003: Report and map schemas
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.71328
-**Claimed at:** 2026-07-13T22:48:50Z
-**Heartbeat:** 2026-07-13T22:48:50Z
-<!-- claimed-end -->
 
 **UR:** UR-001
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-14
 **Layer:** engine
 **Entry point:** 
 **Terminal state:** 
 **Parent:** REQ-001
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:bf82e36 all 1 checkpoints passed (0 deferred)
 **Criteria approved:** agent-drafted
 **Priority:** 3
 **Size:** M
@@ -30,9 +25,9 @@ Single report schema is the contract for status, dashboard, fix, and future nati
 
 ## Acceptance Criteria
 
-- [ ] Types export Report with overall.grade green|yellow|red, sync.aligned, findings with stable id and agents_affected
-- [ ] HomeMap type matches map.yml version 1 fields (skills.global_roots, sync_target, vaults, agents, projects)
-- [ ] Unit tests construct a sample Report and HomeMap without runtime errors
+- [x] Types export Report with overall.grade green|yellow|red, sync.aligned, findings with stable id and agents_affected
+- [x] HomeMap type matches map.yml version 1 fields (skills.global_roots, sync_target, vaults, agents, projects)
+- [x] Unit tests construct a sample Report and HomeMap without runtime errors
 
 ## Verification Steps
 
@@ -47,3 +42,7 @@ Single report schema is the contract for status, dashboard, fix, and future nati
 
 **Service dependencies:** src/engine/* consumers
 
+## Outputs
+
+- src/engine/types.ts — Shared Report/HomeMap and related TypeScript types
+- src/engine/types.test.ts — Unit tests constructing sample Report and HomeMap
