@@ -1,0 +1,25 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`formatTerminalReport > locks key dashboard sections with a snapshot 1`] = `
+"Agent Doctor — hybrid status
+
+Overall: 62 (YELLOW)
+
+Sync target (skills):  /hub/skills
+  claude-code  ✓ on hub
+  codex        ✗ private tree only
+
+Memory hubs (vaults):
+  /vaults/notes
+
+Domains:
+  agent_presence      100 GREEN   2 first-class agent(s) detected
+  shared_skills_path   50 YELLOW  1 agent(s) off skills hub
+
+Recommendations:
+  1. Wire codex to /hub/skills (no copy)  [skills.agent_not_on_hub]
+  2. Optional cleanup
+
+Next: agent-doctor fix --dry-run | agent-doctor dashboard
+"
+`;

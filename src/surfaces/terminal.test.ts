@@ -9,7 +9,7 @@ function sampleReport(overrides: Partial<Report> = {}): Report {
     project_root: "/proj",
     sync: {
       skills_hub: "/hub/skills",
-      memory_hubs: [],
+      memory_hubs: ["/vaults/notes"],
       agents_in_scope: ["claude-code", "codex"],
       aligned: false,
     },
@@ -28,6 +28,14 @@ function sampleReport(overrides: Partial<Report> = {}): Report {
         installed: true,
         config_home: "/h/.codex",
         depth: "deep",
+      },
+      {
+        id: "grok",
+        adapter: "grok",
+        installed: true,
+        config_home: "/h/.grok",
+        depth: "deep",
+        ignored: true,
       },
     ],
     domains: [
@@ -62,6 +70,12 @@ function sampleReport(overrides: Partial<Report> = {}): Report {
         message: "Wire codex to /hub/skills (no copy)",
         priority: 1,
       },
+      {
+        id: "rec.lower_priority",
+        finding_ids: [],
+        message: "Optional cleanup",
+        priority: 5,
+      },
     ],
     ...overrides,
   };
@@ -70,34 +84,115 @@ function sampleReport(overrides: Partial<Report> = {}): Report {
 describe("formatTerminalReport", () => {
   it("shows overall score and grade first", () => {
     const text = formatTerminalReport(sampleReport());
+    const overallIdx = text.indexOf("Overall:");
+    const domainsIdx = text.indexOf("Domains:");
+    const recsIdx = text.indexOf("Recommendations:");
+
+    expect(overallIdx).toBeGreaterThanOrEqual(0);
+    expect(overallIdx).toBeLessThan(domainsIdx);
+    expect(domainsIdx).toBeLessThan(recsIdx);
     expect(text).toMatch(/Overall:\s*62\s*\(YELLOW\)/);
     expect(text).toMatch(/hybrid status/);
   });
 
-  it("renders per-agent hub alignment matrix", () => {
+  it("renders sync matrix rows for each agents_in_scope entry only", () => {
     const text = formatTerminalReport(sampleReport());
     expect(text).toMatch(/Sync target \(skills\):\s*\/hub\/skills/);
     expect(text).toMatch(/claude-code\s+✓\s+on hub/);
     expect(text).toMatch(/codex\s+✗\s+private tree only/);
+    // ignored / not-in-scope agent must not get a matrix row
+    expect(text).not.toMatch(/^\s*grok\b/m);
   });
 
-  it("includes domain lines", () => {
+  it("includes a matrix row for every agents_in_scope id even if agents list omits it", () => {
+    const text = formatTerminalReport(
+      sampleReport({
+        sync: {
+          skills_hub: "/hub/skills",
+          memory_hubs: [],
+          agents_in_scope: ["claude-code", "cursor"],
+          aligned: false,
+        },
+        agents: [
+          {
+            id: "claude-code",
+            adapter: "claude-code",
+            installed: true,
+            depth: "deep",
+          },
+        ],
+        findings: [],
+      }),
+    );
+    expect(text).toMatch(/claude-code/);
+    expect(text).toMatch(/cursor/);
+  });
+
+  it("includes domain lines with grades", () => {
     const text = formatTerminalReport(sampleReport());
     expect(text).toMatch(/Domains:/);
-    expect(text).toMatch(/agent_presence/);
-    expect(text).toMatch(/shared_skills_path/);
+    expect(text).toMatch(/agent_presence\s+100\s+GREEN/);
+    expect(text).toMatch(/shared_skills_path\s+50\s+YELLOW/);
   });
 
-  it("lists top recommendations with finding ids", () => {
+  it("lists top recommendations from report.recommendations with finding ids", () => {
     const text = formatTerminalReport(sampleReport());
     expect(text).toMatch(/Recommendations:/);
-    expect(text).toMatch(/Wire codex to \/hub\/skills/);
+    expect(text).toMatch(/1\.\s+Wire codex to \/hub\/skills/);
     expect(text).toMatch(/skills\.agent_not_on_hub/);
+    expect(text).toMatch(/2\.\s+Optional cleanup/);
+  });
+
+  it("does not invent recommendations when report has none", () => {
+    const text = formatTerminalReport(
+      sampleReport({ recommendations: [] }),
+    );
+    expect(text).not.toMatch(/Recommendations:/);
+  });
+
+  it("formats overall fields as-is and does not re-score", () => {
+    // Intentionally inconsistent: grade red with high score and no findings.
+    // Renderer must print report.overall only — never recompute.
+    const text = formatTerminalReport(
+      sampleReport({
+        overall: { score: 99, grade: "red" },
+        findings: [],
+        recommendations: [],
+        domains: [
+          {
+            domain: "agent_presence",
+            score: 100,
+            grade: "green",
+          },
+        ],
+        sync: {
+          skills_hub: "/hub/skills",
+          memory_hubs: [],
+          agents_in_scope: ["claude-code"],
+          aligned: true,
+        },
+      }),
+    );
+    expect(text).toMatch(/Overall:\s*99\s*\(RED\)/);
+    expect(text).not.toMatch(/Overall:\s*100/);
+    expect(text).not.toMatch(/\(GREEN\)/);
+  });
+
+  it("does not mutate the input report", () => {
+    const report = sampleReport();
+    const before = JSON.stringify(report);
+    formatTerminalReport(report);
+    expect(JSON.stringify(report)).toBe(before);
   });
 
   it("points to next commands", () => {
     const text = formatTerminalReport(sampleReport());
     expect(text).toMatch(/fix --dry-run/);
     expect(text).toMatch(/dashboard/);
+  });
+
+  it("locks key dashboard sections with a snapshot", () => {
+    const text = formatTerminalReport(sampleReport());
+    expect(text).toMatchSnapshot();
   });
 });
