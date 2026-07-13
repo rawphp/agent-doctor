@@ -1,7 +1,13 @@
 # REQ-016: Terminal status surface
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.50317
+**Claimed at:** 2026-07-13T23:27:06Z
+**Heartbeat:** 2026-07-13T23:27:06Z
+<!-- claimed-end -->
+
 **UR:** UR-001
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-14
 **Layer:** surfaces
 **Entry point:** 
