@@ -1,23 +1,18 @@
 # REQ-001: Path install and help
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.55939
-**Claimed at:** 2026-07-13T22:41:32Z
-**Heartbeat:** 2026-07-13T22:41:32Z
-<!-- claimed-end -->
 
 **UR:** UR-001
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-14
 **Layer:** none
 **Entry point:** `npx agent-doctor --help` or `node dist/cli.js --help` after install
 **Terminal state:** CLI prints usage listing init, map, status, dashboard, fix, agents, check; exit 0
 **Parent:** 
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:1fd150c all 2 checkpoints passed (0 deferred)
 **Criteria approved:** agent-drafted
 **Priority:** 3
 **Size:** S
-**Files:** package.json, src/cli.ts, README.md
+**Files:** package.json package-lock.json src/cli.ts README.md tests/cli-help.test.ts tsconfig.json vitest.config.ts .gitignore
 **Depends on:** 
 
 ## Task
@@ -30,8 +25,8 @@ Design §5 commands and §14 layout. Success criteria: easy to run for developer
 
 ## Acceptance Criteria
 
-- [ ] Running the package entrypoint with --help exits 0 and lists all v1 commands from the design (init, map, status, dashboard, fix, agents, check)
-- [ ] Package metadata names the binary agent-doctor
+- [x] Running the package entrypoint with --help exits 0 and lists all v1 commands from the design (init, map, status, dashboard, fix, agents, check)
+- [x] Package metadata names the binary agent-doctor
 
 ## Verification Steps
 
@@ -45,3 +40,13 @@ Design §5 commands and §14 layout. Success criteria: easy to run for developer
 
 - [ ] Action: From a clean shell, follow README install and run agent-doctor --help — Observable outcome: same command list as design §5
 
+## Outputs
+
+- package.json — Package metadata; bin name agent-doctor; test/build scripts
+- package-lock.json — Lockfile from npm install
+- src/cli.ts — CLI entrypoint printing v1 command help
+- README.md — Install/run docs and v1 command table
+- tests/cli-help.test.ts — TDD tests for --help and package bin metadata
+- tsconfig.json — TypeScript compiler config for src/
+- vitest.config.ts — Vitest include paths for suite
+- .gitignore — Ignore node_modules, dist, coverage
