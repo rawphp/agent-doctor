@@ -1,0 +1,12 @@
+# Hybrid status fixture for AGENT_DOCTOR_HOME runtime verification.
+# Live agent detection still uses the machine's real agent homes;
+# this map provides a valid doctor home with no forced sync_target.
+version: 1
+skills:
+  global_roots: []
+  sync_target: null
+vaults: []
+agents: []
+projects:
+  roots: []
+  entries: []
