@@ -1,7 +1,13 @@
 # REQ-002: Scaffold Node package and tests
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.61963
+**Claimed at:** 2026-07-13T22:46:00Z
+**Heartbeat:** 2026-07-13T22:46:00Z
+<!-- claimed-end -->
+
 **UR:** UR-001
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-14
 **Layer:** cli
 **Entry point:** 
