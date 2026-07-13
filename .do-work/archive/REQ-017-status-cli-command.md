@@ -1,24 +1,17 @@
 # REQ-017: Status CLI command
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.66076
-**Claimed at:** 2026-07-13T23:36:21Z
-**Heartbeat:** 2026-07-13T23:36:21Z
-<!-- claimed-end -->
-
-
 **UR:** UR-001
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-14
 **Layer:** cli
 **Entry point:** 
 **Terminal state:** 
 **Parent:** REQ-011
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:2d5a9d2 all 2 checkpoints passed (0 deferred); merge:cef9494
 **Criteria approved:** agent-drafted
 **Priority:** 2
 **Size:** M
-**Files:** src/commands/status.ts, src/cli.ts
+**Files:** src/commands/status.ts, src/commands/status.test.ts, src/cli.ts
 **Depends on:** REQ-015, REQ-016
 
 ## Task
@@ -31,10 +24,10 @@ Design §4–§5; user confirmed hybrid vs --all.
 
 ## Acceptance Criteria
 
-- [ ] status defaults to hybrid scope
-- [ ] status --all sets scope machine
-- [ ] status --json writes Report to stdout without terminal decoration
-- [ ] process.exitCode matches grade mapping
+- [x] status defaults to hybrid scope
+- [x] status --all sets scope machine
+- [x] status --json writes Report to stdout without terminal decoration
+- [x] process.exitCode matches grade mapping
 
 ## Verification Steps
 
@@ -52,3 +45,8 @@ Design §4–§5; user confirmed hybrid vs --all.
 
 **Service dependencies:** runChecks + terminal surface
 
+## Outputs
+
+- src/commands/status.ts — Status CLI path-unit: hybrid default, --all machine, --json raw Report, process.exitCode from grade
+- src/commands/status.test.ts — AC tests for hybrid/--all/--json decoration-free/process.exitCode mapping
+- src/cli.ts — Wires agent-doctor status to runStatus and assigns process.exitCode (pre-existing; verified)
