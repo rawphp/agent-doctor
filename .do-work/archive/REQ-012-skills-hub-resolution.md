@@ -1,19 +1,14 @@
 # REQ-012: Skills hub resolution
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.95592
-**Claimed at:** 2026-07-13T22:57:38Z
-**Heartbeat:** 2026-07-13T22:57:38Z
-<!-- claimed-end -->
 
 **UR:** UR-001
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-14
 **Layer:** engine
 **Entry point:** 
 **Terminal state:** 
 **Parent:** REQ-011
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:f6d6788 all 1 checkpoints passed (0 deferred)
 **Criteria approved:** agent-drafted
 **Priority:** 3
 **Size:** M
@@ -30,10 +25,10 @@ Design §3 and §6 hub resolution; no hard-coded hero path.
 
 ## Acceptance Criteria
 
-- [ ] When sync_target set, resolution uses it
-- [ ] When exactly one candidate root has content, it becomes hub
-- [ ] When two+ populated roots and no sync_target, result is conflict and hub undefined
-- [ ] Empty roots produce explicit no-hub finding, not a fake path
+- [x] When sync_target set, resolution uses it
+- [x] When exactly one candidate root has content, it becomes hub
+- [x] When two+ populated roots and no sync_target, result is conflict and hub undefined
+- [x] Empty roots produce explicit no-hub finding, not a fake path
 
 ## Verification Steps
 
@@ -48,3 +43,7 @@ Design §3 and §6 hub resolution; no hard-coded hero path.
 
 **Service dependencies:** Adapters
 
+## Outputs
+
+- src/engine/skills-hub.ts — resolveSkillsHub — sync_target / single populated / conflict / no-hub
+- src/engine/skills-hub.test.ts — Temp-dir fixtures covering all four hub-resolution acceptance criteria
