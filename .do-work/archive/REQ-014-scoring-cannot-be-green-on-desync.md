@@ -1,6 +1,5 @@
 # REQ-014: Scoring cannot be green on desync
 
-
 **UR:** UR-001
 **Status:** done
 **Created:** 2026-07-14
@@ -8,7 +7,7 @@
 **Entry point:** 
 **Terminal state:** 
 **Parent:** REQ-011
-**Closure proof:** checkpoint_log:passed commit:10629fc verification npm test -- src/engine/score (21 passed); merge:bf64eba
+**Closure proof:** checkpoint_log:passed commit:10629fc all 1 checkpoints passed (0 deferred)
 **Criteria approved:** agent-drafted
 **Priority:** 3
 **Size:** S
@@ -44,6 +43,5 @@ UR-001 clarification on grade cap.
 
 ## Outputs
 
-- src/engine/score.ts — Overall scoring with findings-based desync cap and documented exit grade mapping
-- src/engine/score.test.ts — Scoring matrix tests covering never-green on desync, green path, exit codes
-
+- src/engine/score.ts — Overall score/grade from findings with desync green-cap and documented exit mapping
+- src/engine/score.test.ts — TDD coverage for desync findings, aligned green path, and exit codes
