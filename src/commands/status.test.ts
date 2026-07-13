@@ -8,6 +8,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { AgentAdapter, AdapterContext } from "../adapters/types.js";
+import {
+  EXIT_TOOL_ERROR,
+  exitCodeForGrade,
+} from "../engine/score.js";
 import type { AgentPresence, FixAction, HomeMap, Report } from "../engine/types.js";
 import {
   parseStatusFlags,
@@ -28,6 +32,8 @@ afterEach(() => {
     const dir = temps.pop()!;
     rmSync(dir, { recursive: true, force: true });
   }
+  // Do not leak grade exit codes into the vitest process.
+  process.exitCode = undefined;
 });
 
 function makePopulatedRoot(parent: string, name: string): string {
@@ -116,6 +122,24 @@ describe("runStatus", () => {
     expect(exitCode).toBe(0);
   });
 
+  it("status --all sets scope machine", async () => {
+    const lines: string[] = [];
+    const base = tempDir();
+    const hub = makePopulatedRoot(base, "hub");
+
+    const { report } = await runStatus({
+      args: ["--all"],
+      checks: {
+        map: baseMap({ global_roots: [hub], sync_target: hub }),
+        adapters: [stubAdapter("claude-code", [hub])],
+      },
+      stdout: (line) => lines.push(line),
+    });
+
+    expect(report.scope).toBe("machine");
+    expect(lines.join("\n")).toMatch(/machine status/);
+  });
+
   it("prints overall grade and sync matrix in terminal mode", async () => {
     const lines: string[] = [];
     const base = tempDir();
@@ -173,6 +197,31 @@ describe("runStatus", () => {
     expect(exitCode).toBe(0);
   });
 
+  it("status --json writes Report without terminal decoration", async () => {
+    const lines: string[] = [];
+    const base = tempDir();
+    const hub = makePopulatedRoot(base, "hub");
+
+    await runStatus({
+      args: ["--json"],
+      checks: {
+        map: baseMap({ global_roots: [hub], sync_target: hub }),
+        adapters: [stubAdapter("claude-code", [hub])],
+      },
+      stdout: (line) => lines.push(line),
+    });
+
+    const out = lines.join("\n");
+    // Must be parseable Report JSON only — no terminal dashboard chrome.
+    expect(() => JSON.parse(out)).not.toThrow();
+    expect(out.trimStart().startsWith("{")).toBe(true);
+    expect(out).not.toMatch(/Agent Doctor —/);
+    expect(out).not.toMatch(/^Overall:/m);
+    expect(out).not.toMatch(/^Domains:/m);
+    expect(out).not.toMatch(/Sync target \(skills\)/);
+    expect(out).not.toMatch(/Next:/);
+  });
+
   it("exit codes follow grade: 0 green, 1 yellow, 2 red", async () => {
     const base = tempDir();
     const hub = makePopulatedRoot(base, "hub");
@@ -202,6 +251,91 @@ describe("runStatus", () => {
     });
     expect(yellowOrRed.report.overall.grade).not.toBe("green");
     expect([1, 2]).toContain(yellowOrRed.exitCode);
+  });
+
+  it("process.exitCode matches grade mapping", async () => {
+    // Grade → exit mapping contract used by CLI (design §5).
+    expect(exitCodeForGrade("green")).toBe(0);
+    expect(exitCodeForGrade("yellow")).toBe(1);
+    expect(exitCodeForGrade("red")).toBe(2);
+    expect(EXIT_TOOL_ERROR).toBe(3);
+
+    const base = tempDir();
+    const hub = makePopulatedRoot(base, "hub");
+    const privateRoot = makePopulatedRoot(base, "private");
+
+    process.exitCode = undefined;
+    const green = await runStatus({
+      args: ["--json"],
+      checks: {
+        map: baseMap({ global_roots: [hub], sync_target: hub }),
+        adapters: [stubAdapter("claude-code", [hub])],
+      },
+      stdout: () => {},
+      applyProcessExitCode: true,
+    });
+    expect(green.report.overall.grade).toBe("green");
+    expect(green.exitCode).toBe(0);
+    expect(process.exitCode).toBe(0);
+    expect(process.exitCode).toBe(
+      exitCodeForGrade(green.report.overall.grade),
+    );
+
+    process.exitCode = undefined;
+    const desync = await runStatus({
+      args: ["--json"],
+      checks: {
+        map: baseMap({ global_roots: [hub], sync_target: hub }),
+        adapters: [
+          stubAdapter("claude-code", [hub]),
+          stubAdapter("codex", [privateRoot]),
+        ],
+      },
+      stdout: () => {},
+      applyProcessExitCode: true,
+    });
+    expect(desync.report.overall.grade).not.toBe("green");
+    expect(process.exitCode).toBe(desync.exitCode);
+    expect(process.exitCode).toBe(
+      exitCodeForGrade(desync.report.overall.grade),
+    );
+    expect([1, 2]).toContain(process.exitCode);
+
+    process.exitCode = undefined;
+    const toolErr = await runStatus({
+      args: ["--json"],
+      checks: {
+        map: baseMap({ global_roots: [], sync_target: null }),
+        adapters: [
+          {
+            id: "claude-code",
+            async detect(): Promise<AgentPresence> {
+              throw new Error("boom");
+            },
+            async skillsRoots(): Promise<string[]> {
+              return [];
+            },
+            async instructionFiles(): Promise<string[]> {
+              return [];
+            },
+            async memoryPointers(): Promise<string[]> {
+              return [];
+            },
+            proposeWireToSkillsHub(): FixAction[] {
+              return [];
+            },
+            proposeWireMemory(): FixAction[] {
+              return [];
+            },
+          },
+        ],
+      },
+      stdout: () => {},
+      stderr: () => {},
+      applyProcessExitCode: true,
+    });
+    expect(toolErr.exitCode).toBe(3);
+    expect(process.exitCode).toBe(3);
   });
 
   it("returns exit 3 on tool errors", async () => {
