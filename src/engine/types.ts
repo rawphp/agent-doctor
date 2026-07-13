@@ -67,7 +67,13 @@ export type FixAction = {
   id: string;
   kind: string;
   description: string;
+  /** Primary path: symlink location, instruction file, or map.yml */
   target?: string;
+  /**
+   * Secondary payload: hub path for symlinks, link/product path for append,
+   * or sync_target value for map updates.
+   */
+  value?: string;
   agent_id?: string;
   finding_ids?: string[];
 };

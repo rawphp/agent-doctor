@@ -7,6 +7,7 @@
 import { runInitCommand } from "./commands/init.js";
 import { runMapCommand } from "./commands/map.js";
 import { runStatus } from "./commands/status.js";
+import { runFix } from "./commands/fix.js";
 
 const V1_COMMANDS = [
   { name: "init", description: "Discover environment and write the home map" },
@@ -76,6 +77,11 @@ async function main(argv: string[]): Promise<number> {
 
   if (first === "status") {
     const { exitCode } = await runStatus({ args: args.slice(1) });
+    return exitCode;
+  }
+
+  if (first === "fix") {
+    const { exitCode } = await runFix({ args: args.slice(1) });
     return exitCode;
   }
 
