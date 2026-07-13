@@ -1,7 +1,13 @@
 # REQ-015: Check engine runChecks
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.33077
+**Claimed at:** 2026-07-13T23:19:53Z
+**Heartbeat:** 2026-07-13T23:19:53Z
+<!-- claimed-end -->
+
 **UR:** UR-001
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-14
 **Layer:** engine
 **Entry point:** 
