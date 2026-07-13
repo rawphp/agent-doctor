@@ -1,19 +1,14 @@
 # REQ-010: Presence-only adapter
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.960
-**Claimed at:** 2026-07-13T22:59:11Z
-**Heartbeat:** 2026-07-13T22:59:11Z
-<!-- claimed-end -->
 
 **UR:** UR-001
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-14
 **Layer:** adapters
 **Entry point:** 
 **Terminal state:** 
 **Parent:** REQ-004
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:6720b4b all 1 checkpoints passed (0 deferred); merge-resolved with detectFirstClassAgents co-located
 **Criteria approved:** agent-drafted
 **Priority:** 1
 **Size:** S
@@ -30,9 +25,9 @@ Design §8 others presence-only; still show full fleet.
 
 ## Acceptance Criteria
 
-- [ ] Registry returns deep adapters for claude-code, codex, grok and presence for configured unknown ids
-- [ ] Presence adapter never reports skills on hub true without evidence
-- [ ] agents command can list support level full|presence
+- [x] Registry returns deep adapters for claude-code, codex, grok and presence for configured unknown ids
+- [x] Presence adapter never reports skills on hub true without evidence
+- [x] agents command can list support level full|presence
 
 ## Verification Steps
 
@@ -46,4 +41,11 @@ Design §8 others presence-only; still show full fleet.
 **Data dependencies:** Optional binary/path hints in map
 
 **Service dependencies:** Adapter registry
+
+## Outputs
+
+- src/adapters/presence.ts — Presence-only AgentAdapter + map inventory detectFirstClassAgents
+- src/adapters/registry.ts — Adapter registry with full|presence support levels and listAdapterSupport
+- src/adapters/presence.test.ts — TDD tests for presence adapter, map inventory, and registry ACs
+- src/adapters/index.ts — Re-exports presence + registry public API
 
