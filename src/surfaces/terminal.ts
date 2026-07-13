@@ -1,6 +1,7 @@
 /**
  * Terminal status surface (design §10).
- * Renders overall grade, sync matrix, domain lines, top recommendations.
+ * Formats a Report for humans — overall grade, domain lines, sync matrix,
+ * top recommendations, next commands. Does not re-score; only formats fields.
  */
 
 import type { Grade, Report } from "../engine/types.js";
@@ -18,14 +19,17 @@ function gradeLabel(grade: Grade): string {
 
 /**
  * Whether a report agent appears on the skills hub (for matrix rows).
- * Uses findings + sync.aligned evidence rather than re-querying disk.
+ * Uses findings + sync evidence from the Report — never re-queries disk.
  */
 function matrixMark(
   agentId: string,
   report: Report,
 ): { mark: string; note: string } {
   const presence = report.agents.find((a) => a.id === agentId);
-  if (!presence?.installed) {
+  if (!presence) {
+    return { mark: "·", note: "in scope (details unavailable)" };
+  }
+  if (!presence.installed) {
     return { mark: "·", note: "not installed" };
   }
   if (presence.ignored) {
@@ -65,7 +69,8 @@ function matrixMark(
 }
 
 /**
- * Format a Report as a human-readable terminal dashboard.
+ * Format a Report as a human-readable terminal dashboard (design §10).
+ * Read-only over Report fields — no scoring or FS access.
  */
 export function formatTerminalReport(report: Report): string {
   const lines: string[] = [];
@@ -77,21 +82,18 @@ export function formatTerminalReport(report: Report): string {
   );
   lines.push("");
 
-  // Sync matrix
+  // Sync matrix: one row per agents_in_scope entry (hub × agents)
   const hubDisplay = report.sync.skills_hub ?? "(unresolved)";
   lines.push(`Sync target (skills):  ${hubDisplay}`);
 
-  const matrixAgents = report.agents.filter((a) => a.installed);
-  if (matrixAgents.length === 0) {
-    lines.push("  (no agents detected)");
+  const scopeIds = report.sync.agents_in_scope;
+  if (scopeIds.length === 0) {
+    lines.push("  (no agents in scope)");
   } else {
-    const idWidth = Math.max(
-      ...matrixAgents.map((a) => a.id.length),
-      8,
-    );
-    for (const agent of matrixAgents) {
-      const { mark, note } = matrixMark(agent.id, report);
-      lines.push(`  ${agent.id.padEnd(idWidth)}  ${mark} ${note}`);
+    const idWidth = Math.max(...scopeIds.map((id) => id.length), 8);
+    for (const agentId of scopeIds) {
+      const { mark, note } = matrixMark(agentId, report);
+      lines.push(`  ${agentId.padEnd(idWidth)}  ${mark} ${note}`);
     }
   }
 
@@ -106,20 +108,24 @@ export function formatTerminalReport(report: Report): string {
   // Domains
   lines.push("");
   lines.push("Domains:");
-  const domainWidth = Math.max(
-    ...report.domains.map((d) => d.domain.length),
-    8,
-  );
-  for (const domain of report.domains) {
-    const score = String(domain.score).padStart(3);
-    const grade = gradeLabel(domain.grade).padEnd(6);
-    const summary = domain.summary ? `  ${domain.summary}` : "";
-    lines.push(
-      `  ${domain.domain.padEnd(domainWidth)}  ${score} ${grade}${summary}`,
+  if (report.domains.length === 0) {
+    lines.push("  (none)");
+  } else {
+    const domainWidth = Math.max(
+      ...report.domains.map((d) => d.domain.length),
+      8,
     );
+    for (const domain of report.domains) {
+      const score = String(domain.score).padStart(3);
+      const grade = gradeLabel(domain.grade).padEnd(6);
+      const summary = domain.summary ? `  ${domain.summary}` : "";
+      lines.push(
+        `  ${domain.domain.padEnd(domainWidth)}  ${score} ${grade}${summary}`,
+      );
+    }
   }
 
-  // Recommendations
+  // Top recommendations (sync-first style: print Report fields only)
   if (report.recommendations.length > 0) {
     lines.push("");
     lines.push("Recommendations:");
