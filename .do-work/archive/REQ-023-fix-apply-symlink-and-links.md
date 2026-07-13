@@ -1,19 +1,14 @@
 # REQ-023: Fix apply symlink and links
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.66916
-**Claimed at:** 2026-07-13T23:34:13Z
-**Heartbeat:** 2026-07-13T23:34:13Z
-<!-- claimed-end -->
 
 **UR:** UR-001
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-14
 **Layer:** engine
 **Entry point:** 
 **Terminal state:** 
 **Parent:** REQ-021
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:7838f0d verification:npm test -- src/fix/apply (15 passed)
 **Criteria approved:** agent-drafted
 **Priority:** 2
 **Size:** M
@@ -30,10 +25,10 @@ Clarification symlink-to-hub; design out-of-scope list.
 
 ## Acceptance Criteria
 
-- [ ] Symlink action creates link from agent expected path to hub when safe (no overwrite of non-empty non-link dir without explicit force flag default off)
-- [ ] Link-block append is idempotent (second apply does not duplicate block)
-- [ ] Copy-tree actions are rejected if ever present
-- [ ] Temp-dir tests prove apply + re-check path
+- [x] Symlink action creates link from agent expected path to hub when safe (no overwrite of non-empty non-link dir without explicit force flag default off)
+- [x] Link-block append is idempotent (second apply does not duplicate block)
+- [x] Copy-tree actions are rejected if ever present
+- [x] Temp-dir tests prove apply + re-check path
 
 ## Verification Steps
 
@@ -48,3 +43,7 @@ Clarification symlink-to-hub; design out-of-scope list.
 
 **Service dependencies:** plan builder
 
+## Outputs
+
+- src/fix/apply.ts — applyFixPlan — force flag, empty-dir safe symlink, non-empty skip unless force, marker-aware link idempotency
+- src/fix/apply.test.ts — 15 fixture tests covering REQ-023 ACs (force, idempotent link, copy reject, apply+re-check)
