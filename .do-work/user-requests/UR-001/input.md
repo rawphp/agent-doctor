@@ -1,9 +1,11 @@
 ---
 ur: UR-001
 received: 2026-07-14
-status: intake
+status: captured
+classification: feature
+layers_in_scope: [cli, engine, adapters, surfaces]
+layer_decisions: {}
 ---
-
 # UR-001: User Request
 
 ## Request
