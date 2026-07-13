@@ -1,23 +1,17 @@
 # REQ-002: Scaffold Node package and tests
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.61963
-**Claimed at:** 2026-07-13T22:46:00Z
-**Heartbeat:** 2026-07-13T22:46:00Z
-<!-- claimed-end -->
-
 **UR:** UR-001
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-14
 **Layer:** cli
 **Entry point:** 
 **Terminal state:** 
 **Parent:** REQ-001
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:adbc331 all 2 checkpoints passed (0 deferred)
 **Criteria approved:** agent-drafted
 **Priority:** 3
 **Size:** M
-**Files:** package.json, tsconfig.json, vitest.config.ts, src/cli.ts, src/index.ts
+**Files:** package.json, tsconfig.json, vitest.config.ts, src/cli.ts, src/index.ts, tests/scaffold.test.ts
 **Depends on:** REQ-001
 
 ## Task
@@ -30,10 +24,10 @@ Design runtime v1 is Node/Bun; test.suite_command is npm test. Greenfield repo h
 
 ## Acceptance Criteria
 
-- [ ] package.json defines name agent-doctor, bin pointing at CLI entry, and script test
-- [ ] TypeScript source compiles or runs via tsx/ts-node for local dev
-- [ ] At least one unit test runs under npm test
-- [ ] CLI --help works without requiring map.yml
+- [x] package.json defines name agent-doctor, bin pointing at CLI entry, and script test
+- [x] TypeScript source compiles or runs via tsx/ts-node for local dev
+- [x] At least one unit test runs under npm test
+- [x] CLI --help works without requiring map.yml
 
 ## Verification Steps
 
@@ -51,3 +45,7 @@ Design runtime v1 is Node/Bun; test.suite_command is npm test. Greenfield repo h
 
 **Service dependencies:** Node runtime; no adapters yet
 
+## Outputs
+
+- src/index.ts — Library entrypoint exporting PACKAGE_NAME and PACKAGE_VERSION
+- tests/scaffold.test.ts — TDD tests for package metadata (name/bin/test) and src/index.ts module entry
