@@ -1,0 +1,31 @@
+run_id: RUN-013
+req: REQ-006
+ur: UR-001
+agent_id: "Toms-MacBook-Pro.local.19127"
+model: "default"
+branch: "req/REQ-006"
+started_at: "2026-07-13T23:09:44Z"
+ended_at: "2026-07-13T23:13:31Z"
+result: "done"
+review_outcome: "passed"
+proof_status: "proven"
+cost_estimate: "tier-weighted estimate ~sonnet-class single attempt"
+cost_estimate_num: 0.15
+pr_url: ""
+commands:
+  - "npm test -- src/commands/init"
+  - "AGENT_DOCTOR_HOME=/tmp/ad-init-\$\$ npx tsx src/cli.ts map --yes"
+  - "npm test"
+tests:
+  - "src/commands/init.test.ts: 6/6 passed"
+  - "full suite: 121/121 passed"
+changed_files:
+  - src/cli.ts
+  - src/commands/init.ts
+  - src/commands/map.ts
+  - src/commands/init.test.ts
+  - src/map/init.ts
+  - src/map/init.test.ts
+  - src/map/load.ts
+  - src/map/save.ts
+  - src/engine/types.ts

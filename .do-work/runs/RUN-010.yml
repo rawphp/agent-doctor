@@ -1,0 +1,20 @@
+run_id: RUN-010
+req: REQ-010
+ur: UR-001
+agent_id: "Toms-MacBook-Pro.local.960"
+model: "general-purpose"
+branch: "req/REQ-010"
+started_at: "2026-07-13T22:59:11Z"
+ended_at: "2026-07-13T23:04:40Z"
+result: "done"
+review_outcome: "passed"
+proof_status: "unproven"
+cost_estimate: "estimate:small-S"
+cost_estimate_num: 0.15
+pr_url: ""
+commands:
+  []
+tests:
+  []
+changed_files:
+  []

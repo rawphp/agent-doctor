@@ -1,20 +1,14 @@
 # REQ-022: Fix plan builder
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.51811
-**Claimed at:** 2026-07-13T23:27:30Z
-**Heartbeat:** 2026-07-13T23:27:30Z
-<!-- claimed-end -->
 
 **UR:** UR-001
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-14
 **Layer:** engine
 **Entry point:** 
 **Terminal state:** 
 **Parent:** REQ-021
-**Closure proof:**
-**Criteria approved:** agent-drafted
+**Closure proof:** checkpoint:.do-work/runs#REQ-022 commit:3344a29 tests:passed
 **Priority:** 2
 **Size:** M
 **Files:** src/fix/plan.ts, src/fix/plan.test.ts
@@ -30,9 +24,9 @@ Design §9 safe actions; conflict needs choice.
 
 ## Acceptance Criteria
 
-- [ ] Findings map to stable fix action ids
-- [ ] Hub conflict without sync_target yields plan item to set sync_target only, not wire
-- [ ] Symlink actions included when adapter proposes them for off-hub agents
+- [x] Findings map to stable fix action ids
+- [x] Hub conflict without sync_target yields plan item to set sync_target only, not wire
+- [x] Symlink actions included when adapter proposes them for off-hub agents
 
 ## Verification Steps
 
@@ -46,4 +40,9 @@ Design §9 safe actions; conflict needs choice.
 **Data dependencies:** Report findings
 
 **Service dependencies:** Adapters proposeWire*
+
+## Outputs
+
+- src/fix/plan.ts — buildFixPlan — findings to FixAction[] via adapters; blocks wire on hub conflict without sync_target
+- src/fix/plan.test.ts — Unit tests for stable ids, hub-conflict gate, and symlink proposals
 

@@ -1,0 +1,30 @@
+run_id: RUN-012
+req: REQ-011
+ur: UR-001
+agent_id: "Toms-MacBook-Pro.local.16925"
+model: "opus"
+branch: "req/REQ-011"
+started_at: "2026-07-13T23:08:29Z"
+ended_at: "2026-07-13T23:13:07Z"
+result: "done"
+review_outcome: "passed"
+proof_status: "proven"
+cost_estimate: "tier=opus size=L estimate"
+cost_estimate_num: 2.50
+pr_url: ""
+commands:
+  - "npm test -- src/commands/status src/engine src/surfaces/terminal"
+  - "AGENT_DOCTOR_HOME=fixtures/homes/hybrid npx tsx src/cli.ts status --json"
+tests:
+  - "32+ tests passed (status/engine/score/surfaces); worker reported 46"
+changed_files:
+  - fixtures/homes/hybrid/map.yml
+  - src/cli.ts
+  - src/commands/status.test.ts
+  - src/commands/status.ts
+  - src/engine/run-checks.test.ts
+  - src/engine/run-checks.ts
+  - src/engine/score.test.ts
+  - src/engine/score.ts
+  - src/surfaces/terminal.test.ts
+  - src/surfaces/terminal.ts
