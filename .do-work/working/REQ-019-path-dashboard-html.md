@@ -1,7 +1,13 @@
 # REQ-019: Path dashboard HTML
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.85479
+**Claimed at:** 2026-07-13T23:41:19Z
+**Heartbeat:** 2026-07-13T23:41:19Z
+<!-- claimed-end -->
+
 **UR:** UR-001
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-14
 **Layer:** none
 **Entry point:** `agent-doctor dashboard`
