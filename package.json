@@ -1,0 +1,36 @@
+{
+  "name": "agent-doctor",
+  "version": "0.1.0",
+  "description": "Diagnose and fix AI-agent project setup (skills hub, adapters, maps, status)",
+  "type": "module",
+  "bin": {
+    "agent-doctor": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "cli": "tsx src/cli.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "agent",
+    "cli",
+    "skills",
+    "claude",
+    "codex",
+    "grok"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
