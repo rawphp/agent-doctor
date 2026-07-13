@@ -1,7 +1,13 @@
 # REQ-009: Grok adapter
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.95431
+**Claimed at:** 2026-07-13T22:57:33Z
+**Heartbeat:** 2026-07-13T22:57:33Z
+<!-- claimed-end -->
+
 **UR:** UR-001
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-14
 **Layer:** adapters
 **Entry point:** 
