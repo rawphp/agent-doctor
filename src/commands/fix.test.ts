@@ -14,6 +14,7 @@ import type { AgentAdapter, AdapterContext } from "../adapters/types.js";
 import type { AgentPresence, FixAction, HomeMap } from "../engine/types.js";
 import { saveMap } from "../map/save.js";
 import {
+  defaultConfirm,
   parseFixFlags,
   runFix,
 } from "./fix.js";
@@ -112,6 +113,28 @@ describe("parseFixFlags", () => {
     expect(flags.yes).toBe(true);
     expect(flags.syncTarget).toBe("/chosen");
   });
+
+  it("defaults dryRun and yes to false", () => {
+    const flags = parseFixFlags([]);
+    expect(flags.dryRun).toBe(false);
+    expect(flags.yes).toBe(false);
+    expect(flags.syncTarget).toBeUndefined();
+  });
+});
+
+describe("defaultConfirm", () => {
+  it("refuses apply when stdin is not a TTY (CI-safe)", async () => {
+    // Vitest runs non-TTY; default confirm must not hang and must deny apply.
+    const ok = await defaultConfirm([
+      {
+        id: "x",
+        kind: "set_sync_target",
+        description: "set",
+        value: "/hub",
+      },
+    ]);
+    expect(ok).toBe(false);
+  });
 });
 
 describe("runFix", () => {
@@ -140,7 +163,7 @@ describe("runFix", () => {
     );
 
     const lines: string[] = [];
-    const { exitCode, report } = await runFix({
+    const { exitCode, report, applied } = await runFix({
       args: ["--dry-run"],
       checks: {
         home: doctorHome,
@@ -168,10 +191,56 @@ describe("runFix", () => {
     // private skills tree must not be replaced / deleted in dry-run
     expect(existsSync(join(privateRoot, "SKILL.md"))).toBe(true);
     expect(lstatSync(privateRoot).isSymbolicLink()).toBe(false);
+    expect(applied).toBe(false);
     expect(exitCode).toBeGreaterThanOrEqual(0);
   });
 
-  it("fix without --yes requires confirmation before apply", async () => {
+  it("fix --dry-run performs zero writes even for map-updating plan items", async () => {
+    const base = tempDir();
+    const doctorHome = join(base, "doctor");
+    const hubA = makePopulatedRoot(base, "hub-a");
+    const hubB = makePopulatedRoot(base, "hub-b");
+    const mapFile = join(doctorHome, "map.yml");
+
+    // No pre-existing map on disk — dry-run must not create one.
+    expect(existsSync(mapFile)).toBe(false);
+
+    const agentSkills = join(base, "would-be-symlink");
+    const lines: string[] = [];
+    const { applied } = await runFix({
+      args: ["--dry-run", "--sync-target", hubA],
+      checks: {
+        home: doctorHome,
+        map: baseMap({ global_roots: [hubA, hubB], sync_target: null }),
+        adapters: [],
+      },
+      doctorHome,
+      planOverride: [
+        {
+          id: "fix.set_sync_target",
+          kind: "set_sync_target",
+          description: `Set map.skills.sync_target to ${hubA}`,
+          target: mapFile,
+          value: hubA,
+        },
+        {
+          id: "evil-symlink",
+          kind: "symlink_skills_hub",
+          description: "would symlink",
+          target: agentSkills,
+          value: hubA,
+        },
+      ],
+      stdout: (line) => lines.push(line),
+    });
+
+    expect(applied).toBe(false);
+    expect(existsSync(mapFile)).toBe(false);
+    expect(existsSync(agentSkills)).toBe(false);
+    expect(lines.join("\n")).toMatch(/dry-run|no files written/i);
+  });
+
+  it("fix without --yes prompts confirm and does not apply on decline", async () => {
     const base = tempDir();
     const doctorHome = join(base, "doctor");
     const agentHome = join(base, "codex");
@@ -212,7 +281,51 @@ describe("runFix", () => {
     expect(lines.join("\n")).toMatch(/confirm|cancelled|aborted/i);
   });
 
-  it("fix --yes applies symlink, re-runs checks, prints new grade", async () => {
+  it("fix without --yes applies when interactive confirm accepts", async () => {
+    const base = tempDir();
+    const doctorHome = join(base, "doctor");
+    const agentHome = join(base, "codex");
+    mkdirSync(agentHome, { recursive: true });
+    const hub = makePopulatedRoot(base, "hub");
+    const agentSkills = join(agentHome, "skills");
+
+    const confirm = vi.fn(async (plan: FixAction[]) => {
+      expect(plan.length).toBeGreaterThan(0);
+      return true;
+    });
+
+    const lines: string[] = [];
+    const { applied, afterReport } = await runFix({
+      args: [],
+      checks: {
+        home: doctorHome,
+        map: baseMap(
+          { global_roots: [hub], sync_target: hub },
+          [
+            {
+              id: "codex",
+              adapter: "codex",
+              config_home: agentHome,
+              primary: false,
+              ignored: false,
+            },
+          ],
+        ),
+        adapters: [stubAdapter("codex", [], agentHome)],
+      },
+      doctorHome,
+      confirm,
+      stdout: (line) => lines.push(line),
+    });
+
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(applied).toBe(true);
+    expect(lstatSync(agentSkills).isSymbolicLink()).toBe(true);
+    expect(afterReport).toBeDefined();
+    expect(lines.join("\n")).toMatch(/Overall:|grade|GREEN|YELLOW|RED/i);
+  });
+
+  it("fix --yes applies safe plan items, re-runs checks, prints new grade", async () => {
     const base = tempDir();
     const doctorHome = join(base, "doctor");
     const agentHome = join(base, "codex");
@@ -221,7 +334,7 @@ describe("runFix", () => {
     const agentSkills = join(agentHome, "skills");
 
     const lines: string[] = [];
-    const { applied, afterReport, exitCode } = await runFix({
+    const { applied, afterReport, exitCode, results } = await runFix({
       args: ["--yes"],
       checks: {
         home: doctorHome,
@@ -244,12 +357,43 @@ describe("runFix", () => {
     });
 
     expect(applied).toBe(true);
+    expect(results.some((r) => r.status === "applied")).toBe(true);
     expect(lstatSync(agentSkills).isSymbolicLink()).toBe(true);
     expect(afterReport).toBeDefined();
     const text = lines.join("\n");
     expect(text).toMatch(/Overall:|grade|GREEN|YELLOW|RED/i);
     expect(afterReport!.overall.grade).toBeDefined();
     expect(exitCode).toBeGreaterThanOrEqual(0);
+  });
+
+  it("fix --yes does not call confirm callback", async () => {
+    const base = tempDir();
+    const doctorHome = join(base, "doctor");
+    const hub = makePopulatedRoot(base, "hub");
+    const confirm = vi.fn(async () => false);
+
+    await runFix({
+      args: ["--yes"],
+      checks: {
+        home: doctorHome,
+        map: baseMap({ global_roots: [hub], sync_target: hub }),
+        adapters: [],
+      },
+      doctorHome,
+      confirm,
+      planOverride: [
+        {
+          id: "fix.set_sync_target",
+          kind: "set_sync_target",
+          description: "set hub",
+          target: join(doctorHome, "map.yml"),
+          value: hub,
+        },
+      ],
+      stdout: () => {},
+    });
+
+    expect(confirm).not.toHaveBeenCalled();
   });
 
   it("fix --yes sets sync_target when --sync-target provided on conflict", async () => {
