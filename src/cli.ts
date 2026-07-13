@@ -4,6 +4,10 @@
  * v1 commands (design §5): init, map, status, dashboard, fix, agents, check
  */
 
+import { runInit, runMap } from "./map/init.js";
+import { mapPath } from "./map/load.js";
+import type { HomeMap } from "./engine/types.js";
+
 const V1_COMMANDS = [
   { name: "init", description: "Discover environment and write the home map" },
   { name: "map", description: "Inspect or update the agent/home map" },
@@ -31,6 +35,7 @@ function printHelp(): void {
     "Options:",
     "  -h, --help     Show help",
     "  -V, --version  Show version",
+    "  --non-interactive  Skip prompts (init only)",
     "",
   ];
   console.log(lines.join("\n"));
@@ -40,7 +45,24 @@ function printVersion(): void {
   console.log("0.1.0");
 }
 
-function main(argv: string[]): number {
+function summarizeMap(map: HomeMap, path: string, mode: "init" | "map"): void {
+  const verb = mode === "init" ? "Wrote" : "Refreshed";
+  console.log(`${verb} home map: ${path}`);
+  console.log(`  version: ${map.version}`);
+  console.log(`  agents: ${map.agents.map((a) => a.id).join(", ") || "(none)"}`);
+  console.log(
+    `  skills roots: ${map.skills.global_roots.length} candidate(s)`,
+  );
+  console.log(`  vaults: ${map.vaults.length}`);
+  console.log(`  project roots: ${map.projects.roots.length}`);
+  if (map.skills.sync_target) {
+    console.log(`  sync_target: ${map.skills.sync_target}`);
+  } else if (map.skills.global_roots.length > 1) {
+    console.log("  sync_target: (unresolved — multiple hubs)");
+  }
+}
+
+async function main(argv: string[]): Promise<number> {
   const args = argv.slice(2);
   const first = args[0];
 
@@ -59,6 +81,19 @@ function main(argv: string[]): number {
     return 0;
   }
 
+  if (first === "init") {
+    const nonInteractive = args.includes("--non-interactive");
+    const map = await runInit({ nonInteractive });
+    summarizeMap(map, mapPath(), "init");
+    return 0;
+  }
+
+  if (first === "map") {
+    const map = await runMap();
+    summarizeMap(map, mapPath(), "map");
+    return 0;
+  }
+
   const known = V1_COMMANDS.some((c) => c.name === first);
   if (known) {
     console.error(
@@ -72,5 +107,12 @@ function main(argv: string[]): number {
   return 1;
 }
 
-const exitCode = main(process.argv);
-process.exitCode = exitCode;
+main(process.argv)
+  .then((code) => {
+    process.exitCode = code;
+  })
+  .catch((err: unknown) => {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`agent-doctor: ${message}`);
+    process.exitCode = 1;
+  });

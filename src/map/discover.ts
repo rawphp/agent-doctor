@@ -77,32 +77,43 @@ export function discover(options: DiscoverOptions = {}): DiscoverResult {
 }
 
 function discoverSkillsRoots(homeDir: string): string[] {
-  const found: string[] = [];
-  for (const rel of SKILLS_ROOT_CANDIDATES) {
-    const abs = join(homeDir, rel);
-    if (isDirectory(abs)) found.push(abs);
-  }
-  return found;
+  return uniqueExistingDirs(
+    SKILLS_ROOT_CANDIDATES.map((rel) => join(homeDir, rel)),
+  );
 }
 
 function discoverProjectRoots(homeDir: string): string[] {
+  return uniqueExistingDirs(
+    PROJECT_ROOT_CANDIDATES.map((name) => join(homeDir, name)),
+  );
+}
+
+/** Keep first path for each physical directory (inode), skip missing. */
+function uniqueExistingDirs(candidates: string[]): string[] {
+  const seen = new Set<string>();
   const found: string[] = [];
-  for (const name of PROJECT_ROOT_CANDIDATES) {
-    const abs = join(homeDir, name);
-    if (isDirectory(abs)) found.push(abs);
+  for (const abs of candidates) {
+    if (!isDirectory(abs)) continue;
+    const key = resolveKey(abs);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    found.push(abs);
   }
   return found;
 }
 
 function discoverVaults(homeDir: string): VaultEntry[] {
+  // Key by realpath so case-insensitive FS (macOS) doesn't double-count
+  // Documents/Obsidian vs Documents/obsidian as two vaults.
   const seen = new Set<string>();
   const vaults: VaultEntry[] = [];
 
   const addIfVault = (dir: string) => {
-    if (seen.has(dir)) return;
     if (!isDirectory(dir)) return;
     if (!isDirectory(join(dir, ".obsidian"))) return;
-    seen.add(dir);
+    const key = resolveKey(dir);
+    if (seen.has(key)) return;
+    seen.add(key);
     vaults.push({ path: dir, source: "discovered" });
   };
 
@@ -127,6 +138,20 @@ function isDirectory(path: string): boolean {
     return existsSync(path) && statSync(path).isDirectory();
   } catch {
     return false;
+  }
+}
+
+/**
+ * Stable identity for a path on the local filesystem.
+ * Uses device+inode so case-insensitive volumes (macOS APFS) do not double-count
+ * the same directory under different casings (realpath preserves input case).
+ */
+function resolveKey(path: string): string {
+  try {
+    const st = statSync(path);
+    return `${st.dev}:${st.ino}`;
+  } catch {
+    return path.toLowerCase();
   }
 }
 
