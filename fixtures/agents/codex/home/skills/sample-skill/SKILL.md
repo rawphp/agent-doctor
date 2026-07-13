@@ -1,0 +1,1 @@
+# Sample Codex skill (fixture)
