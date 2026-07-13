@@ -1,13 +1,8 @@
 # REQ-017: Status CLI command
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.66916
-**Claimed at:** 2026-07-13T23:33:46Z
-**Heartbeat:** 2026-07-13T23:33:46Z
-<!-- claimed-end -->
 
 **UR:** UR-001
-**Status:** in-progress
+**Status:** backlog
 **Created:** 2026-07-14
 **Layer:** cli
 **Entry point:** 
