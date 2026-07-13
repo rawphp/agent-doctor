@@ -1,7 +1,13 @@
 # REQ-011: Path status hybrid
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.16925
+**Claimed at:** 2026-07-13T23:08:29Z
+**Heartbeat:** 2026-07-13T23:08:29Z
+<!-- claimed-end -->
+
 **UR:** UR-001
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-14
 **Layer:** none
 **Entry point:** `agent-doctor status` (default, no --all)
