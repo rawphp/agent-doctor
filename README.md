@@ -10,9 +10,10 @@ CLI that diagnoses AI-agent project setup (skills hub, adapters for Claude Code 
 ## One-command install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rawphp/agent-doctor/main/scripts/install.sh | bash
+curl -fsSL https://cdn.jsdelivr.net/gh/rawphp/agent-doctor@main/scripts/install.sh | bash
 ```
 
+(GitHub’s `raw.githubusercontent.com` URL also works, but can lag behind `main` by a few minutes due to CDN cache.)
 That clones the repo, runs `npm install` + `npm run build`, then installs the CLI globally as `agent-doctor`.
 
 Equivalent without curl (same reliability as the script):

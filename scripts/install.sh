@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One-command installer for Agent Doctor (rawphp/agent-doctor).
 #
-#   curl -fsSL https://raw.githubusercontent.com/rawphp/agent-doctor/main/scripts/install.sh | bash
+#   curl -fsSL https://cdn.jsdelivr.net/gh/rawphp/agent-doctor@main/scripts/install.sh | bash
 #
 # Avoids `npm install -g git+…` prepare quirks by cloning, installing, building, then linking globally.
 #
