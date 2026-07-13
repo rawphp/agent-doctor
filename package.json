@@ -8,10 +8,19 @@
   },
   "scripts": {
     "build": "tsc",
+    "prepare": "node scripts/prepare.mjs",
     "test": "vitest run",
     "cli": "tsx src/cli.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rawphp/agent-doctor.git"
+  },
+  "homepage": "https://github.com/rawphp/agent-doctor#readme",
+  "bugs": {
+    "url": "https://github.com/rawphp/agent-doctor/issues"
   },
   "engines": {
     "node": ">=20"

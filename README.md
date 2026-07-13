@@ -4,21 +4,44 @@ CLI that diagnoses AI-agent project setup (skills hub, adapters for Claude Code 
 
 ## Requirements
 
-- Node.js 20+
+- Node.js **20+**
+- npm (comes with Node)
 
-## Install / run
+## One-command install
 
 ```bash
-# From this repo (development)
-npm install
-npx tsx src/cli.ts --help
+curl -fsSL https://raw.githubusercontent.com/rawphp/agent-doctor/main/scripts/install.sh | bash
+```
 
-# After build
-npm run build
-node dist/cli.js --help
+That installs the CLI globally as `agent-doctor` from the GitHub repo (builds on install).
 
-# Binary name (package bin)
-npx agent-doctor --help
+Equivalent without curl:
+
+```bash
+npm install -g git+https://github.com/rawphp/agent-doctor.git
+```
+
+Then:
+
+```bash
+agent-doctor --help
+agent-doctor status
+```
+
+> **Note:** The npm registry name `agent-doctor` is already used by an [unrelated package](https://www.npmjs.com/package/agent-doctor). Install from **GitHub** (commands above), not `npm install -g agent-doctor`.
+
+### PATH issues
+
+If the install succeeds but `agent-doctor` is not found:
+
+```bash
+export PATH="$(npm prefix -g)/bin:$PATH"
+```
+
+### Uninstall
+
+```bash
+npm uninstall -g agent-doctor
 ```
 
 ## Commands (v1)
@@ -33,14 +56,35 @@ npx agent-doctor --help
 | `agents`    | List detected agents and adapter support             |
 | `check`     | Run individual domain checks                         |
 
-Command bodies land in follow-up work; this package currently exposes install metadata and `--help`.
-
 ## Development
 
 ```bash
+git clone https://github.com/rawphp/agent-doctor.git
+cd agent-doctor
+npm install
 npm test
 npm run build
+npx tsx src/cli.ts --help
+# or after build:
+node dist/cli.js --help
 ```
+
+```bash
+npm run format        # write
+npm run format:check  # CI-style check
+```
+
+### CI
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request:
+
+1. `npm ci`
+2. `npm run format:check`
+3. `npm test`
+4. `npm run build`
+5. Smoke `node dist/cli.js --help`
+
+Matrix: Node **20** and **22** on `ubuntu-latest`.
 
 ## License
 
