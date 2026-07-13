@@ -1,0 +1,25 @@
+run_id: RUN-024
+req: REQ-025
+ur: UR-001
+agent_id: "Toms-MacBook-Pro.local.86859"
+model: "sonnet"
+branch: "req/REQ-025"
+started_at: "2026-07-13T23:41:31Z"
+ended_at: "2026-07-13T23:44:43Z"
+result: "done"
+review_outcome: "passed"
+proof_status: "unproven"
+cost_estimate: "tier-weighted estimate ~0.15"
+cost_estimate_num: 0.15
+pr_url: ""
+commands:
+  - "npm test -- src/commands/agents src/commands/check"
+  - "npx tsx src/cli.ts agents"
+tests:
+  - "9 passed (agents 3, check 6)"
+changed_files:
+  - "src/cli.ts"
+  - "src/commands/agents.ts"
+  - "src/commands/agents.test.ts"
+  - "src/commands/check.ts"
+  - "src/commands/check.test.ts"
