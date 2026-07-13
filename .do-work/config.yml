@@ -1,0 +1,12 @@
+# do-work configuration
+# Edit this file to customize agent behavior.
+# Full schema and defaults: agents/config.md (canonical template)
+
+project:
+  name: "agent-doctor"
+
+# CLI product layers (UR-001 clarification)
+layers: [cli, engine, adapters, surfaces]
+
+test:
+  suite_command: "npm test"
