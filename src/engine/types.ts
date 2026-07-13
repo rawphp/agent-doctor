@@ -120,6 +120,12 @@ export type HomeMap = {
     sync_target: string | null;
   };
   vaults: VaultEntry[];
+  /**
+   * Explicit marker: user skipped vault configuration during init
+   * (interactive empty/skip answer or --yes / non-interactive with zero vaults).
+   * Distinguishes "never configured" from "user chose none".
+   */
+  vaults_skipped?: boolean;
   agents: MapAgent[];
   projects: {
     roots: string[];

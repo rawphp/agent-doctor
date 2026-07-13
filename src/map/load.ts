@@ -77,7 +77,7 @@ function normalizeHomeMap(data: unknown): HomeMap {
       ? (root.projects as Record<string, unknown>)
       : {};
 
-  return {
+  const map: HomeMap = {
     version: HOME_MAP_VERSION,
     skills: { global_roots, sync_target },
     vaults,
@@ -87,6 +87,12 @@ function normalizeHomeMap(data: unknown): HomeMap {
       entries: asStringArray(projectsRaw.entries),
     },
   };
+
+  if (typeof root.vaults_skipped === "boolean") {
+    map.vaults_skipped = root.vaults_skipped;
+  }
+
+  return map;
 }
 
 function asStringArray(value: unknown): string[] {

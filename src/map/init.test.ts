@@ -121,9 +121,11 @@ describe("init / map path-unit", () => {
     expect(promptVault).toHaveBeenCalledTimes(1);
     expect(map.vaults).toEqual([]);
     // skip marker recorded so later runs know the user chose no vault
+    expect(map.vaults_skipped).toBe(true);
     expect(map.skills.sync_target).toBeNull();
     const raw = readFileSync(join(doctorHome, "map.yml"), "utf8");
     expect(raw).toMatch(/vaults:\s*\[\]|vaults:\s*\n/);
+    expect(raw).toMatch(/vaults_skipped:\s*true/);
   });
 
   it("non-interactive init skips vault prompt when none discovered", async () => {
@@ -137,6 +139,7 @@ describe("init / map path-unit", () => {
 
     expect(promptVault).not.toHaveBeenCalled();
     expect(map.vaults).toEqual([]);
+    expect(map.vaults_skipped).toBe(true);
   });
 
   it("init does not prompt when vaults are discovered", async () => {

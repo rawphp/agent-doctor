@@ -4,10 +4,9 @@
  * v1 commands (design §5): init, map, status, dashboard, fix, agents, check
  */
 
+import { runInitCommand } from "./commands/init.js";
+import { runMapCommand } from "./commands/map.js";
 import { runStatus } from "./commands/status.js";
-import { runInit, runMap } from "./map/init.js";
-import { mapPath } from "./map/load.js";
-import type { HomeMap } from "./engine/types.js";
 
 const V1_COMMANDS = [
   { name: "init", description: "Discover environment and write the home map" },
@@ -34,9 +33,9 @@ function printHelp(): void {
     ),
     "",
     "Options:",
-    "  -h, --help     Show help",
-    "  -V, --version  Show version",
-    "  --non-interactive  Skip prompts (init only)",
+    "  -h, --help            Show help",
+    "  -V, --version         Show version",
+    "  --yes, --non-interactive  Skip prompts (init/map; safe for CI)",
     "",
   ];
   console.log(lines.join("\n"));
@@ -44,23 +43,6 @@ function printHelp(): void {
 
 function printVersion(): void {
   console.log("0.1.0");
-}
-
-function summarizeMap(map: HomeMap, path: string, mode: "init" | "map"): void {
-  const verb = mode === "init" ? "Wrote" : "Refreshed";
-  console.log(`${verb} home map: ${path}`);
-  console.log(`  version: ${map.version}`);
-  console.log(`  agents: ${map.agents.map((a) => a.id).join(", ") || "(none)"}`);
-  console.log(
-    `  skills roots: ${map.skills.global_roots.length} candidate(s)`,
-  );
-  console.log(`  vaults: ${map.vaults.length}`);
-  console.log(`  project roots: ${map.projects.roots.length}`);
-  if (map.skills.sync_target) {
-    console.log(`  sync_target: ${map.skills.sync_target}`);
-  } else if (map.skills.global_roots.length > 1) {
-    console.log("  sync_target: (unresolved — multiple hubs)");
-  }
 }
 
 async function main(argv: string[]): Promise<number> {
@@ -83,16 +65,13 @@ async function main(argv: string[]): Promise<number> {
   }
 
   if (first === "init") {
-    const nonInteractive = args.includes("--non-interactive");
-    const map = await runInit({ nonInteractive });
-    summarizeMap(map, mapPath(), "init");
-    return 0;
+    const result = await runInitCommand({ args: args.slice(1) });
+    return result.code;
   }
 
   if (first === "map") {
-    const map = await runMap();
-    summarizeMap(map, mapPath(), "map");
-    return 0;
+    const result = await runMapCommand({ args: args.slice(1) });
+    return result.code;
   }
 
   if (first === "status") {

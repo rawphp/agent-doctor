@@ -13,7 +13,7 @@ export function saveMap(map: HomeMap, options: MapIoOptions = {}): void {
   const path = mapPath({ home });
   mkdirSync(dirname(path), { recursive: true });
 
-  const document = {
+  const document: Record<string, unknown> = {
     version: map.version,
     skills: {
       global_roots: map.skills.global_roots,
@@ -35,6 +35,11 @@ export function saveMap(map: HomeMap, options: MapIoOptions = {}): void {
       entries: map.projects.entries,
     },
   };
+
+  // Explicit skip marker so later commands know the user chose no vault.
+  if (map.vaults_skipped !== undefined) {
+    document.vaults_skipped = map.vaults_skipped;
+  }
 
   const yaml = stringifyYaml(document, {
     lineWidth: 0,

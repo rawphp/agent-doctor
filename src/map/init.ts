@@ -23,8 +23,9 @@ export type InitRunOptions = MapIoOptions & {
   /** User home for filesystem discovery (default: os.homedir()). */
   homeDir?: string;
   /**
-   * When true, skip interactive vault prompt (used by --non-interactive
-   * and automated tests). Empty vaults are recorded as an explicit skip.
+   * When true, skip interactive vault prompt (used by --yes /
+   * --non-interactive and automated tests). Empty vaults are recorded
+   * with an explicit vaults_skipped marker.
    */
   nonInteractive?: boolean;
   /** Injectable vault prompt (tests). Return path or null to skip. */
@@ -37,6 +38,12 @@ export type MapRunOptions = MapIoOptions & {
   promptVault?: VaultPromptFn;
 };
 
+type VaultResolution = {
+  vaults: VaultEntry[];
+  /** True when the user (or non-interactive mode) chose no vault. */
+  skipped: boolean;
+};
+
 /**
  * First-run / re-init: discover agents, skills, projects, vaults;
  * prompt once for a vault when none found (unless non-interactive);
@@ -44,20 +51,29 @@ export type MapRunOptions = MapIoOptions & {
  */
 export async function runInit(options: InitRunOptions = {}): Promise<HomeMap> {
   const home = options.home ?? agentDoctorHome();
+  const previous = loadMap({ home });
   const discovered = discover({ homeDir: options.homeDir });
-  const agents = detectAndMergeAgents(options.homeDir, loadMap({ home }));
+  const agents = detectAndMergeAgents(options.homeDir, previous);
 
-  let vaults = [...discovered.vaults];
-  if (vaults.length === 0) {
-    vaults = await resolveVaultPrompt(options);
+  let vaults: VaultEntry[];
+  let vaultsSkipped: boolean | undefined;
+
+  if (discovered.vaults.length > 0) {
+    vaults = [...discovered.vaults];
+    vaultsSkipped = false;
+  } else {
+    const resolution = await resolveVaultPrompt(options);
+    vaults = resolution.vaults;
+    vaultsSkipped = resolution.skipped;
   }
 
   const map = buildMap({
     skills_roots: discovered.skills_roots,
     project_roots: discovered.project_roots,
     vaults,
+    vaults_skipped: vaultsSkipped,
     agents,
-    previous: loadMap({ home }),
+    previous,
   });
 
   saveMap(map, { home });
@@ -66,7 +82,8 @@ export async function runInit(options: InitRunOptions = {}): Promise<HomeMap> {
 
 /**
  * Refresh map discovery without wizard chrome.
- * Does not prompt for vaults; preserves prior manual vault entries.
+ * Does not prompt for vaults; preserves prior manual vault entries,
+ * sync_target, and agent ignored/primary flags.
  */
 export async function runMap(options: MapRunOptions = {}): Promise<HomeMap> {
   const home = options.home ?? agentDoctorHome();
@@ -75,11 +92,15 @@ export async function runMap(options: MapRunOptions = {}): Promise<HomeMap> {
   const agents = detectAndMergeAgents(options.homeDir, previous);
 
   const vaults = mergeVaults(discovered.vaults, previous?.vaults ?? []);
+  // Clear skip marker once any vault is present; otherwise keep prior choice.
+  const vaults_skipped =
+    vaults.length > 0 ? false : (previous?.vaults_skipped ?? false);
 
   const map = buildMap({
     skills_roots: discovered.skills_roots,
     project_roots: discovered.project_roots,
     vaults,
+    vaults_skipped,
     agents,
     previous,
   });
@@ -130,6 +151,7 @@ function buildMap(input: {
   skills_roots: string[];
   project_roots: string[];
   vaults: VaultEntry[];
+  vaults_skipped?: boolean;
   agents: MapAgent[];
   previous: HomeMap | null;
 }): HomeMap {
@@ -140,7 +162,7 @@ function buildMap(input: {
     input.previous?.skills.sync_target ?? null,
   );
 
-  return {
+  const map: HomeMap = {
     version: HOME_MAP_VERSION,
     skills: {
       global_roots: input.skills_roots,
@@ -154,6 +176,12 @@ function buildMap(input: {
       entries: input.previous?.projects.entries ?? [],
     },
   };
+
+  if (input.vaults_skipped !== undefined) {
+    map.vaults_skipped = input.vaults_skipped;
+  }
+
+  return map;
 }
 
 function resolveSyncTarget(
@@ -168,23 +196,26 @@ function resolveSyncTarget(
 
 async function resolveVaultPrompt(
   options: InitRunOptions,
-): Promise<VaultEntry[]> {
+): Promise<VaultResolution> {
   if (options.nonInteractive) {
-    // Explicit skip in non-interactive / test mode
-    return [];
+    // Explicit skip in non-interactive / --yes / test mode
+    return { vaults: [], skipped: true };
   }
 
-  const prompt =
-    options.promptVault ?? defaultVaultPrompt;
+  const prompt = options.promptVault ?? defaultVaultPrompt;
   const answer = await prompt(
     "No Obsidian vault discovered. Enter a vault path (or leave empty / type 'skip' to skip): ",
   );
 
-  if (answer === null) return [];
+  if (answer === null) {
+    return { vaults: [], skipped: true };
+  }
   const trimmed = answer.trim();
-  if (trimmed === "" || trimmed.toLowerCase() === "skip") return [];
+  if (trimmed === "" || trimmed.toLowerCase() === "skip") {
+    return { vaults: [], skipped: true };
+  }
 
-  return [{ path: trimmed, source: "manual" }];
+  return { vaults: [{ path: trimmed, source: "manual" }], skipped: false };
 }
 
 async function defaultVaultPrompt(message: string): Promise<string | null> {
