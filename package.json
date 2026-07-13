@@ -42,10 +42,10 @@
     "@types/node": "^22.20.1",
     "prettier": "^3.9.5",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   },
   "dependencies": {
+    "typescript": "^5.9.3",
     "yaml": "^2.9.0"
   }
 }

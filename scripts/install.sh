@@ -3,15 +3,15 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/rawphp/agent-doctor/main/scripts/install.sh | bash
 #
-# Or:
-#   npm install -g git+https://github.com/rawphp/agent-doctor.git
+# Avoids `npm install -g git+…` prepare quirks by cloning, installing, building, then linking globally.
 #
 # Note: the npm package name "agent-doctor" is taken by an unrelated project.
 # This installer always installs from the GitHub repo above.
 
 set -euo pipefail
 
-REPO_URL="${AGENT_DOCTOR_REPO:-git+https://github.com/rawphp/agent-doctor.git}"
+REPO_HTTPS="${AGENT_DOCTOR_REPO:-https://github.com/rawphp/agent-doctor.git}"
+REPO_REF="${AGENT_DOCTOR_REF:-main}"
 MIN_NODE_MAJOR=20
 
 die() {
@@ -30,6 +30,7 @@ need_cmd() {
 check_node() {
   need_cmd node
   need_cmd npm
+  need_cmd git
 
   local ver major
   ver="$(node -v | sed 's/^v//')"
@@ -44,9 +45,24 @@ main() {
   check_node
   info "Node $(node -v) · npm $(npm -v)"
 
-  info "Installing from ${REPO_URL}"
-  # Global install from git runs prepare → builds dist when missing
-  npm install -g "$REPO_URL"
+  local tmp
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/agent-doctor-install.XXXXXX")"
+  cleanup() { rm -rf "$tmp"; }
+  trap cleanup EXIT
+
+  info "Cloning ${REPO_HTTPS} (${REPO_REF})"
+  git clone --depth 1 --branch "$REPO_REF" "$REPO_HTTPS" "$tmp/agent-doctor"
+  cd "$tmp/agent-doctor"
+
+  info "Installing dependencies"
+  npm install --no-fund --no-audit
+
+  info "Building"
+  npm run build
+  test -f dist/cli.js || die "build did not produce dist/cli.js"
+
+  info "Installing globally"
+  npm install -g .
 
   if ! command -v agent-doctor >/dev/null 2>&1; then
     die "install finished but agent-doctor is not on PATH.
