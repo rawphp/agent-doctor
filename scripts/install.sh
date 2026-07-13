@@ -40,19 +40,26 @@ check_node() {
   fi
 }
 
+# Global so EXIT trap works under `set -u` after main returns
+_INSTALL_TMP=""
+
 main() {
   info "Agent Doctor installer"
   check_node
   info "Node $(node -v) · npm $(npm -v)"
 
-  local tmp
-  tmp="$(mktemp -d "${TMPDIR:-/tmp}/agent-doctor-install.XXXXXX")"
-  cleanup() { rm -rf "$tmp"; }
+  _INSTALL_TMP="$(mktemp -d "${TMPDIR:-/tmp}/agent-doctor-install.XXXXXX")"
+  cleanup() {
+    if [[ -n "${_INSTALL_TMP:-}" && -d "${_INSTALL_TMP}" ]]; then
+      rm -rf "${_INSTALL_TMP}"
+    fi
+    _INSTALL_TMP=""
+  }
   trap cleanup EXIT
 
   info "Cloning ${REPO_HTTPS} (${REPO_REF})"
-  git clone --depth 1 --branch "$REPO_REF" "$REPO_HTTPS" "$tmp/agent-doctor"
-  cd "$tmp/agent-doctor"
+  git clone --depth 1 --branch "$REPO_REF" "$REPO_HTTPS" "$_INSTALL_TMP/agent-doctor"
+  cd "$_INSTALL_TMP/agent-doctor"
 
   info "Installing dependencies"
   npm install --no-fund --no-audit
