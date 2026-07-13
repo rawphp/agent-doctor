@@ -1,7 +1,13 @@
 # REQ-023: Fix apply symlink and links
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.66916
+**Claimed at:** 2026-07-13T23:34:13Z
+**Heartbeat:** 2026-07-13T23:34:13Z
+<!-- claimed-end -->
+
 **UR:** UR-001
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-14
 **Layer:** engine
 **Entry point:** 
