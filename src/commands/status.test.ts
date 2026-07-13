@@ -140,6 +140,44 @@ describe("runStatus", () => {
     expect(lines.join("\n")).toMatch(/machine status/);
   });
 
+  it("status --all walks all mapped projects (no count cap)", async () => {
+    const base = tempDir("status-all-projects-");
+    const hub = makePopulatedRoot(base, "hub");
+    const projectsRoot = join(base, "Projects");
+    const projA = join(projectsRoot, "alpha");
+    const projB = join(projectsRoot, "beta");
+    mkdirSync(projA, { recursive: true });
+    mkdirSync(projB, { recursive: true });
+
+    const { report } = await runStatus({
+      args: ["--all", "--json"],
+      checks: {
+        map: {
+          version: 1,
+          skills: { global_roots: [hub], sync_target: hub },
+          vaults: [],
+          agents: [],
+          projects: { roots: [projectsRoot], entries: [] },
+        },
+        adapters: [stubAdapter("claude-code", [hub])],
+        // Non-existent cwd so only mapped projects contribute project findings
+        projectRoot: join(base, "not-a-project"),
+      },
+      stdout: () => {},
+    });
+
+    expect(report.scope).toBe("machine");
+    const missing = report.findings.filter(
+      (f) => f.id === "instructions.missing_file",
+    );
+    expect(
+      missing.some((f) => f.evidence.some((e) => e.includes(projA))),
+    ).toBe(true);
+    expect(
+      missing.some((f) => f.evidence.some((e) => e.includes(projB))),
+    ).toBe(true);
+  });
+
   it("prints overall grade and sync matrix in terminal mode", async () => {
     const lines: string[] = [];
     const base = tempDir();

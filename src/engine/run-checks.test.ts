@@ -435,6 +435,157 @@ describe("runChecks hybrid scope", () => {
   });
 });
 
+describe("runChecks machine scope multi-project", () => {
+  it("enumerates projects under map.projects.roots with instruction findings per project", async () => {
+    const base = tempDir("machine-projects-");
+    const hub = makePopulatedRoot(base, "hub");
+    const projectsRoot = join(base, "Projects");
+    const projA = join(projectsRoot, "app-a");
+    const projB = join(projectsRoot, "app-b");
+    mkdirSync(projA, { recursive: true });
+    mkdirSync(projB, { recursive: true });
+    // Neither project has CLAUDE.md — instruction findings expected for both
+
+    const report = await runChecks({
+      scope: "machine",
+      map: baseMap({
+        skills: { global_roots: [hub], sync_target: hub },
+        projects: { roots: [projectsRoot], entries: [] },
+      }),
+      adapters: [stubAdapter("claude-code", { roots: [hub] })],
+      // cwd is unrelated — machine must walk mapped roots, not only cwd
+      projectRoot: join(base, "unrelated-cwd"),
+    });
+
+    expect(report.scope).toBe("machine");
+
+    const missingInstr = report.findings.filter(
+      (f) => f.id === "instructions.missing_file",
+    );
+    expect(missingInstr.length).toBeGreaterThanOrEqual(2);
+
+    const evidenceBlobs = missingInstr.map((f) => f.evidence.join("\n"));
+    expect(evidenceBlobs.some((e) => e.includes(projA))).toBe(true);
+    expect(evidenceBlobs.some((e) => e.includes(projB))).toBe(true);
+  });
+
+  it("includes per-project product findings with project path in evidence", async () => {
+    const base = tempDir("machine-product-");
+    const hub = makePopulatedRoot(base, "hub");
+    const projectsRoot = join(base, "Projects");
+    const projA = join(projectsRoot, "with-product");
+    const projB = join(projectsRoot, "also-product");
+    mkdirSync(projA, { recursive: true });
+    mkdirSync(projB, { recursive: true });
+    writeFileSync(join(projA, "product.md"), "# product A\n");
+    writeFileSync(join(projB, "product.md"), "# product B\n");
+    // Instruction files exist but do not link product.md
+    writeFileSync(join(projA, "CLAUDE.md"), "# no product link\n");
+    writeFileSync(join(projB, "CLAUDE.md"), "# no product link\n");
+
+    const dynamicAdapter: AgentAdapter = {
+      id: "claude-code",
+      async detect(): Promise<AgentPresence> {
+        return {
+          id: "claude-code",
+          adapter: "claude-code",
+          installed: true,
+          config_home: join(base, "claude"),
+          depth: "deep",
+        };
+      },
+      async skillsRoots(): Promise<string[]> {
+        return [hub];
+      },
+      async instructionFiles(projectRoot?: string): Promise<string[]> {
+        if (!projectRoot) return [];
+        return [join(projectRoot, "CLAUDE.md")];
+      },
+      async memoryPointers(): Promise<string[]> {
+        return [];
+      },
+      proposeWireToSkillsHub(): FixAction[] {
+        return [];
+      },
+      proposeWireMemory(): FixAction[] {
+        return [];
+      },
+    };
+
+    const report = await runChecks({
+      scope: "machine",
+      map: baseMap({
+        skills: { global_roots: [hub], sync_target: hub },
+        projects: { roots: [projectsRoot], entries: [] },
+      }),
+      adapters: [dynamicAdapter],
+      projectRoot: join(base, "cwd-not-used"),
+    });
+
+    const productFindings = report.findings.filter(
+      (f) => f.id === "product.missing_link",
+    );
+    expect(productFindings.length).toBeGreaterThanOrEqual(2);
+    expect(
+      productFindings.some((f) =>
+        f.evidence.some((e) => e.includes(projA) || e === projA),
+      ),
+    ).toBe(true);
+    expect(
+      productFindings.some((f) =>
+        f.evidence.some((e) => e.includes(projB) || e === projB),
+      ),
+    ).toBe(true);
+  });
+
+  it("has no artificial max project count in v1 machine paths", async () => {
+    const base = tempDir("machine-many-");
+    const hub = makePopulatedRoot(base, "hub");
+    const projectsRoot = join(base, "Projects");
+    mkdirSync(projectsRoot, { recursive: true });
+
+    const projectCount = 30;
+    const projectPaths: string[] = [];
+    for (let i = 0; i < projectCount; i++) {
+      const p = join(projectsRoot, `proj-${String(i).padStart(2, "0")}`);
+      mkdirSync(p, { recursive: true });
+      projectPaths.push(p);
+    }
+
+    const report = await runChecks({
+      scope: "machine",
+      map: baseMap({
+        skills: { global_roots: [hub], sync_target: hub },
+        projects: { roots: [projectsRoot], entries: [] },
+      }),
+      adapters: [stubAdapter("claude-code", { roots: [hub] })],
+      projectRoot: join(base, "cwd"),
+    });
+
+    const missingInstr = report.findings.filter(
+      (f) => f.id === "instructions.missing_file",
+    );
+    // At least one instruction finding evidence path per project (no silent truncation)
+    const covered = projectPaths.filter((proj) =>
+      missingInstr.some((f) => f.evidence.some((e) => e.includes(proj))),
+    );
+    expect(covered).toHaveLength(projectCount);
+  });
+
+  it("machine scope with empty project roots still returns a valid report", async () => {
+    const report = await runChecks({
+      scope: "machine",
+      map: baseMap({ projects: { roots: [], entries: [] } }),
+      adapters: [],
+    });
+    expect(report.scope).toBe("machine");
+    expect(report.overall).toMatchObject({
+      score: expect.any(Number),
+      grade: expect.stringMatching(/^(green|yellow|red)$/),
+    });
+  });
+});
+
 describe("isAgentOnHub", () => {
   it("matches resolved paths", () => {
     const base = tempDir();
