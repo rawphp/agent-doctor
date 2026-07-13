@@ -36,7 +36,12 @@ function printHelp(): void {
     "Options:",
     "  -h, --help            Show help",
     "  -V, --version         Show version",
-    "  --yes, --non-interactive  Skip prompts (init/map; safe for CI)",
+    "  --yes, --non-interactive  Skip prompts (init/map/fix; safe for CI)",
+    "",
+    "fix options:",
+    "  --dry-run             Print fix plan without writing files",
+    "  --yes                 Apply without interactive confirmation",
+    "  --sync-target <path>  Explicit skills hub when hubs conflict",
     "",
   ];
   console.log(lines.join("\n"));

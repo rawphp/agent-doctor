@@ -3,6 +3,8 @@
  * Plan-then-apply: dry-run prints plan; apply requires confirm (or --yes).
  */
 
+import { createInterface } from "node:readline/promises";
+import { stdin as input, stdout as output } from "node:process";
 import {
   EXIT_TOOL_ERROR,
   exitCodeForGrade,
@@ -84,13 +86,24 @@ function writeLines(
 }
 
 /**
- * Default confirm: refuse when stdin is not a TTY (safe for CI).
- * Interactive path is optional; production callers should pass --yes or a prompt.
+ * Interactive confirm for apply. Refuses when stdin/stdout are not a TTY
+ * (CI-safe — never hangs). Accepts y/yes (case-insensitive); anything else denies.
  */
-async function defaultConfirm(_plan: FixAction[]): Promise<boolean> {
-  // Non-interactive default without --yes: do not apply.
-  // Real TTY prompting can be layered later; REQ requires confirm before apply.
-  return false;
+export async function defaultConfirm(plan: FixAction[]): Promise<boolean> {
+  if (!input.isTTY || !output.isTTY) {
+    return false;
+  }
+
+  const count = plan.length;
+  const rl = createInterface({ input, output });
+  try {
+    const answer = await rl.question(
+      `Apply ${count} fix action(s)? [y/N] `,
+    );
+    return /^y(es)?$/i.test(answer.trim());
+  } finally {
+    rl.close();
+  }
 }
 
 /**
@@ -149,6 +162,9 @@ export async function runFix(
     // Confirmation required unless --yes
     let confirmed = flags.yes;
     if (!confirmed) {
+      writeOut(
+        "Confirmation required before apply (pass --yes to skip prompt).",
+      );
       const confirmFn = options.confirm ?? defaultConfirm;
       confirmed = await confirmFn(plan);
     }
