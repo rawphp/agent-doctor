@@ -1,0 +1,5 @@
+[cli]
+installer = "internal"
+
+[skills]
+# sample config surface for fixtures
