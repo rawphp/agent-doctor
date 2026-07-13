@@ -7,6 +7,7 @@
 import { runInitCommand } from "./commands/init.js";
 import { runMapCommand } from "./commands/map.js";
 import { runStatus } from "./commands/status.js";
+import { runDashboard } from "./commands/dashboard.js";
 import { runFix } from "./commands/fix.js";
 import { runAgents } from "./commands/agents.js";
 import { runCheck } from "./commands/check.js";
@@ -84,6 +85,11 @@ async function main(argv: string[]): Promise<number> {
 
   if (first === "status") {
     const { exitCode } = await runStatus({ args: args.slice(1) });
+    return exitCode;
+  }
+
+  if (first === "dashboard") {
+    const { exitCode } = await runDashboard({ args: args.slice(1) });
     return exitCode;
   }
 
