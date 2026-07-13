@@ -1,19 +1,14 @@
 # REQ-020: Dashboard HTML surface server
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.50714
-**Claimed at:** 2026-07-13T23:27:11Z
-**Heartbeat:** 2026-07-13T23:27:11Z
-<!-- claimed-end -->
 
 **UR:** UR-001
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-14
 **Layer:** surfaces
 **Entry point:** 
 **Terminal state:** 
 **Parent:** REQ-019
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:bc5ea1d npm test -- src/surfaces/dashboard (9 passed)
 **Criteria approved:** agent-drafted
 **Priority:** 2
 **Size:** M
@@ -30,9 +25,9 @@ Design §10; same report no second scoring path.
 
 ## Acceptance Criteria
 
-- [ ] template(report) includes overall.grade and each finding id
-- [ ] server binds loopback only
-- [ ] Does not call fix apply
+- [x] template(report) includes overall.grade and each finding id
+- [x] server binds loopback only
+- [x] Does not call fix apply
 
 ## Verification Steps
 
@@ -47,3 +42,9 @@ Design §10; same report no second scoring path.
 
 **Service dependencies:** runChecks
 
+## Outputs
+
+- src/surfaces/dashboard/template.ts — renderDashboardHtml(report) — Overview, Agents, Findings, Fix plan CLI hints
+- src/surfaces/dashboard/server.ts — startDashboardServer — loopback-only read-only HTTP server
+- src/surfaces/dashboard/template.test.ts — Template unit tests (grade, finding ids, sections, escape, CLI hints)
+- src/surfaces/dashboard/server.test.ts — Server unit tests (loopback bind, HTML serve, no fix apply)
