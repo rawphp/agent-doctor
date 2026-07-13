@@ -4,6 +4,7 @@
  * v1 commands (design §5): init, map, status, dashboard, fix, agents, check
  */
 
+import { runStatus } from "./commands/status.js";
 import { runInit, runMap } from "./map/init.js";
 import { mapPath } from "./map/load.js";
 import type { HomeMap } from "./engine/types.js";
@@ -92,6 +93,11 @@ async function main(argv: string[]): Promise<number> {
     const map = await runMap();
     summarizeMap(map, mapPath(), "map");
     return 0;
+  }
+
+  if (first === "status") {
+    const { exitCode } = await runStatus({ args: args.slice(1) });
+    return exitCode;
   }
 
   const known = V1_COMMANDS.some((c) => c.name === first);
