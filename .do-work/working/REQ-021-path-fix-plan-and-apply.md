@@ -1,7 +1,13 @@
 # REQ-021: Path fix plan and apply
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.51661
+**Claimed at:** 2026-07-13T23:27:27Z
+**Heartbeat:** 2026-07-13T23:27:27Z
+<!-- claimed-end -->
+
 **UR:** UR-001
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-14
 **Layer:** none
 **Entry point:** `agent-doctor fix --dry-run` then `agent-doctor fix`
