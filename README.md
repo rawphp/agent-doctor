@@ -61,6 +61,20 @@ Refresh discovery later:
 agent-doctor map
 ```
 
+**Set / correct the Obsidian vault** (writes `map.yml`):
+
+```bash
+agent-doctor map --vault /Users/you/path/to/YourVault
+# or:
+agent-doctor map --vault ~/EA/cowork/meaning-of-life
+```
+
+That sets a single **manual** vault (overrides wrong auto-discovered paths). Summary should list:
+
+```text
+vault (manual): /Users/you/path/to/YourVault
+```
+
 ### 2. See health (read-only)
 
 ```bash

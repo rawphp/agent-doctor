@@ -45,10 +45,35 @@ export function formatMapSummary(map: HomeMap, path: string, mode: 'init' | 'map
   } else if (map.skills.global_roots.length > 1) {
     lines.push('  sync_target: (unresolved — multiple hubs)');
   }
+  for (const vault of map.vaults) {
+    lines.push(`  vault (${vault.source}): ${vault.path}`);
+  }
   if (map.vaults_skipped && map.vaults.length === 0) {
     lines.push('  vaults_skipped: true');
   }
   return lines.join('\n');
+}
+
+/**
+ * Parse `--vault <path>` or `--vault=<path>` from command args.
+ * Returns undefined when the flag is absent.
+ */
+export function parseVaultFlag(args: string[]): string | undefined {
+  const eq = args.find((a) => a.startsWith('--vault='));
+  if (eq) {
+    const value = eq.slice('--vault='.length).trim();
+    return value === '' ? undefined : value;
+  }
+  const idx = args.indexOf('--vault');
+  if (idx >= 0) {
+    const next = args[idx + 1];
+    if (next && !next.startsWith('-')) {
+      return next;
+    }
+    // `--vault` with no value — treat as present but empty (caller may error)
+    return '';
+  }
+  return undefined;
 }
 
 /**

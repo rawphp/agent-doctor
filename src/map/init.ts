@@ -4,6 +4,8 @@
  * map: refresh discovery only — no vault prompt / wizard chrome.
  */
 
+import { homedir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import { HOME_MAP_VERSION, type HomeMap, type MapAgent, type VaultEntry } from '../engine/types.js';
@@ -31,6 +33,11 @@ export type MapRunOptions = MapIoOptions & {
   homeDir?: string;
   /** Present for API symmetry with init; map never prompts for vaults. */
   promptVault?: VaultPromptFn;
+  /**
+   * Explicit vault path from CLI (`map --vault <path>`).
+   * When set, becomes the sole vault entry (source: manual) and clears vaults_skipped.
+   */
+  vaultPath?: string;
 };
 
 type VaultResolution = {
@@ -79,6 +86,9 @@ export async function runInit(options: InitRunOptions = {}): Promise<HomeMap> {
  * Refresh map discovery without wizard chrome.
  * Does not prompt for vaults; preserves prior manual vault entries,
  * sync_target, and agent ignored/primary flags.
+ *
+ * When `vaultPath` is set (`map --vault`), that path becomes the sole vault
+ * (manual) — overrides wrong auto-discovered vaults.
  */
 export async function runMap(options: MapRunOptions = {}): Promise<HomeMap> {
   const home = options.home ?? agentDoctorHome();
@@ -86,9 +96,18 @@ export async function runMap(options: MapRunOptions = {}): Promise<HomeMap> {
   const discovered = discover({ homeDir: options.homeDir });
   const agents = detectAndMergeAgents(options.homeDir, previous);
 
-  const vaults = mergeVaults(discovered.vaults, previous?.vaults ?? []);
-  // Clear skip marker once any vault is present; otherwise keep prior choice.
-  const vaults_skipped = vaults.length > 0 ? false : (previous?.vaults_skipped ?? false);
+  let vaults: VaultEntry[];
+  let vaults_skipped: boolean | undefined;
+
+  if (options.vaultPath != null && options.vaultPath.trim() !== '') {
+    const resolved = resolveVaultPath(options.vaultPath);
+    vaults = [{ path: resolved, source: 'manual' }];
+    vaults_skipped = false;
+  } else {
+    vaults = mergeVaults(discovered.vaults, previous?.vaults ?? []);
+    // Clear skip marker once any vault is present; otherwise keep prior choice.
+    vaults_skipped = vaults.length > 0 ? false : (previous?.vaults_skipped ?? false);
+  }
 
   const map = buildMap({
     skills_roots: discovered.skills_roots,
@@ -101,6 +120,17 @@ export async function runMap(options: MapRunOptions = {}): Promise<HomeMap> {
 
   saveMap(map, { home });
   return map;
+}
+
+/** Expand ~ and resolve to absolute path for vault entries. */
+export function resolveVaultPath(raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('~/') || trimmed === '~') {
+    const home = homedir();
+    return trimmed === '~' ? home : join(home, trimmed.slice(2));
+  }
+  // Absolute or relative to cwd
+  return resolve(trimmed);
 }
 
 function detectAndMergeAgents(homeDir: string | undefined, previous: HomeMap | null): MapAgent[] {

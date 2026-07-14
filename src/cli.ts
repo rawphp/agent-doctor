@@ -79,7 +79,12 @@ function printCommandHelp(command: CommandName): void {
       'Refresh discovery fields in the home map (preserves sync_target / ignored).',
       '',
       'Options:',
+      '  --vault <path>            Set the Obsidian vault (writes map.yml; source: manual)',
       '  --yes, --non-interactive  Skip prompts',
+      '',
+      'Examples:',
+      '  agent-doctor map --vault ~/EA/cowork/meaning-of-life',
+      '  agent-doctor map --vault "/Users/you/Documents/My Vault"',
     ],
     status: [
       'Usage: agent-doctor status [options]',

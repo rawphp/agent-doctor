@@ -181,4 +181,31 @@ describe('init / map path-unit', () => {
     const map = await runMap({ homeDir: fixtureHome });
     expect(map.vaults).toEqual(expect.arrayContaining([{ path: vaultPath, source: 'manual' }]));
   });
+
+  it('map --vaultPath sets sole manual vault and writes map.yml', async () => {
+    const doctorHome = join(fixtureHome, 'doctor-home');
+    mkdirSync(doctorHome, { recursive: true });
+    const wrong = join(fixtureHome, 'Documents', 'Obsidian', 'Wrong');
+    const right = join(fixtureHome, 'cowork', 'meaning-of-life');
+    mkdirSync(join(wrong, '.obsidian'), { recursive: true });
+    mkdirSync(join(right, '.obsidian'), { recursive: true });
+
+    // First map picks up discovered wrong vault
+    const first = await runMap({ homeDir: fixtureHome, home: doctorHome });
+    expect(first.vaults.some((v) => v.path === wrong)).toBe(true);
+
+    // Explicit vaultPath replaces vault list
+    const map = await runMap({
+      homeDir: fixtureHome,
+      home: doctorHome,
+      vaultPath: right,
+    });
+    expect(map.vaults).toEqual([{ path: right, source: 'manual' }]);
+    expect(map.vaults_skipped).toBe(false);
+
+    // Persisted under doctor home
+    const { loadMap } = await import('./load.js');
+    const loaded = loadMap({ home: doctorHome });
+    expect(loaded?.vaults).toEqual([{ path: right, source: 'manual' }]);
+  });
 });
