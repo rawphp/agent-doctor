@@ -155,11 +155,14 @@ export function createGrokAdapter(options: GrokAdapterOptions = {}): AgentAdapte
     },
 
     proposeWireMemory(paths: string[]): FixAction[] {
+      // Grok uses AGENTS.md when present; otherwise CLAUDE.md-style home instructions.
+      const instructionFile = join(home, 'AGENTS.md');
       return paths.map((vaultPath, index) => ({
         id: `fix.wire_grok_memory_${index + 1}`,
         kind: 'wire_memory_pointer',
-        description: `Add memory/vault pointer to ${vaultPath} in Grok instructions (link only)`,
-        target: vaultPath,
+        description: `Add vault pointer to ${vaultPath} in ${instructionFile}`,
+        target: instructionFile,
+        value: vaultPath,
         agent_id: ADAPTER_ID,
       }));
     },

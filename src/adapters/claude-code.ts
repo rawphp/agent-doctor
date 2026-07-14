@@ -145,11 +145,14 @@ export function createClaudeCodeAdapter(options: ClaudeCodeAdapterOptions = {}):
     },
 
     proposeWireMemory(paths: string[]): FixAction[] {
+      // target = instruction file to append; value = vault path (apply layer)
+      const instructionFile = join(home, 'CLAUDE.md');
       return paths.map((vaultPath, index) => ({
         id: `fix.wire_claude-code_memory_${index + 1}`,
         kind: 'wire_memory_pointer',
-        description: `Add memory/vault pointer to ${vaultPath} in Claude Code instructions (link only)`,
-        target: vaultPath,
+        description: `Add vault pointer to ${vaultPath} in ${instructionFile}`,
+        target: instructionFile,
+        value: vaultPath,
         agent_id: ADAPTER_ID,
       }));
     },

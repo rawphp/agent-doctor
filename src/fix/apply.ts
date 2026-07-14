@@ -14,6 +14,7 @@ import {
   rmSync,
   rmdirSync,
   symlinkSync,
+  writeFileSync,
 } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 import type { FixAction, HomeMap } from '../engine/types.js';
@@ -114,7 +115,7 @@ function canReplaceExisting(
     if (!force) {
       return {
         ok: false,
-        reason: `conflict: ${path} already exists (not replaced; pass force to overwrite non-empty path)`,
+        reason: `conflict: ${path} already exists and is not empty — re-run with --force to replace with a symlink to the hub (merge unique skills into the hub first)`,
       };
     }
     return { ok: true };
@@ -192,7 +193,7 @@ function applySymlink(action: FixAction, ctx: ApplyContext): ActionResult {
     return { action, status: 'skipped', reason: message };
   }
 }
-function linkBlock(productPath: string): string {
+function productLinkBlock(productPath: string): string {
   const base = basename(productPath);
   return [
     '',
@@ -203,23 +204,55 @@ function linkBlock(productPath: string): string {
   ].join('\n');
 }
 
-function applyAppendLink(action: FixAction, ctx: ApplyContext): ActionResult {
+function memoryLinkBlock(vaultPath: string): string {
+  const name = basename(vaultPath);
+  return [
+    '',
+    '<!-- agent-doctor:memory -->',
+    `Obsidian vault / memory: [${name}](${vaultPath})`,
+    '<!-- /agent-doctor:memory -->',
+    '',
+  ].join('\n');
+}
+
+function ensureInstructionFile(path: string): { ok: true } | { ok: false; reason: string } {
+  if (existsSync(path)) return { ok: true };
+  try {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, '# Agent instructions\n\n', 'utf8');
+    return { ok: true };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, reason: `could not create instruction file: ${message}` };
+  }
+}
+
+function applyAppendLink(
+  action: FixAction,
+  ctx: ApplyContext,
+  mode: 'product' | 'memory' = 'product',
+): ActionResult {
   const target = action.target;
-  const product = action.value;
-  if (!target || !product) {
+  const linked = action.value;
+  if (!target || !linked) {
     return {
       action,
       status: 'skipped',
-      reason: 'missing target or link path',
+      reason:
+        mode === 'memory'
+          ? 'wire_memory_pointer requires target instruction file and vault path'
+          : 'missing target or link path',
     };
   }
 
   if (!existsSync(target)) {
-    return {
-      action,
-      status: 'skipped',
-      reason: `instruction file missing: ${target}`,
-    };
+    if (ctx.dryRun) {
+      return { action, status: 'applied', reason: 'dry-run (would create instruction file)' };
+    }
+    const created = ensureInstructionFile(target);
+    if (!created.ok) {
+      return { action, status: 'skipped', reason: created.reason };
+    }
   }
 
   let content = '';
@@ -230,13 +263,18 @@ function applyAppendLink(action: FixAction, ctx: ApplyContext): ActionResult {
     return { action, status: 'skipped', reason: message };
   }
 
-  const base = basename(product);
-  // Idempotent: marker block already present, or product basename already linked
-  if (
-    content.includes('<!-- agent-doctor:link -->') ||
-    content.toLowerCase().includes(base.toLowerCase())
-  ) {
-    return { action, status: 'applied', reason: 'link already present' };
+  if (mode === 'memory') {
+    if (content.includes(linked)) {
+      return { action, status: 'applied', reason: 'vault pointer already present' };
+    }
+  } else {
+    const base = basename(linked);
+    if (
+      content.includes('<!-- agent-doctor:link -->') ||
+      content.toLowerCase().includes(base.toLowerCase())
+    ) {
+      return { action, status: 'applied', reason: 'link already present' };
+    }
   }
 
   if (ctx.dryRun) {
@@ -244,7 +282,8 @@ function applyAppendLink(action: FixAction, ctx: ApplyContext): ActionResult {
   }
 
   try {
-    appendFileSync(target, linkBlock(product), 'utf8');
+    const block = mode === 'memory' ? memoryLinkBlock(linked) : productLinkBlock(linked);
+    appendFileSync(target, block, 'utf8');
     return { action, status: 'applied' };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -289,21 +328,8 @@ function applySetSyncTarget(action: FixAction, ctx: ApplyContext): ActionResult 
 }
 
 function applyMemoryPointer(action: FixAction, ctx: ApplyContext): ActionResult {
-  // Wire memory is link-only append when target instruction file is set
-  if (action.target && action.value) {
-    return applyAppendLink(
-      {
-        ...action,
-        kind: 'append_instruction_link',
-      },
-      ctx,
-    );
-  }
-  return {
-    action,
-    status: 'skipped',
-    reason: 'wire_memory_pointer requires target instruction file and vault path',
-  };
+  // target = instruction file, value = vault path
+  return applyAppendLink(action, ctx, 'memory');
 }
 
 /**
@@ -358,9 +384,22 @@ export function formatApplyResults(results: ActionResult[]): string {
     return 'No actions applied.\n';
   }
   const lines = ['Apply results:'];
+  let applied = 0;
+  let skippedForce = 0;
   for (const r of results) {
     const mark = r.status === 'applied' ? '✓' : r.status === 'rejected' ? '✗' : '–';
     lines.push(`  ${mark} [${r.status}] ${r.action.id}${r.reason ? ` — ${r.reason}` : ''}`);
+    if (r.status === 'applied') applied += 1;
+    if (r.status === 'skipped' && r.reason?.includes('--force')) skippedForce += 1;
+  }
+  lines.push('');
+  lines.push(`Summary: ${applied} applied, ${results.length - applied} skipped/rejected.`);
+  if (skippedForce > 0) {
+    lines.push('');
+    lines.push('Skill dirs already have content. To replace them with hub symlinks:');
+    lines.push('  1. Merge any unique skills from ~/.claude/skills (etc.) into your hub');
+    lines.push('  2. Re-run: agent-doctor fix --yes --force');
+    lines.push('     (--force removes the agent skills folder and symlinks it to the hub)');
   }
   lines.push('');
   return lines.join('\n');

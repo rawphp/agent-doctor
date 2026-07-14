@@ -150,11 +150,13 @@ export function createCodexAdapter(options: CodexAdapterOptions = {}): AgentAdap
     },
 
     proposeWireMemory(paths: string[]): FixAction[] {
+      const instructionFile = join(home, 'AGENTS.md');
       return paths.map((vaultPath, index) => ({
         id: `fix.wire_codex_memory_${index + 1}`,
         kind: 'wire_memory_pointer',
-        description: `Add memory/vault pointer to ${vaultPath} in Codex AGENTS.md (link only)`,
-        target: vaultPath,
+        description: `Add vault pointer to ${vaultPath} in ${instructionFile}`,
+        target: instructionFile,
+        value: vaultPath,
         agent_id: ADAPTER_ID,
       }));
     },

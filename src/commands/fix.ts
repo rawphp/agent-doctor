@@ -55,6 +55,11 @@ export type FixFlags = {
   html: boolean;
   /** When --html, do not auto-open browser (print URL only). */
   noOpen: boolean;
+  /**
+   * Allow replacing non-empty agent skills dirs with hub symlinks.
+   * Destructive to the agent-local skills folder (merge into hub first).
+   */
+  force: boolean;
 };
 
 export type FixRunOptions = {
@@ -99,6 +104,7 @@ export function parseFixFlags(args: string[]): FixFlags {
   const yes = args.includes('--yes') || args.includes('--non-interactive');
   const html = args.includes('--html');
   const noOpen = args.includes('--no-open');
+  const force = args.includes('--force');
 
   let syncTarget: string | undefined;
   const eq = args.find((a) => a.startsWith('--sync-target='));
@@ -111,7 +117,7 @@ export function parseFixFlags(args: string[]): FixFlags {
     }
   }
 
-  return { dryRun, yes, syncTarget, html, noOpen };
+  return { dryRun, yes, syncTarget, html, noOpen, force };
 }
 
 export function buildApplyCommand(syncTarget?: string): string {
@@ -299,11 +305,18 @@ export async function runFix(options: FixRunOptions = {}): Promise<FixResult> {
       };
     }
 
+    if (flags.force) {
+      writeOut(
+        'WARNING: --force will replace existing agent skills directories with symlinks to the hub.',
+      );
+    }
+
     const results = applyFixPlan(plan, {
       hub: flags.syncTarget ?? report.sync.skills_hub,
-      doctorHome,
+      doctorHome: home,
       projectRoot: report.project_root,
       dryRun: false,
+      force: flags.force,
     });
 
     writeLines(writeOut, formatApplyResults(results));
