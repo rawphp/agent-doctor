@@ -118,7 +118,7 @@ Fix plan (dry-run — no writes):
     3. If the plan looks right: agent-doctor fix --yes --sync-target /path/to/hub
 ```
 
-### 4. Choose one skills hub, then plan again
+### 4. Choose one skills hub → full plan (still dry-run)
 
 Pick the directory that should be the **single** shared library (no copies between agents). A common choice:
 
@@ -127,7 +127,13 @@ Pick the directory that should be the **single** shared library (no copies betwe
 agent-doctor fix --dry-run --sync-target ~/.agents/skills
 ```
 
-Review the listed actions (symlink / wire / map update). Nothing is written yet.
+You should see a **multi-step plan**, not only “set map field”, for example:
+
+1. Set `sync_target` in `~/.agent-doctor/map.yml`  
+2. Symlink each agent’s skills dir → that hub  
+3. Optional vault/instruction link fixes  
+
+Nothing is written yet. The last lines name the exact apply command.
 
 ### 5. Apply (only after dry-run looks right)
 

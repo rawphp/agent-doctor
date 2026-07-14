@@ -40,6 +40,13 @@ export type BuildFixPlanInput = {
   hub?: string;
   /** Project root — used for product path context only. */
   projectRoot?: string;
+  /**
+   * Agents to wire when hub is chosen after a conflict (report.sync.agents_in_scope).
+   * Hub conflict alone does not emit agent_not_on_hub rows — wire these peers.
+   */
+  agentsInScope?: string[];
+  /** Doctor home for map.yml path on set_sync_target. */
+  doctorHome?: string;
 };
 
 export type BuildFixPlanOptions = {
@@ -50,6 +57,10 @@ export type BuildFixPlanOptions = {
   syncTarget?: string;
   /** Doctor home for map.yml path on set_sync_target actions. */
   doctorHome?: string;
+  /** Live adapters — when set, plan rebuilds wires from findings (CLI path). */
+  adapters?: AgentAdapter[];
+  /** Map for conflict / sync_target planning (CLI loads from disk). */
+  map?: HomeMap;
 };
 
 export function isRejectedCopyAction(action: FixAction): boolean {
@@ -181,12 +192,56 @@ function appendActionsFromFindings(findings: Finding[]): FixAction[] {
 }
 
 /**
+ * Agents we should propose wiring for once a hub is known.
+ * Prefer explicit off-hub findings; after hub conflict + user hub choice,
+ * fall back to agents_in_scope / all adapters (conflict rows have empty agents_affected).
+ */
+function agentIdsToWire(
+  findings: Finding[],
+  adapters: AgentAdapter[],
+  agentsInScope: string[] | undefined,
+  hubChosen: boolean,
+): Set<string> {
+  const offHub = findings.filter((f) => f.id === 'skills.agent_not_on_hub');
+  const ids = new Set(offHub.flatMap((f) => f.agents_affected));
+
+  if (ids.size > 0) {
+    return ids;
+  }
+
+  if (!hubChosen) {
+    return ids;
+  }
+
+  // Hub conflict (or unresolved multi-root) — plan wires for the whole fleet.
+  if (hasHubConflict(findings) || findings.some((f) => f.domain === 'skills' && f.severity === 'error')) {
+    if (agentsInScope && agentsInScope.length > 0) {
+      for (const id of agentsInScope) ids.add(id);
+    } else {
+      for (const a of adapters) ids.add(a.id);
+    }
+  }
+
+  return ids;
+}
+
+/**
  * Findings-driven plan builder (adapter proposeWire*).
  */
 function buildFixPlanFromFindings(input: BuildFixPlanInput): FixAction[] {
-  const { findings, map, adapters = [], hub } = input;
+  const { findings, map, adapters = [], hub, agentsInScope, doctorHome } = input;
   const actions: FixAction[] = [];
-  const blockWire = blocksWireForHubConflict(findings, map);
+  // User-supplied hub (planning as if sync_target already set) unblocks wire.
+  const effectiveMap: HomeMap =
+    hub && !map.skills.sync_target
+      ? {
+          ...map,
+          skills: { ...map.skills, sync_target: hub },
+        }
+      : map;
+  const blockWire = blocksWireForHubConflict(findings, effectiveMap);
+  const hubChosen = Boolean(hub || effectiveMap.skills.sync_target);
+  const home = doctorHome ?? agentDoctorHome();
 
   if (blockWire) {
     actions.push({
@@ -195,17 +250,35 @@ function buildFixPlanFromFindings(input: BuildFixPlanInput): FixAction[] {
       description: 'Choose one skills hub and set map.skills.sync_target before wiring agents',
       finding_ids: ['skills.hub_conflict'],
     });
+  } else if (hub && map.skills.sync_target !== hub) {
+    // Map does not yet record this hub — include set_sync_target in the plan.
+    actions.push({
+      id: 'fix.set_sync_target',
+      kind: 'set_sync_target',
+      description: `Set map.skills.sync_target to ${hub}`,
+      target: mapPath({ home }),
+      value: hub,
+      finding_ids: hasHubConflict(findings) ? ['skills.hub_conflict'] : undefined,
+    });
   }
 
   if (!blockWire && hub) {
-    const offHub = findings.filter((f) => f.id === 'skills.agent_not_on_hub');
-    const agentIds = new Set(offHub.flatMap((f) => f.agents_affected));
+    const agentIds = agentIdsToWire(findings, adapters, agentsInScope, hubChosen);
     for (const agentId of agentIds) {
       const adapter = adapters.find((a) => a.id === agentId);
       if (!adapter) continue;
       for (const proposal of adapter.proposeWireToSkillsHub(hub)) {
         if (isRejectedCopyAction(proposal)) continue;
-        actions.push(mergeFindingIds(proposal, 'skills.agent_not_on_hub'));
+        const withHub = {
+          ...proposal,
+          value: proposal.value ?? hub,
+        };
+        actions.push(
+          mergeFindingIds(
+            withHub,
+            hasHubConflict(findings) ? 'skills.hub_conflict' : 'skills.agent_not_on_hub',
+          ),
+        );
       }
     }
   }
@@ -226,6 +299,19 @@ function buildFixPlanFromFindings(input: BuildFixPlanInput): FixAction[] {
         byAgent.set(agentId, list);
       }
     }
+    // If vault findings lack agents_affected, attach to agents in scope
+    if (byAgent.size === 0 && vaultFindings.length > 0 && hubChosen) {
+      const vaults = vaultFindings
+        .map((f) => vaultPathFromEvidence(f.evidence))
+        .filter((v): v is string => Boolean(v));
+      const scope =
+        agentsInScope && agentsInScope.length > 0
+          ? agentsInScope
+          : adapters.map((a) => a.id);
+      for (const agentId of scope) {
+        byAgent.set(agentId, [...vaults]);
+      }
+    }
     for (const [agentId, vaults] of byAgent) {
       const adapter = adapters.find((a) => a.id === agentId);
       if (!adapter) continue;
@@ -241,7 +327,8 @@ function buildFixPlanFromFindings(input: BuildFixPlanInput): FixAction[] {
 
 /**
  * Report-driven plan builder used by `agent-doctor fix`.
- * Filters report.fix_plan, rejects copy-tree, enriches safe actions.
+ * Rebuilds from findings + adapters (not only report.fix_plan stubs).
+ * When --sync-target is set, plans the full wire set as if that hub is chosen.
  */
 function buildFixPlanFromReport(report: Report, options: BuildFixPlanOptions = {}): FixAction[] {
   const hub =
@@ -250,6 +337,41 @@ function buildFixPlanFromReport(report: Report, options: BuildFixPlanOptions = {
       : report.sync.skills_hub != null && report.sync.skills_hub !== ''
         ? report.sync.skills_hub
         : undefined;
+
+  const map: HomeMap = options.map ?? {
+    version: 1,
+    skills: {
+      global_roots: [],
+      sync_target: hub ?? null,
+    },
+    vaults: (report.sync.memory_hubs ?? []).map((path) => ({
+      path,
+      source: 'discovered' as const,
+    })),
+    agents: (report.agents ?? []).map((a) => ({
+      id: a.id,
+      adapter: a.adapter,
+      config_home: a.config_home ?? '',
+      primary: a.primary ?? false,
+      ignored: a.ignored ?? false,
+    })),
+    projects: { roots: [], entries: [] },
+  };
+
+  // Prefer full findings path when adapters are available (normal CLI).
+  if (options.adapters && options.adapters.length > 0) {
+    return buildFixPlanFromFindings({
+      findings: report.findings,
+      map,
+      adapters: options.adapters,
+      hub,
+      agentsInScope: report.sync.agents_in_scope,
+      projectRoot: report.project_root,
+      doctorHome: options.doctorHome,
+    });
+  }
+
+  // Fallback: merge report.fix_plan + set_sync_target + product links (tests / no adapters)
   const conflict = hasHubConflict(report.findings);
   const plan: FixAction[] = [];
 
@@ -279,7 +401,6 @@ function buildFixPlanFromReport(report: Report, options: BuildFixPlanOptions = {
       continue;
     }
 
-    // Normalize legacy kind name
     if (action.kind === 'append_link_block') {
       plan.push({ ...action, kind: 'append_instruction_link' });
       continue;
@@ -305,14 +426,7 @@ function buildFixPlanFromReport(report: Report, options: BuildFixPlanOptions = {
     }
   }
 
-  const existingAppend = new Set(
-    plan
-      .filter((a) => a.kind === 'append_instruction_link' || a.kind === 'append_link_block')
-      .map((a) => `${a.target}|${a.value}`),
-  );
   for (const action of appendActionsFromFindings(report.findings)) {
-    const key = `${action.target}|${action.value}`;
-    if (existingAppend.has(key)) continue;
     plan.push(action);
   }
 
@@ -440,10 +554,13 @@ export function formatFixPlan(plan: FixAction[], options: FormatFixPlanOptions =
   }
   if (options.dryRun) {
     lines.push('');
-    lines.push('  To apply (after review): agent-doctor fix --yes');
-    if (options.syncTarget) {
-      lines.push(`    (include --sync-target ${options.syncTarget} if you used it here)`);
-    }
+    lines.push(`  ${plan.length} step(s) in this plan — nothing written yet.`);
+    const applyCmd = options.syncTarget
+      ? `agent-doctor fix --yes --sync-target ${options.syncTarget}`
+      : 'agent-doctor fix --yes';
+    lines.push(`  Next: review the list, then run:`);
+    lines.push(`    ${applyCmd}`);
+    lines.push('  Then: agent-doctor status   # confirm grade improved');
   }
   lines.push('');
   return lines.join('\n');

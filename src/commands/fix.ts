@@ -5,9 +5,11 @@
 
 import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
+import { createAdapterRegistry, type AgentAdapter } from '../adapters/index.js';
 import { EXIT_TOOL_ERROR, exitCodeForGrade } from '../engine/score.js';
 import { runChecks, type RunChecksOptions } from '../engine/run-checks.js';
-import type { FixAction, Report } from '../engine/types.js';
+import type { FixAction, HomeMap, Report } from '../engine/types.js';
+import { agentDoctorHome, loadMap } from '../map/load.js';
 import {
   applyFixPlan,
   buildFixPlan,
@@ -15,6 +17,30 @@ import {
   formatFixPlan,
   type ActionResult,
 } from '../fix/index.js';
+
+/** Build live adapters for plan generation (same ids as map / detect). */
+function adaptersForPlan(map: HomeMap, injected?: AgentAdapter[]): AgentAdapter[] {
+  if (injected && injected.length > 0) {
+    return injected;
+  }
+  const registry = createAdapterRegistry();
+  const adapters: AgentAdapter[] = [];
+  for (const entry of map.agents) {
+    if (entry.ignored) continue;
+    const adapter = registry.getAdapter(entry.id, {
+      home: entry.config_home || undefined,
+    });
+    if (adapter) adapters.push(adapter);
+  }
+  // Ensure deep defaults exist even if map is sparse
+  for (const id of ['claude-code', 'codex', 'grok'] as const) {
+    if (!adapters.some((a) => a.id === id)) {
+      const a = registry.getAdapter(id);
+      if (a) adapters.push(a);
+    }
+  }
+  return adapters;
+}
 
 export type FixFlags = {
   dryRun: boolean;
@@ -108,16 +134,32 @@ export async function runFix(options: FixRunOptions = {}): Promise<FixResult> {
   const doctorHome = options.doctorHome ?? options.checks?.home;
 
   try {
+    const home = doctorHome ?? options.checks?.home ?? agentDoctorHome();
     const report = await runChecks({
       ...options.checks,
-      home: options.checks?.home ?? doctorHome,
+      home: options.checks?.home ?? home,
     });
+
+    const map =
+      options.checks?.map ??
+      loadMap({ home }) ??
+      ({
+        version: 1,
+        skills: { global_roots: [], sync_target: null },
+        vaults: [],
+        agents: [],
+        projects: { roots: [], entries: [] },
+      } satisfies HomeMap);
+
+    const adapters = adaptersForPlan(map, options.checks?.adapters);
 
     const plan =
       options.planOverride ??
       buildFixPlan(report, {
         syncTarget: flags.syncTarget,
-        doctorHome,
+        doctorHome: home,
+        adapters,
+        map,
       });
 
     // Attach plan for callers / dry-run consumers
@@ -135,14 +177,16 @@ export async function runFix(options: FixRunOptions = {}): Promise<FixResult> {
     );
 
     if (flags.dryRun) {
-      writeOut(
-        plan.length === 0
-          ? 'Dry-run complete — no files written (and no auto-fix plan to apply yet).'
-          : 'Dry-run complete — no files written.',
-      );
-      writeOut(
-        `Current grade: ${report.overall.score} (${report.overall.grade.toUpperCase()}) — empty plan does not mean green.`,
-      );
+      writeOut('Dry-run complete — no files written.');
+      if (plan.length === 0) {
+        writeOut(
+          `Current grade: ${report.overall.score} (${report.overall.grade.toUpperCase()}) — empty plan does not mean green.`,
+        );
+      } else {
+        writeOut(
+          `Current grade: ${report.overall.score} (${report.overall.grade.toUpperCase()}). Applying the plan should address the steps above.`,
+        );
+      }
       return {
         report,
         plan,

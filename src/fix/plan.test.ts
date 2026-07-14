@@ -490,6 +490,69 @@ describe('HomeMap type smoke for set_sync_target plan', () => {
   });
 });
 
+describe('buildFixPlan with user syncTarget after hub conflict', () => {
+  it('plans set_sync_target plus wire for all agents_in_scope', () => {
+    const hub = '/Users/me/.agents/skills';
+    const report: Report = {
+      generated_at: '2026-07-14T12:00:00.000Z',
+      scope: 'hybrid',
+      sync: {
+        memory_hubs: [],
+        agents_in_scope: ['claude-code', 'codex', 'grok'],
+        aligned: false,
+      },
+      overall: { score: 40, grade: 'red' },
+      agents: [
+        {
+          id: 'claude-code',
+          adapter: 'claude-code',
+          installed: true,
+          config_home: '/h/.claude',
+          depth: 'deep',
+        },
+        {
+          id: 'codex',
+          adapter: 'codex',
+          installed: true,
+          config_home: '/h/.codex',
+          depth: 'deep',
+        },
+        {
+          id: 'grok',
+          adapter: 'grok',
+          installed: true,
+          config_home: '/h/.grok',
+          depth: 'deep',
+        },
+      ],
+      domains: [],
+      findings: [
+        finding({
+          id: 'skills.hub_conflict',
+          severity: 'error',
+          domain: 'skills',
+          evidence: [hub, '/h/.claude/skills', '/h/.codex/skills'],
+        }),
+      ],
+      recommendations: [],
+    };
+
+    const plan = buildFixPlan(report, {
+      syncTarget: hub,
+      adapters: [
+        stubAdapter('claude-code'),
+        stubAdapter('codex'),
+        stubAdapter('grok'),
+      ],
+      map: emptyMap({ global_roots: [hub, '/h/.claude/skills'], sync_target: null }),
+      doctorHome: '/h/.agent-doctor',
+    });
+
+    expect(plan.some((a) => a.kind === 'set_sync_target' && a.value === hub)).toBe(true);
+    expect(plan.filter((a) => a.kind === 'symlink_skills_hub').length).toBeGreaterThanOrEqual(3);
+  });
+});
+
 describe('formatFixPlan empty plan messaging', () => {
   it('explains hub conflict and next steps when plan is empty', () => {
     const text = formatFixPlan([], {
