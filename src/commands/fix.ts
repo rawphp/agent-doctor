@@ -6,6 +6,7 @@
 import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import { createAdapterRegistry, type AgentAdapter } from '../adapters/index.js';
+import { defaultOpenBrowser } from './dashboard.js';
 import { EXIT_TOOL_ERROR, exitCodeForGrade } from '../engine/score.js';
 import { runChecks, type RunChecksOptions } from '../engine/run-checks.js';
 import type { FixAction, HomeMap, Report } from '../engine/types.js';
@@ -17,6 +18,8 @@ import {
   formatFixPlan,
   type ActionResult,
 } from '../fix/index.js';
+import { renderFixPlanHtml } from '../surfaces/fix-plan/template.js';
+import { startFixPlanServer } from '../surfaces/fix-plan/server.js';
 
 /** Build live adapters for plan generation (same ids as map / detect). */
 function adaptersForPlan(map: HomeMap, injected?: AgentAdapter[]): AgentAdapter[] {
@@ -48,6 +51,10 @@ export type FixFlags = {
   yes: boolean;
   /** Explicit hub when multiple roots conflict — never invented. */
   syncTarget?: string;
+  /** Open plan as HTML in the browser (preview only). */
+  html: boolean;
+  /** When --html, do not auto-open browser (print URL only). */
+  noOpen: boolean;
 };
 
 export type FixRunOptions = {
@@ -66,6 +73,13 @@ export type FixRunOptions = {
   planOverride?: FixAction[];
   stdout?: (line: string) => void;
   stderr?: (line: string) => void;
+  /** Inject browser open (tests). */
+  openBrowser?: (url: string) => Promise<void> | void;
+  /**
+   * When true (default) and --html, hold process until Ctrl+C so the page stays up.
+   * Tests set false.
+   */
+  waitUntilClose?: boolean;
 };
 
 export type FixResult = {
@@ -83,6 +97,8 @@ export type FixResult = {
 export function parseFixFlags(args: string[]): FixFlags {
   const dryRun = args.includes('--dry-run');
   const yes = args.includes('--yes') || args.includes('--non-interactive');
+  const html = args.includes('--html');
+  const noOpen = args.includes('--no-open');
 
   let syncTarget: string | undefined;
   const eq = args.find((a) => a.startsWith('--sync-target='));
@@ -95,7 +111,13 @@ export function parseFixFlags(args: string[]): FixFlags {
     }
   }
 
-  return { dryRun, yes, syncTarget };
+  return { dryRun, yes, syncTarget, html, noOpen };
+}
+
+export function buildApplyCommand(syncTarget?: string): string {
+  return syncTarget
+    ? `agent-doctor fix --yes --sync-target ${syncTarget}`
+    : 'agent-doctor fix --yes';
 }
 
 function writeLines(write: (line: string) => void, text: string): void {
@@ -165,16 +187,67 @@ export async function runFix(options: FixRunOptions = {}): Promise<FixResult> {
     // Attach plan for callers / dry-run consumers
     report.fix_plan = plan;
 
+    // Terminal summary always (short when --html focuses on the browser).
     writeLines(
       writeOut,
       formatFixPlan(plan, {
-        dryRun: flags.dryRun,
+        dryRun: flags.dryRun || flags.html,
         findings: report.findings,
         recommendations: report.recommendations,
         skillsHub: report.sync.skills_hub,
         syncTarget: flags.syncTarget,
       }),
     );
+
+    // --html is always a read-only plan preview (never applies), with or without --dry-run.
+    if (flags.html) {
+      const applyCommand = buildApplyCommand(flags.syncTarget);
+      const html = renderFixPlanHtml({
+        plan,
+        report,
+        dryRun: true,
+        syncTarget: flags.syncTarget,
+        applyCommand,
+      });
+      const server = await startFixPlanServer(html);
+      writeOut('');
+      writeOut(`Plan preview (browser): ${server.url}`);
+      writeOut('Read-only — this page does not apply fixes. Ctrl+C to stop the preview server.');
+
+      if (!flags.noOpen) {
+        const openBrowser = options.openBrowser ?? defaultOpenBrowser;
+        try {
+          await openBrowser(server.url);
+        } catch {
+          // URL already printed
+        }
+      }
+
+      const wait = options.waitUntilClose !== false;
+      if (wait) {
+        await new Promise<void>((resolve) => {
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            writeOut('\nClosing plan preview…');
+            void server.close().finally(() => resolve());
+          };
+          process.once('SIGINT', finish);
+          process.once('SIGTERM', finish);
+        });
+      } else {
+        await server.close();
+      }
+
+      return {
+        report,
+        plan,
+        results: [],
+        applied: false,
+        exitCode: exitCodeForGrade(report.overall.grade),
+      };
+    }
 
     if (flags.dryRun) {
       writeOut('Dry-run complete — no files written.');

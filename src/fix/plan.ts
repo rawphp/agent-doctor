@@ -540,27 +540,39 @@ export function explainEmptyFixPlan(options: FormatFixPlanOptions = {}): string[
   return lines;
 }
 
-/** Format plan for terminal output. */
+/** Format plan for terminal output (readable multi-line steps). */
 export function formatFixPlan(plan: FixAction[], options: FormatFixPlanOptions = {}): string {
-  const header = options.dryRun ? 'Fix plan (dry-run — no writes):' : 'Fix plan:';
+  const header = options.dryRun ? 'Fix plan (dry-run — no writes)' : 'Fix plan';
   if (plan.length === 0) {
-    return [header, ...explainEmptyFixPlan(options)].join('\n');
+    return [`${header}:`, ...explainEmptyFixPlan(options)].join('\n');
   }
-  const lines = [header];
+  const lines = [`${header} — ${plan.length} step(s)`, ''];
   for (const [i, action] of plan.entries()) {
-    lines.push(
-      `  ${i + 1}. [${action.kind}] ${action.description}${action.target ? ` → ${action.target}` : ''}`,
-    );
+    lines.push(`${i + 1}. ${action.kind}`);
+    lines.push(`   ${action.description}`);
+    if (action.agent_id) {
+      lines.push(`   agent:  ${action.agent_id}`);
+    }
+    if (action.target) {
+      lines.push(`   target: ${action.target}`);
+    }
+    if (action.value && action.value !== action.target) {
+      lines.push(`   value:  ${action.value}`);
+    }
+    lines.push('');
   }
   if (options.dryRun) {
-    lines.push('');
-    lines.push(`  ${plan.length} step(s) in this plan — nothing written yet.`);
     const applyCmd = options.syncTarget
       ? `agent-doctor fix --yes --sync-target ${options.syncTarget}`
       : 'agent-doctor fix --yes';
-    lines.push(`  Next: review the list, then run:`);
-    lines.push(`    ${applyCmd}`);
-    lines.push('  Then: agent-doctor status   # confirm grade improved');
+    lines.push('Nothing written yet.');
+    lines.push('Review the steps, then apply:');
+    lines.push(`  ${applyCmd}`);
+    lines.push('Then confirm health:');
+    lines.push('  agent-doctor status');
+    lines.push('');
+    lines.push('Tip: agent-doctor fix --dry-run --sync-target <hub> --html');
+    lines.push('     opens this plan in the browser (easier to read).');
   }
   lines.push('');
   return lines.join('\n');

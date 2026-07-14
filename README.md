@@ -135,6 +135,15 @@ You should see a **multi-step plan**, not only “set map field”, for example:
 
 Nothing is written yet. The last lines name the exact apply command.
 
+**Readable plan in the browser:**
+
+```bash
+agent-doctor fix --dry-run --sync-target ~/.agents/skills --html
+```
+
+Opens a local HTML page with step cards and a copy-ready apply command.  
+The page never applies fixes — apply stays in the CLI.
+
 ### 5. Apply (only after dry-run looks right)
 
 ```bash
