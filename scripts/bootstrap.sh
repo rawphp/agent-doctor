@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # One-command installer for Agent Doctor (rawphp/agent-doctor).
 #
-#   curl -fsSL https://cdn.jsdelivr.net/gh/rawphp/agent-doctor@main/scripts/install.sh | bash
+#   curl -fsSL https://cdn.jsdelivr.net/gh/rawphp/agent-doctor@main/scripts/bootstrap.sh | bash
 #
-# Prefer jsDelivr (above). GitHub raw CDN can lag behind main.
-#
-# Installs by: clone → npm install → build → npm pack → npm install -g <tarball>
-# (Never `npm install -g .` from a temp dir — that creates a broken symlink after cleanup.)
+# Installs into ~/.local by default (stable across nvm/Herd Node versions).
+# Uses npm pack + install from tarball (never `npm install -g .` from a temp dir).
 
 set -euo pipefail
 
 REPO_HTTPS="${AGENT_DOCTOR_REPO:-https://github.com/rawphp/agent-doctor.git}"
 REPO_REF="${AGENT_DOCTOR_REF:-main}"
+# Stable prefix — not tied to a single Herd/nvm Node version
+INSTALL_PREFIX="${AGENT_DOCTOR_PREFIX:-${HOME}/.local}"
 MIN_NODE_MAJOR=20
 
 die() {
@@ -40,26 +40,30 @@ check_node() {
   fi
 }
 
-# Remove prior global install, including broken symlinks that cause ENOTDIR.
-cleanup_global() {
-  info "Removing any previous global agent-doctor install"
+# Remove prior installs (current npm global + known broken Herd paths + prefix)
+cleanup_previous() {
+  info "Removing previous agent-doctor installs"
+
   npm uninstall -g agent-doctor >/dev/null 2>&1 || true
 
-  local root link
+  local root bin
   root="$(npm root -g 2>/dev/null || true)"
-  if [[ -n "$root" ]]; then
-    link="${root}/agent-doctor"
-    if [[ -L "$link" || -e "$link" ]]; then
-      rm -rf "$link" 2>/dev/null || rm -f "$link" 2>/dev/null || true
-    fi
+  bin="$(npm prefix -g 2>/dev/null || true)/bin/agent-doctor"
+  [[ -n "$root" ]] && rm -rf "${root}/agent-doctor" 2>/dev/null || true
+  [[ -n "$bin" ]] && rm -f "$bin" 2>/dev/null || true
+
+  # Herd / nvm: wipe agent-doctor from every Node version (broken temp symlinks)
+  local herd_root="${HOME}/Library/Application Support/Herd/config/nvm/versions/node"
+  if [[ -d "$herd_root" ]]; then
+    find "$herd_root" \( -name 'agent-doctor' \) -exec rm -rf {} + 2>/dev/null || true
+  fi
+  local nvm_root="${HOME}/.nvm/versions/node"
+  if [[ -d "$nvm_root" ]]; then
+    find "$nvm_root" \( -name 'agent-doctor' \) -exec rm -rf {} + 2>/dev/null || true
   fi
 
-  # Global bin stub
-  local bin
-  bin="$(npm prefix -g 2>/dev/null)/bin/agent-doctor"
-  if [[ -L "$bin" || -f "$bin" ]]; then
-    rm -f "$bin" 2>/dev/null || true
-  fi
+  rm -rf "${INSTALL_PREFIX}/lib/node_modules/agent-doctor" 2>/dev/null || true
+  rm -f "${INSTALL_PREFIX}/bin/agent-doctor" 2>/dev/null || true
 }
 
 _INSTALL_TMP=""
@@ -68,8 +72,9 @@ main() {
   info "Agent Doctor installer"
   check_node
   info "Node $(node -v) · npm $(npm -v)"
+  info "Install prefix: ${INSTALL_PREFIX}"
 
-  cleanup_global
+  cleanup_previous
 
   _INSTALL_TMP="$(mktemp -d "${TMPDIR:-/tmp}/agent-doctor-install.XXXXXX")"
   cleanup() {
@@ -91,47 +96,52 @@ main() {
   npm run build
   test -f dist/cli.js || die "build did not produce dist/cli.js"
 
-  # Pack + install tarball so global node_modules gets a real copy (not a temp symlink)
   info "Packing"
   local tgz
   tgz="$(npm pack --silent)"
   test -f "$tgz" || die "npm pack did not produce a tarball"
 
-  info "Installing globally from ${tgz}"
-  npm install -g "./${tgz}"
+  mkdir -p "${INSTALL_PREFIX}/bin" "${INSTALL_PREFIX}/lib"
 
-  if ! command -v agent-doctor >/dev/null 2>&1; then
-    die "install finished but agent-doctor is not on PATH.
-Add your npm global bin to PATH, e.g.:
-  export PATH=\"\$(npm prefix -g)/bin:\$PATH\""
-  fi
+  info "Installing to ${INSTALL_PREFIX} from ${tgz}"
+  npm install -g --prefix "${INSTALL_PREFIX}" "./${tgz}"
 
-  # Bin is always a symlink into node_modules; package itself must be a real directory.
-  local pkg_dir
-  pkg_dir="$(npm root -g)/agent-doctor"
+  local pkg_dir="${INSTALL_PREFIX}/lib/node_modules/agent-doctor"
+  local bin_path="${INSTALL_PREFIX}/bin/agent-doctor"
+
   if [[ -L "$pkg_dir" ]]; then
-    die "global package is a symlink (${pkg_dir} → $(readlink "$pkg_dir")).
-This usually means a bad install used 'npm install -g .' from a temp folder.
-Re-run this installer, or: npm uninstall -g agent-doctor && rm -rf \"\$(npm root -g)/agent-doctor\""
+    die "package is a symlink (${pkg_dir} → $(readlink "$pkg_dir")). Refusing broken install."
   fi
-  test -f "${pkg_dir}/dist/cli.js" || die "missing ${pkg_dir}/dist/cli.js after install"
+  test -d "$pkg_dir" || die "missing package directory ${pkg_dir}"
+  test -f "${pkg_dir}/dist/cli.js" || die "missing ${pkg_dir}/dist/cli.js"
+  test -e "$bin_path" || die "missing bin ${bin_path}"
 
-  local real
-  real="$(command -v agent-doctor)"
-  if [[ ! -e "$real" ]]; then
-    die "agent-doctor binary is missing or broken (${real})."
-  fi
-
-  info "Installed: ${real}"
-  # Refresh command hash tables (zsh/bash) so the shell sees the new binary.
+  # Ensure ~/.local/bin is on PATH for this shell and print durable advice
+  export PATH="${INSTALL_PREFIX}/bin:${PATH}"
   hash -r 2>/dev/null || true
   rehash 2>/dev/null || true
 
+  if ! command -v agent-doctor >/dev/null 2>&1; then
+    die "agent-doctor not found even after adding ${INSTALL_PREFIX}/bin to PATH"
+  fi
+
+  # Resolve must not point into /var/folders temp
+  local resolved
+  resolved="$(python3 -c "import os; print(os.path.realpath('${pkg_dir}'))" 2>/dev/null || readlink -f "$pkg_dir" 2>/dev/null || echo "$pkg_dir")"
+  case "$resolved" in
+    /var/folders/*|/tmp/*|*/agent-doctor-install.*)
+      die "package resolves to a temp path (${resolved}). Install is broken."
+      ;;
+  esac
+
+  info "Installed: $(command -v agent-doctor)"
+  agent-doctor --version
   agent-doctor --help || true
-  agent-doctor --version 2>/dev/null || true
   echo
-  info "If your shell still says 'command not found', run:  rehash"
-  info "Or open a new terminal, then: agent-doctor status"
+  info "Add to your shell profile if needed (zsh: ~/.zshrc):"
+  echo "  export PATH=\"${INSTALL_PREFIX}/bin:\$PATH\""
+  echo
+  info "Then:  rehash && agent-doctor status"
 }
 
 main "$@"

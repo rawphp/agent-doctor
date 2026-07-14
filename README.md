@@ -9,58 +9,30 @@ CLI that diagnoses AI-agent project setup (skills hub, adapters for Claude Code 
 
 ## One-command install
 
-**Install / reinstall** (pack-based; safe to re-run):
-
 ```bash
 curl -fsSL https://cdn.jsdelivr.net/gh/rawphp/agent-doctor@main/scripts/bootstrap.sh | bash
-rehash   # zsh: pick up the new binary
-agent-doctor --version
 ```
 
-If the shell still says `command not found`:
-
-```bash
-export PATH="$(npm prefix -g)/bin:$PATH"
-rehash
-agent-doctor --version
-```
-
-The installer removes any broken global install, then: clone → `npm install` → `build` → **`npm pack`** → **`npm install -g` from the tarball** (real directory under `node_modules`, not a temp symlink).
-
-Do **not** use old one-liners that run `npm install -g git+…` or a stale `install.sh` from `raw.githubusercontent.com`.
-
-Equivalent without curl:
-
-```bash
-git clone --depth 1 https://github.com/rawphp/agent-doctor.git
-cd agent-doctor
-npm install && npm run build
-npm pack
-npm install -g ./agent-doctor-*.tgz
-```
+Installs into **`~/.local`** (not a Herd/nvm Node version folder), so the CLI survives Node upgrades.
 
 Then:
 
 ```bash
-agent-doctor --help
+export PATH="$HOME/.local/bin:$PATH"   # add to ~/.zshrc if missing
+rehash
+agent-doctor --version
 agent-doctor status
 ```
 
-> **Note:** The npm registry name `agent-doctor` is already used by an [unrelated package](https://www.npmjs.com/package/agent-doctor). Install from **GitHub** (commands above), not `npm install -g agent-doctor`.
-
-### PATH issues
-
-If the install succeeds but `agent-doctor` is not found:
-
-```bash
-export PATH="$(npm prefix -g)/bin:$PATH"
-```
+Your PATH should include `~/.local/bin` (common on macOS). If `command not found` persists, the export line above is the fix.
 
 ### Uninstall
 
 ```bash
-npm uninstall -g agent-doctor
+rm -f ~/.local/bin/agent-doctor
+rm -rf ~/.local/lib/node_modules/agent-doctor
 ```
+
 
 ## Commands (v1)
 
