@@ -96,6 +96,23 @@ describe('startDashboardServer', () => {
     expect(html).toContain('90');
   });
 
+  it('close() resolves even when a client used keep-alive', async () => {
+    const server = await startDashboardServer({
+      report: sampleReport(),
+      port: 0,
+    });
+    servers.push(server);
+
+    // Open a request that could leave a keep-alive socket if the server allowed it.
+    const res = await fetch(server.url);
+    expect(res.status).toBe(200);
+    await res.text();
+
+    const started = Date.now();
+    await server.close();
+    expect(Date.now() - started).toBeLessThan(2_000);
+  });
+
   it('does not call fix apply (surface is read-only)', async () => {
     // Server module must not import or invoke a fix applicator.
     // Smoke: POST /apply (or similar) is not offered; only GET HTML.

@@ -83,7 +83,8 @@ async function main(argv: string[]): Promise<number> {
 
   if (first === 'dashboard') {
     const { exitCode } = await runDashboard({ args: args.slice(1) });
-    return exitCode;
+    // Ensure the process leaves after Ctrl+C shutdown (no leftover handles).
+    process.exit(exitCode);
   }
 
   if (first === 'fix') {

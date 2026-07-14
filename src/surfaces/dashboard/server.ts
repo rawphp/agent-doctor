@@ -35,6 +35,9 @@ export function startDashboardServer(options: DashboardServerOptions): Promise<D
   const html = renderDashboardHtml(report);
 
   const server = http.createServer((req, res) => {
+    // Avoid lingering keep-alive sockets that block server.close() on Ctrl+C.
+    res.setHeader('Connection', 'close');
+
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.writeHead(405, {
         Allow: 'GET, HEAD',
@@ -63,6 +66,11 @@ export function startDashboardServer(options: DashboardServerOptions): Promise<D
     res.end(html);
   });
 
+  // Short timeouts so idle browser tabs do not pin the process forever.
+  server.keepAliveTimeout = 1_000;
+  server.headersTimeout = 2_000;
+  server.requestTimeout = 5_000;
+
   return new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(port, host, () => {
@@ -77,7 +85,22 @@ export function startDashboardServer(options: DashboardServerOptions): Promise<D
         address,
         close: () =>
           new Promise((res, rej) => {
-            server.close((err) => (err ? rej(err) : res()));
+            if (!server.listening) {
+              res();
+              return;
+            }
+            // Drop open keep-alive sockets so close() cannot hang (Node 18.2+).
+            if (typeof server.closeAllConnections === 'function') {
+              server.closeAllConnections();
+            }
+            server.close((err) => {
+              // ERR_SERVER_NOT_RUNNING if already closed — treat as success.
+              if (err && (err as NodeJS.ErrnoException).code !== 'ERR_SERVER_NOT_RUNNING') {
+                rej(err);
+                return;
+              }
+              res();
+            });
           }),
       });
     });

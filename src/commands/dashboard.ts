@@ -250,17 +250,7 @@ export async function runDashboard(options: DashboardRunOptions = {}): Promise<D
   }
 
   if (waitUntilClose) {
-    await new Promise<void>((resolve) => {
-      const onSignal = () => {
-        void server.close().finally(() => {
-          process.off('SIGINT', onSignal);
-          process.off('SIGTERM', onSignal);
-          resolve();
-        });
-      };
-      process.on('SIGINT', onSignal);
-      process.on('SIGTERM', onSignal);
-    });
+    await waitForShutdownSignal(server, writeOut, writeErr);
   }
 
   if (applyExit) {
@@ -274,4 +264,65 @@ export async function runDashboard(options: DashboardRunOptions = {}): Promise<D
     port: server.port,
     server,
   };
+}
+
+/** Max time to wait for graceful HTTP close before forced process exit. */
+const SHUTDOWN_FORCE_MS = 1_500;
+
+/**
+ * Block until SIGINT/SIGTERM. Close the server (destroying open connections).
+ * First signal: graceful close with a hard timeout.
+ * Second signal while closing: immediate process.exit (so ^C always works).
+ */
+export function waitForShutdownSignal(
+  server: DashboardServer,
+  writeOut: (line: string) => void = console.log,
+  writeErr: (line: string) => void = console.error,
+  forceMs: number = SHUTDOWN_FORCE_MS,
+): Promise<void> {
+  return new Promise<void>((resolve) => {
+    let shuttingDown = false;
+
+    const detach = () => {
+      process.off('SIGINT', onSigint);
+      process.off('SIGTERM', onSigterm);
+    };
+
+    const beginShutdown = (label: string) => {
+      if (shuttingDown) {
+        writeErr(`\nForced exit (${label} again).`);
+        detach();
+        process.exit(130);
+      }
+
+      shuttingDown = true;
+      writeOut(`\nShutting down dashboard (${label})...`);
+
+      const forceTimer = setTimeout(() => {
+        writeErr('Server close timed out; forcing exit.');
+        detach();
+        process.exit(130);
+      }, forceMs);
+      // Do not keep the process alive solely for the force timer.
+      forceTimer.unref?.();
+
+      void server
+        .close()
+        .catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : String(err);
+          writeErr(`dashboard close: ${message}`);
+        })
+        .finally(() => {
+          clearTimeout(forceTimer);
+          detach();
+          resolve();
+        });
+    };
+
+    const onSigint = () => beginShutdown('SIGINT');
+    const onSigterm = () => beginShutdown('SIGTERM');
+
+    process.on('SIGINT', onSigint);
+    process.on('SIGTERM', onSigterm);
+  });
 }
