@@ -21,6 +21,20 @@ function runHelp(): { status: number | null; stdout: string; stderr: string } {
   };
 }
 
+function runCli(args: string[]): { status: number | null; stdout: string; stderr: string } {
+  const result = spawnSync(process.execPath, ['--import', 'tsx', 'src/cli.ts', ...args], {
+    cwd: root,
+    encoding: 'utf8',
+    env: { ...process.env },
+    timeout: 15_000,
+  });
+  return {
+    status: result.status,
+    stdout: result.stdout ?? '',
+    stderr: result.stderr ?? '',
+  };
+}
+
 describe('agent-doctor --help', () => {
   it('exits 0', () => {
     const { status } = runHelp();
@@ -33,6 +47,34 @@ describe('agent-doctor --help', () => {
     for (const command of V1_COMMANDS) {
       expect(text).toMatch(new RegExp(`\\b${command}\\b`));
     }
+  });
+});
+
+describe('agent-doctor <command> --help', () => {
+  it('dashboard --help prints usage and does not start the server', () => {
+    const { status, stdout, stderr } = runCli(['dashboard', '--help']);
+    const text = `${stdout}\n${stderr}`;
+    expect(status).toBe(0);
+    expect(text).toMatch(/Usage:\s*agent-doctor dashboard/i);
+    expect(text).toMatch(/--no-open/);
+    expect(text).toMatch(/--port/);
+    // Must not launch the server
+    expect(text).not.toMatch(/Agent Doctor dashboard:\s*http/i);
+    expect(text).not.toMatch(/127\.0\.0\.1/);
+  });
+
+  it('status --help prints usage without running a full check report header', () => {
+    const { status, stdout, stderr } = runCli(['status', '--help']);
+    const text = `${stdout}\n${stderr}`;
+    expect(status).toBe(0);
+    expect(text).toMatch(/Usage:\s*agent-doctor status/i);
+    expect(text).not.toMatch(/Overall:\s*\d+/);
+  });
+
+  it('accepts -h as help for dashboard', () => {
+    const { status, stdout } = runCli(['dashboard', '-h']);
+    expect(status).toBe(0);
+    expect(stdout).toMatch(/Usage:\s*agent-doctor dashboard/i);
   });
 });
 
