@@ -9,15 +9,25 @@ CLI that diagnoses AI-agent project setup (skills hub, adapters for Claude Code 
 
 ## One-command install
 
-**Use this URL** (jsDelivr — always fresh from `main`):
+**Install / reinstall** (pack-based; safe to re-run):
 
 ```bash
-curl -fsSL https://cdn.jsdelivr.net/gh/rawphp/agent-doctor@main/scripts/install.sh | bash
+curl -fsSL https://cdn.jsdelivr.net/gh/rawphp/agent-doctor@main/scripts/bootstrap.sh | bash
+rehash   # zsh: pick up the new binary
+agent-doctor --version
 ```
 
-Do **not** use `raw.githubusercontent.com/.../install.sh` right now — GitHub’s raw CDN often serves a **stale** old script that still runs `npm install -g git+…` and fails.
+If the shell still says `command not found`:
 
-The installer: removes any broken global install → clones → `npm install` → `build` → `npm pack` → `npm install -g` from the tarball (so the global package is a real copy, not a temp-folder symlink).
+```bash
+export PATH="$(npm prefix -g)/bin:$PATH"
+rehash
+agent-doctor --version
+```
+
+The installer removes any broken global install, then: clone → `npm install` → `build` → **`npm pack`** → **`npm install -g` from the tarball** (real directory under `node_modules`, not a temp symlink).
+
+Do **not** use old one-liners that run `npm install -g git+…` or a stale `install.sh` from `raw.githubusercontent.com`.
 
 Equivalent without curl:
 
