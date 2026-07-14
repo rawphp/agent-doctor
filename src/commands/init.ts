@@ -54,23 +54,62 @@ export function formatMapSummary(map: HomeMap, path: string, mode: 'init' | 'map
   return lines.join('\n');
 }
 
+export type ParsedVaultCli = {
+  /** Path string as given (may be empty if flag present without value). */
+  path: string | undefined;
+  /** add (default) | replace */
+  mode: 'add' | 'replace';
+};
+
 /**
- * Parse `--vault <path>` or `--vault=<path>` from command args.
- * Returns undefined when the flag is absent.
+ * Parse vault-related flags from map/init args.
+ *
+ * Paths:
+ *   --vault <path> | --vault=<path>
+ *   --add-vault <path> | --set-vault <path>  (aliases; set implies replace)
+ *
+ * Mode:
+ *   default with --vault / --add-vault: add
+ *   --replace | --set-vault: replace entire vaults list with this path
  */
-export function parseVaultFlag(args: string[]): string | undefined {
-  const eq = args.find((a) => a.startsWith('--vault='));
-  if (eq) {
-    const value = eq.slice('--vault='.length).trim();
-    return value === '' ? undefined : value;
+export function parseVaultCli(args: string[]): ParsedVaultCli {
+  const replace =
+    args.includes('--replace') ||
+    args.includes('--set-vault') ||
+    args.some((a) => a.startsWith('--set-vault='));
+
+  // Prefer explicit --add-vault / --set-vault over generic --vault
+  const fromSet = parsePathFlag(args, 'set-vault');
+  if (fromSet !== undefined) {
+    return { path: fromSet, mode: 'replace' };
   }
-  const idx = args.indexOf('--vault');
+  const fromAdd = parsePathFlag(args, 'add-vault');
+  if (fromAdd !== undefined) {
+    return { path: fromAdd, mode: 'add' };
+  }
+  const fromVault = parsePathFlag(args, 'vault');
+  if (fromVault !== undefined) {
+    return { path: fromVault, mode: replace ? 'replace' : 'add' };
+  }
+  return { path: undefined, mode: replace ? 'replace' : 'add' };
+}
+
+/** @deprecated use parseVaultCli — kept for callers that only need a path */
+export function parseVaultFlag(args: string[]): string | undefined {
+  return parseVaultCli(args).path;
+}
+
+function parsePathFlag(args: string[], name: string): string | undefined {
+  const eq = args.find((a) => a.startsWith(`--${name}=`));
+  if (eq) {
+    return eq.slice(`--${name}=`.length).trim();
+  }
+  const idx = args.indexOf(`--${name}`);
   if (idx >= 0) {
     const next = args[idx + 1];
     if (next && !next.startsWith('-')) {
       return next;
     }
-    // `--vault` with no value — treat as present but empty (caller may error)
     return '';
   }
   return undefined;

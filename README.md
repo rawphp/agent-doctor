@@ -61,18 +61,23 @@ Refresh discovery later:
 agent-doctor map
 ```
 
-**Set / correct the Obsidian vault** (writes `map.yml`):
+**Obsidian vaults** (writes `map.yml`):
 
 ```bash
-agent-doctor map --vault /Users/you/path/to/YourVault
-# or:
-agent-doctor map --vault ~/EA/cowork/meaning-of-life
+# Add a vault (keeps others) — default for --vault
+agent-doctor map --add-vault ~/Notes
+agent-doctor map --vault ~/Notes
+
+# Replace: this path becomes the only vault
+agent-doctor map --set-vault ~/EA/cowork/meaning-of-life
+agent-doctor map --vault ~/EA/cowork/meaning-of-life --replace
 ```
 
-That sets a single **manual** vault (overrides wrong auto-discovered paths). Summary should list:
+Summary lists each vault:
 
 ```text
 vault (manual): /Users/you/path/to/YourVault
+vault (discovered): /Users/you/Documents/Other
 ```
 
 ### 2. See health (read-only)

@@ -29,15 +29,20 @@ export type InitRunOptions = MapIoOptions & {
   promptVault?: VaultPromptFn;
 };
 
+/** How CLI applies an explicit vault path. */
+export type VaultWriteMode = 'add' | 'replace';
+
 export type MapRunOptions = MapIoOptions & {
   homeDir?: string;
   /** Present for API symmetry with init; map never prompts for vaults. */
   promptVault?: VaultPromptFn;
   /**
    * Explicit vault path from CLI (`map --vault <path>`).
-   * When set, becomes the sole vault entry (source: manual) and clears vaults_skipped.
+   * Mode controls add vs replace (default: add).
    */
   vaultPath?: string;
+  /** `add` keeps existing vaults; `replace` makes this the only vault. Default: add. */
+  vaultMode?: VaultWriteMode;
 };
 
 type VaultResolution = {
@@ -87,8 +92,9 @@ export async function runInit(options: InitRunOptions = {}): Promise<HomeMap> {
  * Does not prompt for vaults; preserves prior manual vault entries,
  * sync_target, and agent ignored/primary flags.
  *
- * When `vaultPath` is set (`map --vault`), that path becomes the sole vault
- * (manual) — overrides wrong auto-discovered vaults.
+ * When `vaultPath` is set:
+ * - mode `add` (default): append as manual if not already listed (keeps others)
+ * - mode `replace`: sole vault entry (manual) — drops other vaults
  */
 export async function runMap(options: MapRunOptions = {}): Promise<HomeMap> {
   const home = options.home ?? agentDoctorHome();
@@ -98,10 +104,12 @@ export async function runMap(options: MapRunOptions = {}): Promise<HomeMap> {
 
   let vaults: VaultEntry[];
   let vaults_skipped: boolean | undefined;
+  const mode: VaultWriteMode = options.vaultMode ?? 'add';
 
   if (options.vaultPath != null && options.vaultPath.trim() !== '') {
     const resolved = resolveVaultPath(options.vaultPath);
-    vaults = [{ path: resolved, source: 'manual' }];
+    const base = mergeVaults(discovered.vaults, previous?.vaults ?? []);
+    vaults = applyVaultWrite(base, resolved, mode);
     vaults_skipped = false;
   } else {
     vaults = mergeVaults(discovered.vaults, previous?.vaults ?? []);
@@ -120,6 +128,24 @@ export async function runMap(options: MapRunOptions = {}): Promise<HomeMap> {
 
   saveMap(map, { home });
   return map;
+}
+
+/**
+ * Apply add vs replace for an explicit vault path.
+ * Paths compared by exact string after resolveVaultPath.
+ */
+export function applyVaultWrite(
+  existing: VaultEntry[],
+  path: string,
+  mode: VaultWriteMode,
+): VaultEntry[] {
+  const entry: VaultEntry = { path, source: 'manual' };
+  if (mode === 'replace') {
+    return [entry];
+  }
+  // add: keep others; if path already present, upgrade/mark as manual and keep once
+  const withoutDup = existing.filter((v) => v.path !== path);
+  return [...withoutDup, entry];
 }
 
 /** Expand ~ and resolve to absolute path for vault entries. */
