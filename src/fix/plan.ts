@@ -348,17 +348,102 @@ export function buildFixPlan(
   return buildFixPlanFromReport(reportOrInput, options ?? {});
 }
 
+export type FormatFixPlanOptions = {
+  dryRun?: boolean;
+  /** Findings from the report that produced this plan — used when the plan is empty. */
+  findings?: Finding[];
+  /** Top recommendations from status (optional). */
+  recommendations?: { message: string; finding_id?: string }[];
+  /** Resolved skills hub if any. */
+  skillsHub?: string;
+  /** Explicit --sync-target the user passed (if any). */
+  syncTarget?: string;
+};
+
+/**
+ * Human-readable reason(s) why the auto-fix plan is empty.
+ * Dry-run with no actions is not the same as "healthy".
+ */
+export function explainEmptyFixPlan(options: FormatFixPlanOptions = {}): string[] {
+  const findings = options.findings ?? [];
+  const lines: string[] = [];
+  const hubConflict = findings.some((f) => f.id === 'skills.hub_conflict');
+  const hasErrors = findings.some((f) => f.severity === 'error');
+  const hasWarns = findings.some((f) => f.severity === 'warn');
+
+  if (findings.length === 0) {
+    lines.push('  No findings from checks — nothing to plan.');
+    lines.push('  If that seems wrong, run: agent-doctor status');
+    return lines;
+  }
+
+  lines.push('  No automatic safe fixes are available yet.');
+  lines.push('');
+
+  if (hubConflict && !options.syncTarget && !options.skillsHub) {
+    const conflict = findings.find((f) => f.id === 'skills.hub_conflict');
+    lines.push('  Why: multiple skills roots are populated (hub conflict).');
+    lines.push('  Auto-wire is blocked until you choose one shared hub.');
+    if (conflict?.evidence?.length) {
+      lines.push('  Candidate roots:');
+      for (const e of conflict.evidence.slice(0, 8)) {
+        lines.push(`    - ${e}`);
+      }
+    }
+    lines.push('');
+    lines.push('  Next:');
+    lines.push('    1. Pick one hub path (often ~/.agents/skills).');
+    lines.push(
+      '    2. Re-run: agent-doctor fix --dry-run --sync-target /path/to/hub',
+    );
+    lines.push(
+      '    3. If the plan looks right: agent-doctor fix --yes --sync-target /path/to/hub',
+    );
+    lines.push('');
+  } else if (hasErrors || hasWarns) {
+    lines.push('  Why: findings exist, but none map to a v1 safe auto-fix');
+    lines.push('  (or they still need a human choice). Open issues:');
+    const top = findings
+      .filter((f) => f.severity === 'error' || f.severity === 'warn')
+      .slice(0, 6);
+    for (const f of top) {
+      lines.push(`    - [${f.severity}] ${f.id}: ${f.message}`);
+    }
+    lines.push('');
+    lines.push('  Next: agent-doctor status   # full report');
+    lines.push('        agent-doctor dashboard');
+    lines.push('');
+  }
+
+  if (options.recommendations && options.recommendations.length > 0) {
+    lines.push('  From status recommendations:');
+    for (const r of options.recommendations.slice(0, 5)) {
+      lines.push(`    - ${r.message}`);
+    }
+    lines.push('');
+  }
+
+  return lines;
+}
+
 /** Format plan for terminal output. */
-export function formatFixPlan(plan: FixAction[], options: { dryRun?: boolean } = {}): string {
+export function formatFixPlan(plan: FixAction[], options: FormatFixPlanOptions = {}): string {
   const header = options.dryRun ? 'Fix plan (dry-run — no writes):' : 'Fix plan:';
   if (plan.length === 0) {
-    return [header, '  (no safe actions)', ''].join('\n');
+    return [header, ...explainEmptyFixPlan(options)].join('\n');
   }
   const lines = [header];
   for (const [i, action] of plan.entries()) {
     lines.push(
       `  ${i + 1}. [${action.kind}] ${action.description}${action.target ? ` → ${action.target}` : ''}`,
     );
+  }
+  if (options.dryRun) {
+    lines.push('');
+    lines.push('  To apply (after review): agent-doctor fix --yes');
+    if (options.syncTarget) {
+      lines.push(`    (include --sync-target ${options.syncTarget} if you used it here)`);
+    }
   }
   lines.push('');
   return lines.join('\n');

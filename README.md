@@ -1,50 +1,201 @@
 # Agent Doctor
 
-CLI that diagnoses AI-agent project setup (skills hub, adapters for Claude Code / Codex / Grok, maps, status, and fixes).
+CLI that checks whether your AI coding agents (Claude Code, Codex, Grok, …) share the **same skills hub, memory (vault), and product context** — with little or no duplication — and can safely wire them when you choose a hub.
+
+It does **not** run agents or call LLMs. It inspects config on disk, scores sync health, and optionally applies plan-then-apply fixes.
+
+---
 
 ## Requirements
 
 - Node.js **20+**
-- npm (comes with Node)
+- npm
+- git (for the one-command installer)
 
-## One-command install
+---
+
+## Install
 
 ```bash
 curl -fsSL https://cdn.jsdelivr.net/gh/rawphp/agent-doctor@main/scripts/bootstrap.sh | bash
 ```
 
-Installs into **`~/.local`** (not a Herd/nvm Node version folder), so the CLI survives Node upgrades.
-
-Then:
+Installs into **`~/.local`** (stable across Herd/nvm Node upgrades).
 
 ```bash
-export PATH="$HOME/.local/bin:$PATH"   # add to ~/.zshrc if missing
-rehash
+export PATH="$HOME/.local/bin:$PATH"   # add to ~/.zshrc if needed
+rehash                                   # zsh
 agent-doctor --version
-agent-doctor status
 ```
 
-Your PATH should include `~/.local/bin` (common on macOS). If `command not found` persists, the export line above is the fix.
-
-### Uninstall
+Uninstall:
 
 ```bash
 rm -f ~/.local/bin/agent-doctor
 rm -rf ~/.local/lib/node_modules/agent-doctor
 ```
 
+> The npm registry name `agent-doctor` is taken by an unrelated package. Install from GitHub (above), not `npm install -g agent-doctor`.
 
-## Commands (v1)
+---
 
-| Command     | Purpose                                              |
-| ----------- | ---------------------------------------------------- |
-| `init`      | Discover environment and write the home map          |
-| `map`       | Inspect or update the agent/home map                 |
-| `status`    | Run checks and print terminal status report          |
-| `dashboard` | Serve or open the HTML status dashboard              |
-| `fix`       | Plan and apply safe setup fixes                      |
-| `agents`    | List detected agents and adapter support             |
-| `check`     | Run individual domain checks                         |
+## Setup (first-time usage)
+
+Goal: one **skills hub** that every agent can see; map + status green enough to work; fixes only after you choose the hub.
+
+### 1. Discover your machine → write the home map
+
+```bash
+agent-doctor init
+```
+
+This looks for Claude / Codex / Grok homes, candidate skills roots, Obsidian vaults, and project roots, then writes:
+
+`~/.agent-doctor/map.yml`
+
+If no vault is found, `init` **asks for a path** (or skip). Later `status` will not re-prompt for a vault — re-run `init` / `map` to change it.
+
+Refresh discovery later:
+
+```bash
+agent-doctor map
+```
+
+### 2. See health (read-only)
+
+```bash
+agent-doctor status          # this project + global agents/skills/vaults
+agent-doctor status --all    # also every project under mapped roots
+agent-doctor status --json   # machine-readable Report
+agent-doctor dashboard       # HTML view (Ctrl+C to stop)
+```
+
+**How to read status**
+
+| Signal | Meaning |
+|--------|---------|
+| Overall **GREEN** | Non-ignored first-class agents agree on skills hub + key pointers |
+| Overall **YELLOW/RED** | Drift, missing links, or **hub conflict** (cannot be green on desync) |
+| Sync target `(unresolved)` | Several skills roots have content; you must pick one hub |
+| Matrix `✗ hub conflict` | Same issue — not “agent broken”, “no single hub chosen” |
+
+Example (bad, but normal on a multi-agent Mac):
+
+```text
+Overall: 40 (RED)
+Sync target (skills):  (unresolved)
+  claude-code  ✗ hub conflict
+  codex        ✗ hub conflict
+  grok         ✗ hub conflict
+Recommendations:
+  1. Choose one skills hub (set sync_target) before wiring agents
+```
+
+### 3. Dry-run fixes (still no writes)
+
+```bash
+agent-doctor fix --dry-run
+```
+
+**Important:** an empty plan is **not** “you’re healthy”.
+
+If you have a **hub conflict**, dry-run will explain and tell you to pick a hub, e.g.:
+
+```text
+Fix plan (dry-run — no writes):
+  No automatic safe fixes are available yet.
+
+  Why: multiple skills roots are populated (hub conflict).
+  Auto-wire is blocked until you choose one shared hub.
+  Candidate roots:
+    - /Users/you/.agents/skills
+    - /Users/you/.claude/skills
+    ...
+
+  Next:
+    1. Pick one hub path (often ~/.agents/skills).
+    2. Re-run: agent-doctor fix --dry-run --sync-target /path/to/hub
+    3. If the plan looks right: agent-doctor fix --yes --sync-target /path/to/hub
+```
+
+### 4. Choose one skills hub, then plan again
+
+Pick the directory that should be the **single** shared library (no copies between agents). A common choice:
+
+```bash
+# example — use YOUR preferred root from the candidate list
+agent-doctor fix --dry-run --sync-target ~/.agents/skills
+```
+
+Review the listed actions (symlink / wire / map update). Nothing is written yet.
+
+### 5. Apply (only after dry-run looks right)
+
+```bash
+agent-doctor fix --yes --sync-target ~/.agents/skills
+```
+
+Or interactive confirm:
+
+```bash
+agent-doctor fix --sync-target ~/.agents/skills
+```
+
+Then re-check:
+
+```bash
+agent-doctor status
+```
+
+### 6. Day-to-day
+
+```bash
+agent-doctor status              # quick health
+agent-doctor agents              # what was detected
+agent-doctor check skills        # one domain
+agent-doctor fix --dry-run       # any new safe actions?
+```
+
+---
+
+## What “safe fix” means
+
+Auto-fix may:
+
+- Set `skills.sync_target` in `~/.agent-doctor/map.yml`
+- Symlink or wire an agent’s skills path **to the chosen hub** (one tree, no content copy)
+- Append link blocks in instruction files (`CLAUDE.md` / `AGENTS.md`) when product/vault pointers are missing
+
+Auto-fix will **not**:
+
+- Silently pick among multiple populated hubs
+- Copy skill trees between agent homes
+- Rewrite whole instruction files or Obsidian note bodies
+- Install agent apps
+
+---
+
+## Commands (reference)
+
+| Command | Purpose |
+|---------|---------|
+| `init` | First-run discovery → `~/.agent-doctor/map.yml` |
+| `map` | Refresh discovery (keeps your `sync_target` / ignored flags) |
+| `status` | Terminal health report (`--all`, `--json`) |
+| `dashboard` | Local HTML report (read-only; Ctrl+C to stop) |
+| `fix` | Plan / apply safe fixes (`--dry-run`, `--yes`, `--sync-target`) |
+| `agents` | Detected agents + adapter depth |
+| `check` | One domain |
+
+Help never runs the command:
+
+```bash
+agent-doctor --help
+agent-doctor dashboard --help
+agent-doctor fix --help
+```
+
+---
 
 ## Development
 
@@ -55,47 +206,29 @@ npm install
 npm test
 npm run build
 npx tsx src/cli.ts --help
-# or after build:
-node dist/cli.js --help
 ```
 
 ```bash
-npm run format        # write
-npm run format:check  # CI-style check
+npm run format
+npm run format:check
 ```
 
 ### CI
 
-GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request:
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) on push/PR: `npm ci` → format check → test → build → smoke CLI (Node 20 + 22).
 
-1. `npm ci`
-2. `npm run format:check`
-3. `npm test`
-4. `npm run build`
-5. Smoke `node dist/cli.js --help`
+### Releases
 
-Matrix: Node **20** and **22** on `ubuntu-latest`.
-
-### Releases (tag-driven)
-
-Pushing a version tag `v*` runs [`.github/workflows/release.yml`](.github/workflows/release.yml):
-
-1. Check tag `vX.Y.Z` matches `package.json` version  
-2. Format check, test, build, smoke CLI  
-3. Create a **GitHub Release** with notes + assets (`dist` tarball + `npm pack` `.tgz`)  
-4. **Optional npm publish** if repo secret `NPM_TOKEN` is set (skipped otherwise)
-
-Ship a release:
+Tag-driven [`.github/workflows/release.yml`](.github/workflows/release.yml) on `v*`:
 
 ```bash
-# bumps package.json, commits, tags vX.Y.Z
 npm version patch -m "chore(release): %s"
-# or: minor | major
-
 git push origin main --follow-tags
 ```
 
-> Registry name `agent-doctor` is taken by another project. Prefer GitHub Releases / git install until you publish under a scoped name (e.g. `@rawphp/agent-doctor`) and set `NPM_TOKEN`.
+Creates a GitHub Release with assets. Optional npm publish if `NPM_TOKEN` is set (registry name `agent-doctor` is taken — prefer scoped publish later).
+
+---
 
 ## License
 

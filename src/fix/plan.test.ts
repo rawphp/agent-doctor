@@ -6,6 +6,8 @@ import {
   isRejectedCopyAction,
   SAFE_FIX_KINDS,
   blocksWireForHubConflict,
+  explainEmptyFixPlan,
+  formatFixPlan,
 } from './plan.js';
 
 function emptyMap(overrides: Partial<HomeMap['skills']> = {}): HomeMap {
@@ -485,5 +487,34 @@ describe('HomeMap type smoke for set_sync_target plan', () => {
       projects: { roots: [], entries: [] },
     };
     expect(map.skills.sync_target).toBeNull();
+  });
+});
+
+describe('formatFixPlan empty plan messaging', () => {
+  it('explains hub conflict and next steps when plan is empty', () => {
+    const text = formatFixPlan([], {
+      dryRun: true,
+      findings: [
+        finding({
+          id: 'skills.hub_conflict',
+          severity: 'error',
+          message: 'Multiple hubs',
+          evidence: ['/a/skills', '/b/skills'],
+        }),
+      ],
+      recommendations: [
+        { message: 'Choose one skills hub before wiring', finding_id: 'skills.hub_conflict' },
+      ],
+    });
+    expect(text).toMatch(/dry-run/i);
+    expect(text).toMatch(/hub conflict/i);
+    expect(text).toMatch(/--sync-target/);
+    expect(text).toMatch(/\/a\/skills/);
+    expect(text).not.toMatch(/^\s*\(no safe actions\)\s*$/m);
+  });
+
+  it('explainEmptyFixPlan is quiet-ish when there are no findings', () => {
+    const lines = explainEmptyFixPlan({ findings: [] });
+    expect(lines.join('\n')).toMatch(/No findings/i);
   });
 });

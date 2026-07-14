@@ -7,10 +7,12 @@ export {
   REJECTED_COPY_KINDS,
   buildFixPlan,
   formatFixPlan,
+  explainEmptyFixPlan,
   isRejectedCopyAction,
   blocksWireForHubConflict,
   type BuildFixPlanOptions,
   type BuildFixPlanInput,
+  type FormatFixPlanOptions,
 } from './plan.js';
 
 export {

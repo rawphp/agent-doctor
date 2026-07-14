@@ -123,10 +123,26 @@ export async function runFix(options: FixRunOptions = {}): Promise<FixResult> {
     // Attach plan for callers / dry-run consumers
     report.fix_plan = plan;
 
-    writeLines(writeOut, formatFixPlan(plan, { dryRun: flags.dryRun }));
+    writeLines(
+      writeOut,
+      formatFixPlan(plan, {
+        dryRun: flags.dryRun,
+        findings: report.findings,
+        recommendations: report.recommendations,
+        skillsHub: report.sync.skills_hub,
+        syncTarget: flags.syncTarget,
+      }),
+    );
 
     if (flags.dryRun) {
-      writeOut('Dry-run complete — no files written.');
+      writeOut(
+        plan.length === 0
+          ? 'Dry-run complete — no files written (and no auto-fix plan to apply yet).'
+          : 'Dry-run complete — no files written.',
+      );
+      writeOut(
+        `Current grade: ${report.overall.score} (${report.overall.grade.toUpperCase()}) — empty plan does not mean green.`,
+      );
       return {
         report,
         plan,
@@ -137,7 +153,7 @@ export async function runFix(options: FixRunOptions = {}): Promise<FixResult> {
     }
 
     if (plan.length === 0) {
-      writeOut('Nothing to apply.');
+      writeOut('Nothing to apply — see reasons above (or run agent-doctor status).');
       return {
         report,
         plan,
