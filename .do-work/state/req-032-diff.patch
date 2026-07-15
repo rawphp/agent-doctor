@@ -1,0 +1,224 @@
+diff --git a/src/fix/apply.test.ts b/src/fix/apply.test.ts
+index e3e1da9..67558e1 100644
+--- a/src/fix/apply.test.ts
++++ b/src/fix/apply.test.ts
+@@ -14,7 +14,12 @@ import { afterEach, describe, expect, it } from 'vitest';
+ import type { FixAction, HomeMap } from '../engine/types.js';
+ import { loadMap } from '../map/load.js';
+ import { saveMap } from '../map/save.js';
+-import { applyFixPlan, type ApplyContext } from './apply.js';
++import {
++  applyFixPlan,
++  agentsPointerBlock,
++  MINIMAL_AGENTS_MD_STUB,
++  type ApplyContext,
++} from './apply.js';
+ 
+ const temps: string[] = [];
+ 
+@@ -618,3 +623,170 @@ describe('applyFixPlan hierarchy (REQ-030)', () => {
+     expect(vendor).toMatch(/agents\.md/i);
+   });
+ });
++
++/**
++ * REQ-032 harden ACs: create minimal stub; skip non-empty AGENTS;
++ * marker/clear-block pointer append; idempotent; already-linked.
++ */
++describe('applyFixPlan hierarchy harden (REQ-032)', () => {
++  it('create: missing AGENTS.md gets skill-matching minimal stub with soft product wording', () => {
++    const base = tempDir();
++    const agentsMd = join(base, 'AGENTS.md');
++
++    const results = applyFixPlan(
++      [
++        {
++          id: 'fix.create_agents_stub',
++          kind: 'create_agents_stub',
++          description: 'Create minimal AGENTS.md stub',
++          target: agentsMd,
++          finding_ids: ['instructions.hierarchy_missing_agents_md'],
++        },
++      ],
++      {},
++    );
++
++    expect(results[0]!.status).toBe('applied');
++    const content = readFileSync(agentsMd, 'utf8');
++    expect(content).toBe(MINIMAL_AGENTS_MD_STUB);
++    // Soft product wording (skill: omit or soften when product.md may be absent)
++    expect(content).toMatch(/product\.md/i);
++    expect(content).toMatch(/when present/i);
++    expect(content.length).toBeLessThan(800);
++  });
++
++  it('skip-existing: non-empty AGENTS.md is left unchanged (no-op / applied already)', () => {
++    const base = tempDir();
++    const agentsMd = join(base, 'AGENTS.md');
++    const original = '# Real policy\n\n- Do not invent overwrites\n';
++    writeFileSync(agentsMd, original);
++
++    const results = applyFixPlan(
++      [
++        {
++          id: 'fix.create_agents_stub',
++          kind: 'create_agents_stub',
++          description: 'stub',
++          target: agentsMd,
++        },
++      ],
++      {},
++    );
++
++    expect(results[0]!.status).toBe('applied');
++    expect(results[0]!.reason).toMatch(/already exists|unchanged|present/i);
++    expect(readFileSync(agentsMd, 'utf8')).toBe(original);
++  });
++
++  it('create: empty AGENTS.md is treated as missing content and filled with minimal stub', () => {
++    const base = tempDir();
++    const agentsMd = join(base, 'AGENTS.md');
++    writeFileSync(agentsMd, '');
++
++    const results = applyFixPlan(
++      [
++        {
++          id: 'fix.create_agents_stub',
++          kind: 'create_agents_stub',
++          description: 'stub empty',
++          target: agentsMd,
++        },
++      ],
++      {},
++    );
++
++    expect(results[0]!.status).toBe('applied');
++    expect(readFileSync(agentsMd, 'utf8')).toBe(MINIMAL_AGENTS_MD_STUB);
++  });
++
++  it('append: pointer uses marker block and preserves existing vendor body', () => {
++    const base = tempDir();
++    const claude = join(base, 'CLAUDE.md');
++    const agentsMd = join(base, 'AGENTS.md');
++    writeFileSync(claude, '# Claude local\n\nKeep unique rules.\n');
++    writeFileSync(agentsMd, '# AGENTS\n');
++
++    const results = applyFixPlan(
++      [
++        {
++          id: 'fix.append_agents_pointer_CLAUDE.md',
++          kind: 'append_agents_pointer',
++          description: 'Append AGENTS.md pointer',
++          target: claude,
++          value: agentsMd,
++        },
++      ],
++      {},
++    );
++
++    expect(results[0]!.status).toBe('applied');
++    const content = readFileSync(claude, 'utf8');
++    expect(content.startsWith('# Claude local')).toBe(true);
++    expect(content).toMatch(/Keep unique rules/);
++    expect(content).toContain('<!-- agent-doctor:agents-pointer -->');
++    expect(content).toContain('<!-- /agent-doctor:agents-pointer -->');
++    expect(content).toMatch(/agents\.md/i);
++    // Marker block matches exported template
++    expect(content).toContain(agentsPointerBlock().trim());
++  });
++
++  it('already-linked: informal AGENTS.md reference is no-op (no second block)', () => {
++    const base = tempDir();
++    const claude = join(base, 'CLAUDE.md');
++    const agentsMd = join(base, 'AGENTS.md');
++    // Hand-written pointer without our marker — still "already linked"
++    const original =
++      '# Claude Code\n\nSee AGENTS.md for shared project instructions.\n';
++    writeFileSync(claude, original);
++    writeFileSync(agentsMd, '# AGENTS\n');
++
++    const results = applyFixPlan(
++      [
++        {
++          id: 'fix.append_agents_pointer_CLAUDE.md',
++          kind: 'append_agents_pointer',
++          description: 'pointer',
++          target: claude,
++          value: agentsMd,
++        },
++      ],
++      {},
++    );
++
++    expect(results[0]!.status).toBe('applied');
++    expect(results[0]!.reason).toMatch(/already present|pointer already|already linked/i);
++    expect(readFileSync(claude, 'utf8')).toBe(original);
++    expect(original.match(/agents\.md/gi)?.length).toBe(1);
++  });
++
++  it('append: second apply is idempotent (marker not duplicated)', () => {
++    const base = tempDir();
++    const gemini = join(base, 'GEMINI.md');
++    const agentsMd = join(base, 'AGENTS.md');
++    writeFileSync(gemini, '# Gemini notes\n');
++    writeFileSync(agentsMd, '# AGENTS\n');
++
++    const action: FixAction = {
++      id: 'fix.append_agents_pointer_GEMINI.md',
++      kind: 'append_agents_pointer',
++      description: 'pointer',
++      target: gemini,
++      value: agentsMd,
++    };
++
++    const first = applyFixPlan([action], {});
++    expect(first[0]!.status).toBe('applied');
++    const afterFirst = readFileSync(gemini, 'utf8');
++    const markerCountFirst = (
++      afterFirst.match(/<!-- agent-doctor:agents-pointer -->/g) ?? []
++    ).length;
++    expect(markerCountFirst).toBe(1);
++
++    const second = applyFixPlan([action], {});
++    expect(second[0]!.status).toBe('applied');
++    expect(second[0]!.reason).toMatch(/already present|pointer already/i);
++    const afterSecond = readFileSync(gemini, 'utf8');
++    expect(afterSecond).toBe(afterFirst);
++    expect((afterSecond.match(/<!-- agent-doctor:agents-pointer -->/g) ?? []).length).toBe(1);
++  });
++});
+diff --git a/src/fix/apply.ts b/src/fix/apply.ts
+index b6ed670..270f686 100644
+--- a/src/fix/apply.ts
++++ b/src/fix/apply.ts
+@@ -362,8 +362,8 @@ function applyMemoryPointer(action: FixAction, ctx: ApplyContext): ActionResult
+ }
+ 
+ /**
+- * Create minimal AGENTS.md stub only when missing.
+- * Never overwrites an existing AGENTS.md body (no wholesale rewrite).
++ * Create minimal AGENTS.md stub when missing or empty.
++ * Never overwrites a non-empty AGENTS.md body (no wholesale rewrite).
+  */
+ function applyCreateAgentsStub(action: FixAction, ctx: ApplyContext): ActionResult {
+   const target = action.target;
+@@ -372,7 +372,18 @@ function applyCreateAgentsStub(action: FixAction, ctx: ApplyContext): ActionResu
+   }
+ 
+   if (existsSync(target)) {
+-    return { action, status: 'applied', reason: 'AGENTS.md already exists (left unchanged)' };
++    let existing = '';
++    try {
++      existing = readFileSync(target, 'utf8');
++    } catch (err: unknown) {
++      const message = err instanceof Error ? err.message : String(err);
++      return { action, status: 'skipped', reason: message };
++    }
++    // Non-empty body: leave unchanged (REQ-032 skip non-empty AGENTS)
++    if (existing.trim().length > 0) {
++      return { action, status: 'applied', reason: 'AGENTS.md already exists (left unchanged)' };
++    }
++    // Empty/whitespace-only: treat as missing content and fill stub below
+   }
+ 
+   if (ctx.dryRun) {

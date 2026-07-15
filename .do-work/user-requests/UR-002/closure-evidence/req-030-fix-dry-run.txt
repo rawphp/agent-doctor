@@ -1,0 +1,29 @@
+Fix plan (dry-run — no writes) — 3 step(s)
+
+1. create_agents_stub
+   Create minimal AGENTS.md stub at project root (canonical shared instructions; do not invent long policy)
+   target: /private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/AGENTS.md
+
+2. append_agents_pointer
+   Append AGENTS.md pointer in CLAUDE.md (append-only; never wholesale rewrite vendor body)
+   agent:  claude-code
+   target: /private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/CLAUDE.md
+   value:  /private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/AGENTS.md
+
+3. append_agents_pointer
+   Append AGENTS.md pointer in GROK.md (append-only; never wholesale rewrite vendor body)
+   agent:  grok
+   target: /private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/GROK.md
+   value:  /private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/AGENTS.md
+
+Nothing written yet.
+Review the steps, then apply:
+  agent-doctor fix --yes
+Then confirm health:
+  agent-doctor status
+
+Tip: agent-doctor fix --dry-run --sync-target <hub> --html
+     opens this plan in the browser (easier to read).
+
+Dry-run complete — no files written.
+Current grade: 81 (GREEN). Applying the plan should address the steps above.

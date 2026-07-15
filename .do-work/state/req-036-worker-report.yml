@@ -1,0 +1,49 @@
+req: REQ-036
+status: done
+commit: 622b9c5
+isolation: worktree
+closure_proof: "checkpoint_log:passed commit:622b9c5 skill docs complete"
+last_good_step: 2
+failed_step: 0
+checkpoint_log:
+  status: passed
+  checkpoints:
+    - step: 1
+      total: 2
+      type: runtime
+      command: "rg -n 'instructions\\.missing|create_agents|AGENTS.md' skills/agent-doctor/SKILL.md"
+      expected: "concrete ids/commands present"
+      actual: "matched hierarchy ids and fix kinds"
+      status: passed
+    - step: 2
+      total: 2
+      type: runtime
+      command: "test -f skills/agent-doctor/SKILL.md"
+      expected: "file exists"
+      actual: "PASS"
+      status: passed
+deferred_checks: []
+acceptance:
+  AC1:
+    status: passed
+    evidence:
+      - type: file
+        ref: "skills/agent-doctor/SKILL.md error table hierarchy findings"
+  AC2:
+    status: passed
+    evidence:
+      - type: file
+        ref: "skills/agent-doctor/SKILL.md Execution Loop CLI hierarchy before freestyle"
+  AC3:
+    status: passed
+    evidence:
+      - type: file
+        ref: "LOCAL POLICY no silent hub / no skill-tree copy / dry-run"
+  AC4:
+    status: passed
+    evidence:
+      - type: file
+        ref: "Gemini map primary + file presence only"
+outputs:
+  - path: skills/agent-doctor/SKILL.md
+    description: CLI hierarchy contract docs complete

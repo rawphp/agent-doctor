@@ -1,0 +1,73 @@
+3:description: 'Install and run Agent Doctor to diagnose and fix multi-agent machine setup (shared skills hub, AGENTS.md as canonical project instructions, CLAUDE.md/GEMINI.md pointers, vaults, product.md). Use when agents disagree on skills, setup is red/yellow, wiring a project for Claude/Codex/Grok/Gemini, hub conflict, monthly health check, or configure agents for this project. Differentiator: drives the agent-doctor CLI (plan-then-apply) and enforces AGENTS.md-first project instructions — not skill writing craft (effective-agent-skills) and not hub layout alone (skills-hub).'
+10:**Project instructions rule:** In a project, **`AGENTS.md` is the single source of truth.** Other vendor instruction files (`CLAUDE.md`, `GEMINI.md`, `GROK.md`, …) must **point at `AGENTS.md`**, not duplicate the body.
+19:4. **Always dry-run before apply.** `agent-doctor fix --dry-run` first. Apply only after the user reviews the plan (or they explicitly said to apply/fix in this turn).
+22:   - **`AGENTS.md` must exist** at the project root (minimal stub only — do not invent a long policy dump).
+23:   - **Every other project instruction file** used by an installed or primary agent must **tell that agent to read `AGENTS.md`** (link / “read AGENTS.md first” pointer). Do **not** paste the full AGENTS body into `CLAUDE.md` / `GEMINI.md` / etc.
+26:   - **Gemini (and other non-deep agents):** hierarchy via **map primary + file presence only** — no deep Gemini adapter. If `primary: gemini` / Gemini installed as presence **or** `GEMINI.md` exists on disk, require the same pointer rules as Claude (`GEMINI.md` → `AGENTS.md`). Do not invent deeper Gemini wiring beyond that.
+27:   - **Prefer `agent-doctor fix` for hierarchy when findings exist.** Diagnose with `status` / `check instructions`; plan with `fix --dry-run`; apply with `fix` / `fix --yes`. Stable finding ids: `instructions.hierarchy_missing_agents_md`, `instructions.hierarchy_missing_pointer`. Fix kinds: `create_agents_stub`, `append_agents_pointer`.
+28:   - **Do not freestyle hierarchy writes** when the CLI covers them (ids/kinds above). Agent-side create/append is a last resort only if Doctor is unavailable or dry-run does not plan a needed covered step — still minimal stub / append-only pointer; never wholesale rewrite vendor files.
+29:7. **Do not rewrite whole** instruction files when a small append or Doctor plan covers it. Prefer `agent-doctor fix` for hub/product/vault **and** hierarchy (AGENTS stub + pointers). Agent freestyle only when the CLI does not cover the case.
+32:10. Product north star (when present): project `product.md`, linked from **`AGENTS.md`** (and thus visible via pointers). Implementation detail stays in the CLI/`--help`, not reinvented here.
+42:  AGENTS.md          # REQUIRED — shared instructions for all agents
+43:  CLAUDE.md          # pointer → read AGENTS.md (if Claude in play)
+44:  GEMINI.md          # pointer → read AGENTS.md (if Gemini in play)
+46:  product.md         # product truth — linked from AGENTS.md when present
+51:Diagnose hierarchy whenever scope is **project** (cwd/project root has project signals) as part of the Execution Loop — not only when the user mentions instruction files. Prefer CLI `status` / `check instructions` + `fix` (LOCAL POLICY §6); do not freestyle hierarchy when Doctor findings and fix kinds cover the case.
+57:| Always (project scope) | `AGENTS.md` exists (create if missing) |
+58:| `CLAUDE.md` exists **or** Claude Code is installed/primary | `CLAUDE.md` → points to `AGENTS.md` |
+59:| `GEMINI.md` exists **or** Gemini is map-primary / installed as presence | `GEMINI.md` → points to `AGENTS.md` |
+60:| `GROK.md` exists **or** Grok is installed/primary and project uses GROK.md | `GROK.md` → points to `AGENTS.md` |
+61:| Other vendor project instruction `.md` exists | That file → points to `AGENTS.md` |
+63:**Gemini contract (matches CLI):** map primary + file presence only — no deep Gemini adapter in v1. Pointer rules still apply when Gemini is primary/installed (presence-only depth is fine) or when `GEMINI.md` is already on disk. Same finding/fix path as other vendors: `instructions.hierarchy_missing_pointer` → `append_agents_pointer`.
+65:Codex and many agents already read `AGENTS.md` directly — still keep `AGENTS.md` as the hub; do not delete vendor pointer files that other tools need.
+69:A pointer file is **satisfied** if its body clearly directs the agent to read `AGENTS.md` (basename or relative path). Prefer a short dedicated block; append if the file already has content.
+76:Read and follow **[AGENTS.md](./AGENTS.md)** for all project instructions, policies, and shared agent setup. Prefer AGENTS.md over duplicating rules here.
+84:Read and follow **[AGENTS.md](./AGENTS.md)** for all project instructions, policies, and shared agent setup. Prefer AGENTS.md over duplicating rules here.
+87:### AGENTS.md stub (only if missing)
+92:# AGENTS.md
+110:After fix apply (or rare freestyle last-resort writes), confirm via Doctor first:
+115:test -f AGENTS.md
+116:# Optional spot-check: pointer files reference AGENTS.md (case-insensitive)
+120:Also run `check product` when `product.md` exists so product links stay aligned with AGENTS.md-first policy.
+124:- **Prefer CLI** for stub create and pointer append (`create_agents_stub` / `append_agents_pointer`). Freestyle only when CLI does not cover (LOCAL POLICY §6).
+125:- **Never** replace a large existing `CLAUDE.md` / `GEMINI.md` with only a pointer if it holds unique project rules — **move** unique rules into `AGENTS.md` first (with user consent if non-trivial), then leave a pointer (+ optional short local-only notes).
+135:| In a project (`.git`, `AGENTS.md`, `CLAUDE.md`, `product.md`, package manifests, …) | `status` (+ `check instructions` if needed) | Hybrid status surfaces hierarchy findings; then `fix --dry-run` |
+136:| Project missing AGENTS.md / vendor files don’t link it | `status` / `check instructions` → `fix --dry-run` | Hierarchy findings → CLI plan/apply; do not freestyle when covered (LOCAL POLICY §6) |
+142:| See what would change | `fix --dry-run` | No writes |
+143:| Hub conflict on dry-run | `fix --dry-run --sync-target <hub>` | Hub path must be user-chosen |
+179:- Product/vault links belong in **`AGENTS.md`** (or via Doctor appends that land on instruction surfaces). Pointer files only delegate to `AGENTS.md`.
+181:## Execution Loop
+186:4. If **project scope**: diagnose **Project Instruction Hierarchy** via `status` / `check instructions` (LOCAL POLICY §6) — look for `instructions.hierarchy_missing_agents_md` / `instructions.hierarchy_missing_pointer`. Use `agent-doctor agents` when unsure which vendors are in play (Gemini = map primary + file presence only).
+189:7. **CLI hierarchy plan before freestyle:** `agent-doctor fix --dry-run` (+ `--sync-target` if conflict and hub is known). When hierarchy findings exist, expect kinds `create_agents_stub` / `append_agents_pointer` in the plan — use that path; do not hand-write AGENTS/pointer files first.
+191:9. Summarize the dry-run plan (include hierarchy steps when present). **Do not apply** until consent (or explicit apply this turn). **Do not freestyle** hierarchy creates/appends when the plan covers them (LOCAL POLICY §6). Never copy skill trees as a fix.
+207:| `agent-doctor fix --dry-run` | **No writes** | Plan only (includes hierarchy when findings exist) |
+211:| Hierarchy via CLI | `fix --dry-run` → `fix` | Findings `instructions.hierarchy_*` → kinds `create_agents_stub` / `append_agents_pointer` |
+217:Use `agent-doctor fix --dry-run` before any Doctor apply.
+220:- Optional: `fix --dry-run --html` for a browser plan preview (still no apply).
+222:- Hierarchy is **included** in the dry-run when `instructions.hierarchy_missing_agents_md` / `instructions.hierarchy_missing_pointer` findings exist — look for kinds `create_agents_stub` and `append_agents_pointer`. Prefer that plan over freestyle file writes (LOCAL POLICY §6).
+229:agent-doctor fix --dry-run
+230:agent-doctor fix --dry-run --sync-target ~/.agents/skills
+231:agent-doctor fix --dry-run --sync-target ~/.agents/skills --html
+241:| Overall RED/YELLOW + hub conflict | Multiple populated skills roots | Ask user for hub (**never silent hub pick**); `fix --dry-run --sync-target <path>` |
+243:| Missing `AGENTS.md` in project | Finding `instructions.hierarchy_missing_agents_md` | `agent-doctor fix --dry-run` then `fix` / `fix --yes` → kind `create_agents_stub` (LOCAL POLICY §6); re-status |
+244:| Vendor pointer missing / no AGENTS ref | Finding `instructions.hierarchy_missing_pointer` (e.g. `CLAUDE.md`, `GEMINI.md`) | `agent-doctor fix --dry-run` then `fix` / `fix --yes` → kind `append_agents_pointer`; do not paste full AGENTS body |
+245:| Gemini primary / `GEMINI.md` present but no pointer | Same `instructions.hierarchy_missing_pointer` (map primary + file presence only; no deep Gemini adapter) | CLI plan/apply `append_agents_pointer` on `GEMINI.md` — same as Claude |
+246:| Unique rules only in `CLAUDE.md` | Policy forked | Move shared rules into `AGENTS.md` (consent if large); leave pointer; not a freestyle hierarchy stub case |
+247:| `product.missing_link` | Instruction files omit product/roadmap | Link from **AGENTS.md** (and via Doctor `append_instruction_link`); pure pointers stay thin |
+356:- Gemini (and similar) may report **presence-only** depth — hierarchy still applies via map primary + file presence only; do not require a deep Gemini adapter before enforcing `GEMINI.md` → `AGENTS.md`.
+386:Use the **CLI path** when scope is a project (LOCAL POLICY §6). Prefer `agent-doctor fix` over agent freestyle whenever hierarchy findings exist. Order is always diagnose → `fix --dry-run` → consent → `fix` / `fix --yes` — never freestyle before the plan, never silent hub, never skill-tree copy.
+392:| `instructions.hierarchy_missing_agents_md` | Project root has no `AGENTS.md` |
+393:| `instructions.hierarchy_missing_pointer` | Required vendor file absent or body does not reference `AGENTS.md` |
+395:**Fix kinds** (from `fix --dry-run` / apply):
+399:| `create_agents_stub` | Minimal `AGENTS.md` stub only (never invent long policy) |
+400:| `append_agents_pointer` | Append-only `AGENTS.md` pointer in vendor instruction file |
+408:- LOCAL POLICY §6 is authoritative: **prefer fix when findings exist; do not freestyle hierarchy when CLI covers it.**
+410:- If migrating unique content from `CLAUDE.md` into `AGENTS.md`, get consent for non-trivial moves (not an auto-fix kind).
+420:agent-doctor fix --dry-run
+421:# Expect create_agents_stub / append_agents_pointer when hierarchy findings exist
+428:Use `agent-doctor fix --dry-run`. Build plan from findings; no writes.
+436:- Hierarchy steps appear here when `instructions.hierarchy_*` findings exist — do not list freestyle hierarchy writes as separate from this plan.
+441:agent-doctor fix --dry-run --sync-target ~/.agents/skills
+448:Side effects: May set `sync_target`, symlink/wire skills dirs to the hub, append instruction link blocks, create minimal `AGENTS.md` stub (`create_agents_stub`), append AGENTS pointers (`append_agents_pointer`), update map fields. Does not copy skill trees, delete vault notes, or install agent apps.
+456:- Product/vault links should end up consistent with **AGENTS.md**-first hierarchy.
+469:3. **Instruction hierarchy** — `AGENTS.md` present? which pointers updated/created?  

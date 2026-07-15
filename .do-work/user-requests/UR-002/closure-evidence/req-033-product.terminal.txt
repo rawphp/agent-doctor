@@ -1,0 +1,23 @@
+Agent Doctor — hybrid status
+
+Overall: 55 (YELLOW)
+
+Sync target (skills):  /Users/tomkaczocha/.agents/skills
+  claude-code  ✓ on hub
+  codex        ✓ on hub
+  grok         ✓ on hub
+
+Memory hubs (vaults):
+  /Users/tomkaczocha/EA/cowork/my-wiki
+  /Users/tomkaczocha/EA/cowork/meaning-of-life
+
+Domains:
+  product_context   55 YELLOW  3 warning(s) (score 55)
+
+Findings:
+  warn   product.missing_link  AGENTS.md missing link to product.md
+  warn   product.missing_link  Agents.md missing link to product.md
+  warn   product.missing_link  GROK.md missing link to product.md
+
+Next: agent-doctor fix --dry-run | agent-doctor dashboard
+

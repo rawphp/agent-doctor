@@ -1,0 +1,51 @@
+req: REQ-032
+status: done
+commit: 7ab833f
+isolation: worktree
+closure_proof: "checkpoint_log:passed commit:7ab833f tests:apply 28 + full 327"
+last_good_step: 2
+failed_step: 0
+checkpoint_log:
+  status: passed
+  checkpoints:
+    - step: 1
+      total: 2
+      type: test
+      command: "npm test -- src/fix/apply"
+      expected: "pass"
+      actual: "28 passed"
+      status: passed
+    - step: 2
+      total: 2
+      type: test
+      command: "npm test"
+      expected: "pass"
+      actual: "327 passed"
+      status: passed
+deferred_checks: []
+acceptance:
+  AC1:
+    status: passed
+    evidence:
+      - type: test
+        ref: "src/fix/apply.test.ts create minimal stub"
+  AC2:
+    status: passed
+    evidence:
+      - type: test
+        ref: "src/fix/apply.test.ts skip non-empty AGENTS.md"
+  AC3:
+    status: passed
+    evidence:
+      - type: test
+        ref: "src/fix/apply.test.ts append idempotent"
+  AC4:
+    status: passed
+    evidence:
+      - type: test
+        ref: "src/fix/apply.test.ts create/skip/append/already-linked"
+outputs:
+  - path: src/fix/apply.ts
+    description: create_agents_stub hardening
+  - path: src/fix/apply.test.ts
+    description: REQ-032 AC tests

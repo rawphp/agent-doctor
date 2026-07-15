@@ -1,0 +1,52 @@
+
+> agent-doctor@0.1.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /Users/tomkaczocha/EA/projects/agent-doctor
+
+ ✓ src/engine/skills-hub.test.ts (10 tests) 33ms
+ ✓ src/surfaces/terminal.test.ts (13 tests) 38ms
+ ✓ src/domains/instructions.test.ts (20 tests) 90ms
+ ✓ src/domains/product.test.ts (18 tests) 178ms
+ ✓ src/fix/plan.test.ts (28 tests) 17ms
+ ✓ src/fix/apply.test.ts (28 tests) 258ms
+ ✓ src/map/init.test.ts (11 tests) 131ms
+ ✓ src/domains/skills.test.ts (7 tests) 36ms
+ ✓ src/commands/status.test.ts (13 tests) 215ms
+ ✓ src/adapters/claude-code.test.ts (12 tests) 371ms
+ ✓ src/engine/run-checks.test.ts (17 tests) 406ms
+ ✓ src/commands/dashboard.test.ts (9 tests) 158ms
+ ✓ src/adapters/presence.test.ts (12 tests) 179ms
+ ✓ src/domains/consistency.test.ts (6 tests) 33ms
+ ✓ src/adapters/codex.test.ts (11 tests) 58ms
+ ✓ src/commands/fix.test.ts (12 tests) 103ms
+ ✓ src/adapters/grok.test.ts (12 tests) 391ms
+ ✓ src/commands/check.test.ts (7 tests) 158ms
+ ✓ src/engine/types.test.ts (4 tests) 4ms
+ ✓ src/engine/score.test.ts (21 tests) 12ms
+ ✓ src/surfaces/dashboard/template.test.ts (6 tests) 2ms
+ ✓ src/domains/obsidian.test.ts (6 tests) 48ms
+ ✓ src/map/discover.test.ts (5 tests) 49ms
+ ✓ src/surfaces/fix-plan/template.test.ts (2 tests) 2ms
+ ✓ src/domains/presence.test.ts (6 tests) 20ms
+ ✓ src/map/load-save.test.ts (7 tests) 263ms
+ ✓ src/commands/init.test.ts (6 tests) 52ms
+ ✓ src/commands/agents.test.ts (3 tests) 2ms
+ ✓ src/surfaces/dashboard/server.test.ts (4 tests) 624ms
+   ✓ startDashboardServer > does not call fix apply (surface is read-only) 519ms
+ ✓ tests/scaffold.test.ts (3 tests) 175ms
+ ✓ tests/cli-help.test.ts (8 tests) 6362ms
+   ✓ agent-doctor --help > exits 0 1353ms
+   ✓ agent-doctor --help > lists all v1 commands from the design 918ms
+   ✓ agent-doctor <command> --help > dashboard --help prints usage and does not start the server 828ms
+   ✓ agent-doctor <command> --help > status --help prints usage without running a full check report header 809ms
+   ✓ agent-doctor <command> --help > accepts -h as help for dashboard 892ms
+   ✓ agent-doctor <command> --help > check --help lists instructions domain and hierarchy finding ids 798ms
+   ✓ agent-doctor <command> --help > check instructions --help does not crash and shows check usage 745ms
+
+ Test Files  31 passed (31)
+      Tests  327 passed (327)
+   Start at  20:39:24
+   Duration  13.60s (transform 13.81s, setup 0ms, collect 39.56s, tests 10.47s, environment 3ms, prepare 7.12s)
+

@@ -1,0 +1,156 @@
+{
+  "generated_at": "2026-07-15T10:38:06.783Z",
+  "scope": "hybrid",
+  "project_root": "/Users/tomkaczocha/EA/projects/agent-doctor",
+  "sync": {
+    "skills_hub": "/Users/tomkaczocha/.agents/skills",
+    "memory_hubs": [
+      "/Users/tomkaczocha/EA/cowork/my-wiki",
+      "/Users/tomkaczocha/EA/cowork/meaning-of-life"
+    ],
+    "agents_in_scope": [
+      "claude-code",
+      "codex",
+      "grok"
+    ],
+    "aligned": true
+  },
+  "overall": {
+    "score": 90,
+    "grade": "green"
+  },
+  "agents": [
+    {
+      "id": "claude-code",
+      "adapter": "claude-code",
+      "installed": true,
+      "config_home": "/Users/tomkaczocha/.claude",
+      "depth": "deep",
+      "primary": false,
+      "ignored": false
+    },
+    {
+      "id": "codex",
+      "adapter": "codex",
+      "installed": true,
+      "config_home": "/Users/tomkaczocha/.codex",
+      "depth": "deep",
+      "primary": false,
+      "ignored": false
+    },
+    {
+      "id": "grok",
+      "adapter": "grok",
+      "installed": true,
+      "config_home": "/Users/tomkaczocha/.grok",
+      "depth": "deep",
+      "primary": true,
+      "ignored": false
+    }
+  ],
+  "domains": [
+    {
+      "domain": "agent_presence",
+      "score": 100,
+      "grade": "green",
+      "summary": "agent_presence: healthy"
+    },
+    {
+      "domain": "shared_skills_path",
+      "score": 85,
+      "grade": "green",
+      "summary": "1 warning(s) (score 85)"
+    },
+    {
+      "domain": "instruction_files",
+      "score": 55,
+      "grade": "yellow",
+      "summary": "3 warning(s) (score 55)"
+    },
+    {
+      "domain": "product_context",
+      "score": 100,
+      "grade": "green",
+      "summary": "product_context: healthy"
+    },
+    {
+      "domain": "obsidian",
+      "score": 100,
+      "grade": "green",
+      "summary": "obsidian: healthy"
+    },
+    {
+      "domain": "cross_agent_consistency",
+      "score": 100,
+      "grade": "green",
+      "summary": "cross_agent_consistency: healthy"
+    }
+  ],
+  "findings": [
+    {
+      "id": "skills.duplicated_trees",
+      "severity": "warn",
+      "domain": "skills",
+      "message": "Duplicated skill trees across agent homes; wire agents to one hub (symlink, no content copy).",
+      "evidence": [
+        "/Users/tomkaczocha/.agents/skills",
+        "/Users/tomkaczocha/.grok/bundled/skills"
+      ],
+      "agents_affected": [
+        "claude-code",
+        "codex",
+        "grok"
+      ],
+      "sync_target": "/Users/tomkaczocha/.agents/skills"
+    },
+    {
+      "id": "instructions.hierarchy_missing_pointer",
+      "severity": "warn",
+      "domain": "instructions",
+      "message": "Required vendor instruction file missing for hierarchy: CLAUDE.md must exist and point at AGENTS.md",
+      "evidence": [
+        "/Users/tomkaczocha/EA/projects/agent-doctor/CLAUDE.md",
+        "/Users/tomkaczocha/EA/projects/agent-doctor/AGENTS.md"
+      ],
+      "agents_affected": [
+        "claude-code"
+      ]
+    },
+    {
+      "id": "instructions.hierarchy_missing_pointer",
+      "severity": "warn",
+      "domain": "instructions",
+      "message": "Required vendor instruction file missing for hierarchy: GROK.md must exist and point at AGENTS.md",
+      "evidence": [
+        "/Users/tomkaczocha/EA/projects/agent-doctor/GROK.md",
+        "/Users/tomkaczocha/EA/projects/agent-doctor/AGENTS.md"
+      ],
+      "agents_affected": [
+        "grok"
+      ]
+    },
+    {
+      "id": "instructions.missing_file",
+      "severity": "warn",
+      "domain": "instructions",
+      "message": "Expected instruction file missing for claude-code: /Users/tomkaczocha/EA/projects/agent-doctor/CLAUDE.md",
+      "evidence": [
+        "/Users/tomkaczocha/EA/projects/agent-doctor/CLAUDE.md"
+      ],
+      "agents_affected": [
+        "claude-code"
+      ]
+    }
+  ],
+  "recommendations": [
+    {
+      "id": "rec.ensure_agents_md_pointers",
+      "finding_ids": [
+        "instructions.hierarchy_missing_pointer",
+        "instructions.hierarchy_missing_pointer"
+      ],
+      "message": "Ensure required vendor instruction files (CLAUDE.md / GEMINI.md / GROK.md / …) point at AGENTS.md — preview with `agent-doctor fix --dry-run`",
+      "priority": 1
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+suite: 327 passed (31 files)
+skill_ids_claimed:
+append_agents_pointer
+create_agents_stub
+instructions.hierarchy_missing_agents_md
+instructions.hierarchy_missing_pointer
+product.missing_link
+cli_check_help_ids:
+  instructions.hierarchy_missing_agents_md   Project root lacks AGENTS.md
+  instructions.hierarchy_missing_pointer     Vendor file missing AGENTS.md pointer
+cli_fix_kinds_observed_live: create_agents_stub, append_agents_pointer (req-030 dry-run)
+covering_tests_sample:
+  tests/cli-help.test.ts — check --help lists hierarchy finding ids
+  src/domains/instructions.test.ts — hierarchy_missing_* ids
+  src/fix/plan.test.ts — create_agents_stub / append_agents_pointer
+  src/commands/status.test.ts — hierarchy findings in status
+  src/domains/product.test.ts — product AGENTS-first / pointer exemption

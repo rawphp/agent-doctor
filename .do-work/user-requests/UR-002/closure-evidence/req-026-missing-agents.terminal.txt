@@ -1,0 +1,30 @@
+Agent Doctor — hybrid status
+
+Overall: 0 (RED)
+
+Sync target (skills):  /Users/tomkaczocha/.agents/skills
+  claude-code  ✓ on hub
+  codex        ✓ on hub
+  grok         ✓ on hub
+
+Memory hubs (vaults):
+  /Users/tomkaczocha/EA/cowork/my-wiki
+  /Users/tomkaczocha/EA/cowork/meaning-of-life
+
+Domains:
+  instruction_files    0 RED     1 error(s), 5 warning(s) (score 0)
+
+Findings:
+  error  instructions.hierarchy_missing_agents_md  Project instruction hierarchy requires AGENTS.md at the project root (canonical shared instructions).
+  warn   instructions.hierarchy_missing_pointer  CLAUDE.md must point at AGENTS.md (link or “read AGENTS.md” pointer); do not fork full policy into vendor files
+  warn   instructions.hierarchy_missing_pointer  Required vendor instruction file missing for hierarchy: GROK.md must exist and point at AGENTS.md
+  warn   instructions.missing_file  Expected instruction file missing for codex: /private/tmp/agent-doctor-close-ur002.9R6p6Y/missing-agents/AGENTS.md
+  warn   instructions.missing_file  Expected instruction file missing for grok: /private/tmp/agent-doctor-close-ur002.9R6p6Y/missing-agents/AGENTS.md
+  warn   instructions.missing_file  Expected instruction file missing for grok: /private/tmp/agent-doctor-close-ur002.9R6p6Y/missing-agents/GROK.md
+
+Recommendations:
+  1. Create minimal AGENTS.md stub at the project root (canonical shared instructions; do not invent long policy) — preview with `agent-doctor fix --dry-run`  [instructions.hierarchy_missing_agents_md]
+  2. Ensure required vendor instruction files (CLAUDE.md / GEMINI.md / GROK.md / …) point at AGENTS.md — preview with `agent-doctor fix --dry-run`  [instructions.hierarchy_missing_pointer, instructions.hierarchy_missing_pointer]
+
+Next: agent-doctor fix --dry-run | agent-doctor dashboard
+

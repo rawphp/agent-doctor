@@ -1,0 +1,156 @@
+{
+  "generated_at": "2026-07-15T10:38:26.280Z",
+  "scope": "hybrid",
+  "project_root": "/private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy",
+  "sync": {
+    "skills_hub": "/Users/tomkaczocha/.agents/skills",
+    "memory_hubs": [
+      "/Users/tomkaczocha/EA/cowork/my-wiki",
+      "/Users/tomkaczocha/EA/cowork/meaning-of-life"
+    ],
+    "agents_in_scope": [
+      "claude-code",
+      "codex",
+      "grok"
+    ],
+    "aligned": true
+  },
+  "overall": {
+    "score": 0,
+    "grade": "red"
+  },
+  "agents": [
+    {
+      "id": "claude-code",
+      "adapter": "claude-code",
+      "installed": true,
+      "config_home": "/Users/tomkaczocha/.claude",
+      "depth": "deep",
+      "primary": false,
+      "ignored": false
+    },
+    {
+      "id": "codex",
+      "adapter": "codex",
+      "installed": true,
+      "config_home": "/Users/tomkaczocha/.codex",
+      "depth": "deep",
+      "primary": false,
+      "ignored": false
+    },
+    {
+      "id": "grok",
+      "adapter": "grok",
+      "installed": true,
+      "config_home": "/Users/tomkaczocha/.grok",
+      "depth": "deep",
+      "primary": true,
+      "ignored": false
+    }
+  ],
+  "domains": [
+    {
+      "domain": "instruction_files",
+      "score": 0,
+      "grade": "red",
+      "summary": "1 error(s), 5 warning(s) (score 0)"
+    }
+  ],
+  "findings": [
+    {
+      "id": "instructions.hierarchy_missing_agents_md",
+      "severity": "error",
+      "domain": "instructions",
+      "message": "Project instruction hierarchy requires AGENTS.md at the project root (canonical shared instructions).",
+      "evidence": [
+        "/private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/AGENTS.md"
+      ],
+      "agents_affected": [
+        "claude-code",
+        "codex",
+        "grok"
+      ]
+    },
+    {
+      "id": "instructions.hierarchy_missing_pointer",
+      "severity": "warn",
+      "domain": "instructions",
+      "message": "CLAUDE.md must point at AGENTS.md (link or “read AGENTS.md” pointer); do not fork full policy into vendor files",
+      "evidence": [
+        "/private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/CLAUDE.md",
+        "/private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/AGENTS.md"
+      ],
+      "agents_affected": [
+        "claude-code"
+      ]
+    },
+    {
+      "id": "instructions.hierarchy_missing_pointer",
+      "severity": "warn",
+      "domain": "instructions",
+      "message": "Required vendor instruction file missing for hierarchy: GROK.md must exist and point at AGENTS.md",
+      "evidence": [
+        "/private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/GROK.md",
+        "/private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/AGENTS.md"
+      ],
+      "agents_affected": [
+        "grok"
+      ]
+    },
+    {
+      "id": "instructions.missing_file",
+      "severity": "warn",
+      "domain": "instructions",
+      "message": "Expected instruction file missing for codex: /private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/AGENTS.md",
+      "evidence": [
+        "/private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/AGENTS.md"
+      ],
+      "agents_affected": [
+        "codex"
+      ]
+    },
+    {
+      "id": "instructions.missing_file",
+      "severity": "warn",
+      "domain": "instructions",
+      "message": "Expected instruction file missing for grok: /private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/AGENTS.md",
+      "evidence": [
+        "/private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/AGENTS.md"
+      ],
+      "agents_affected": [
+        "grok"
+      ]
+    },
+    {
+      "id": "instructions.missing_file",
+      "severity": "warn",
+      "domain": "instructions",
+      "message": "Expected instruction file missing for grok: /private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/GROK.md",
+      "evidence": [
+        "/private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/GROK.md"
+      ],
+      "agents_affected": [
+        "grok"
+      ]
+    }
+  ],
+  "recommendations": [
+    {
+      "id": "rec.ensure_agents_md",
+      "finding_ids": [
+        "instructions.hierarchy_missing_agents_md"
+      ],
+      "message": "Create minimal AGENTS.md stub at the project root (canonical shared instructions; do not invent long policy) — preview with `agent-doctor fix --dry-run`",
+      "priority": 1
+    },
+    {
+      "id": "rec.ensure_agents_md_pointers",
+      "finding_ids": [
+        "instructions.hierarchy_missing_pointer",
+        "instructions.hierarchy_missing_pointer"
+      ],
+      "message": "Ensure required vendor instruction files (CLAUDE.md / GEMINI.md / GROK.md / …) point at AGENTS.md — preview with `agent-doctor fix --dry-run`",
+      "priority": 1
+    }
+  ]
+}

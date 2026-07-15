@@ -1,0 +1,27 @@
+Fix plan — 3 step(s)
+
+1. create_agents_stub
+   Create minimal AGENTS.md stub at project root (canonical shared instructions; do not invent long policy)
+   target: /private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/AGENTS.md
+
+2. append_agents_pointer
+   Append AGENTS.md pointer in CLAUDE.md (append-only; never wholesale rewrite vendor body)
+   agent:  claude-code
+   target: /private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/CLAUDE.md
+   value:  /private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/AGENTS.md
+
+3. append_agents_pointer
+   Append AGENTS.md pointer in GROK.md (append-only; never wholesale rewrite vendor body)
+   agent:  grok
+   target: /private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/GROK.md
+   value:  /private/tmp/agent-doctor-close-ur002.9R6p6Y/fix-hierarchy/AGENTS.md
+
+
+Apply results:
+  ✓ [applied] fix.create_agents_stub
+  ✓ [applied] fix.append_agents_pointer_CLAUDE.md
+  ✓ [applied] fix.append_agents_pointer_GROK.md
+
+Summary: 3 applied, 0 skipped/rejected.
+
+After fix — Overall: 98 (GREEN)
