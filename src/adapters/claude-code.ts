@@ -98,6 +98,12 @@ export function createClaudeCodeAdapter(options: ClaudeCodeAdapterOptions = {}):
       }
 
       if (projectRoot) {
+        // AGENTS.md-first hierarchy: list the hub when present (vendor pointer stays CLAUDE.md).
+        const projectAgentsMd = join(projectRoot, 'AGENTS.md');
+        if (await pathExists(projectAgentsMd)) {
+          files.push(projectAgentsMd);
+        }
+
         const projectClaudeMd = join(projectRoot, 'CLAUDE.md');
         if (await pathExists(projectClaudeMd)) {
           files.push(projectClaudeMd);
@@ -118,6 +124,12 @@ export function createClaudeCodeAdapter(options: ClaudeCodeAdapterOptions = {}):
       }
 
       return files;
+    },
+
+    expectedInstructionFiles(projectRoot?: string): string[] {
+      // Claude still uses CLAUDE.md as the vendor pointer surface (hierarchy → AGENTS.md).
+      if (!projectRoot) return [];
+      return [join(projectRoot, 'CLAUDE.md')];
     },
 
     async memoryPointers(_projectRoot?: string): Promise<string[]> {

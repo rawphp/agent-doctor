@@ -88,6 +88,17 @@ describe('Grok adapter', () => {
     });
   });
 
+  describe('expectedInstructionFiles (hierarchy presence)', () => {
+    it('lists AGENTS.md first then GROK.md pointer surface', () => {
+      const adapter = createGrokAdapter({ home: HOME_WITH_SKILLS });
+      expect(adapter.expectedInstructionFiles).toBeTypeOf('function');
+      const expected = adapter.expectedInstructionFiles!(PROJECT_ROOT);
+      expect(expected[0]).toBe(join(PROJECT_ROOT, 'AGENTS.md'));
+      expect(expected).toContain(join(PROJECT_ROOT, 'GROK.md'));
+      expect(adapter.expectedInstructionFiles!()).toEqual([]);
+    });
+  });
+
   describe('memoryPointers', () => {
     it('returns an array (empty when no memory config discovered)', async () => {
       const adapter = createGrokAdapter({ home: HOME_WITH_SKILLS });

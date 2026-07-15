@@ -15,6 +15,8 @@ import {
   checkInstructionHierarchy,
   checkInstructions,
   contentPointsToAgentsMd,
+  requiredPointerBasenames,
+  requiredVendorPointers,
 } from './instructions.js';
 
 const temps: string[] = [];
@@ -304,6 +306,84 @@ describe('Project Instruction Hierarchy (diagnose path contract)', () => {
           f.evidence.some((e) => e.endsWith('GEMINI.md')),
       ),
     ).toBe(true);
+  });
+
+  it('requires GEMINI.md when presence-only gemini is primary even if file is missing', async () => {
+    const project = tempDir();
+    writeFileSync(join(project, 'AGENTS.md'), '# AGENTS\n');
+    // no GEMINI.md on disk
+
+    const findings = await checkInstructions({
+      map: emptyMap(),
+      agents: [
+        {
+          id: 'gemini',
+          adapter: 'gemini',
+          installed: true,
+          depth: 'presence-only',
+          config_home: '/tmp/gemini',
+          primary: true,
+        },
+      ],
+      projectRoot: project,
+      // No deep gemini adapter package — presence + map only
+      adapters: [],
+    });
+
+    const missing = findings.filter(
+      (f) =>
+        f.id === HIERARCHY_FINDING_IDS.MISSING_POINTER &&
+        f.evidence.some((e) => e.endsWith('GEMINI.md')),
+    );
+    expect(missing.length).toBeGreaterThanOrEqual(1);
+    expect(missing[0]!.agents_affected).toContain('gemini');
+  });
+
+  it('requires pointer when GEMINI.md exists without pointer content even if gemini agent is absent', async () => {
+    const project = tempDir();
+    writeFileSync(join(project, 'AGENTS.md'), '# AGENTS\n');
+    writeFileSync(join(project, 'GEMINI.md'), '# Gemini local rules only\n');
+
+    const findings = await checkInstructions({
+      map: emptyMap(),
+      agents: [], // file presence alone is enough
+      projectRoot: project,
+      adapters: [],
+    });
+
+    expect(
+      findings.some(
+        (f) =>
+          f.id === HIERARCHY_FINDING_IDS.MISSING_POINTER &&
+          f.evidence.some((e) => e.endsWith('GEMINI.md')),
+      ),
+    ).toBe(true);
+  });
+
+  it('shared helper returns required pointer basenames from agents + project files', () => {
+    const project = tempDir();
+    writeFileSync(join(project, 'GEMINI.md'), '# gemini\n');
+
+    const withClaude = requiredVendorPointers(project, [presence('claude-code')]);
+    expect(withClaude.map((v) => v.basename).sort()).toEqual(['CLAUDE.md', 'GEMINI.md']);
+    expect(withClaude.find((v) => v.basename === 'CLAUDE.md')?.exists).toBe(false);
+    expect(withClaude.find((v) => v.basename === 'GEMINI.md')?.exists).toBe(true);
+
+    const basenames = requiredPointerBasenames(project, [
+      presence('claude-code'),
+      { ...presence('codex') },
+      {
+        id: 'gemini',
+        adapter: 'gemini',
+        installed: false,
+        primary: true,
+        depth: 'presence-only',
+      },
+    ]);
+    // Codex is AGENTS.md-native — not a vendor pointer basename
+    expect(basenames).toEqual(expect.arrayContaining(['CLAUDE.md', 'GEMINI.md']));
+    expect(basenames).not.toContain('AGENTS.md');
+    expect(basenames.some((b) => b.toLowerCase() === 'codex.md')).toBe(false);
   });
 
   it('healthy hierarchy produces zero hierarchy findings', async () => {

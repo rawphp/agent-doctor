@@ -77,6 +77,32 @@ describe('Claude Code adapter', () => {
 
       expect(files).toContain(join(HOME_WITH_SKILLS, 'CLAUDE.md'));
     });
+
+    it('lists project AGENTS.md when present (AGENTS.md-first hierarchy)', async () => {
+      const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');
+      const { tmpdir } = await import('node:os');
+      const dir = mkdtempSync(join(tmpdir(), 'claude-agents-first-'));
+      try {
+        writeFileSync(join(dir, 'AGENTS.md'), '# hub\n');
+        writeFileSync(join(dir, 'CLAUDE.md'), 'Read AGENTS.md\n');
+        const adapter = createClaudeCodeAdapter({ home: HOME_WITH_SKILLS });
+        const files = await adapter.instructionFiles(dir);
+        expect(files).toContain(join(dir, 'AGENTS.md'));
+        expect(files).toContain(join(dir, 'CLAUDE.md'));
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe('expectedInstructionFiles (hierarchy presence)', () => {
+    it('expects CLAUDE.md pointer at project root (AGENTS.md-first still uses vendor pointer)', () => {
+      const adapter = createClaudeCodeAdapter({ home: HOME_WITH_SKILLS });
+      expect(adapter.expectedInstructionFiles).toBeTypeOf('function');
+      const expected = adapter.expectedInstructionFiles!(PROJECT_ROOT);
+      expect(expected).toEqual([join(PROJECT_ROOT, 'CLAUDE.md')]);
+      expect(adapter.expectedInstructionFiles!()).toEqual([]);
+    });
   });
 
   describe('memoryPointers', () => {

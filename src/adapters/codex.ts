@@ -128,6 +128,12 @@ export function createCodexAdapter(options: CodexAdapterOptions = {}): AgentAdap
       return files;
     },
 
+    expectedInstructionFiles(projectRoot?: string): string[] {
+      // Codex reads AGENTS.md natively — no separate vendor pointer basename.
+      if (!projectRoot) return [];
+      return [join(projectRoot, 'AGENTS.md')];
+    },
+
     async memoryPointers(_projectRoot?: string): Promise<string[]> {
       // v1: deep memory discovery is owned by domain checks; adapter reports
       // explicit config pointers when present. No invented paths.

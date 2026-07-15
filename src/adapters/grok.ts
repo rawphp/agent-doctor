@@ -133,6 +133,12 @@ export function createGrokAdapter(options: GrokAdapterOptions = {}): AgentAdapte
       return files;
     },
 
+    expectedInstructionFiles(projectRoot?: string): string[] {
+      // AGENTS.md-first; any of the set satisfies missing_file (domain multi-option).
+      if (!projectRoot) return [];
+      return [join(projectRoot, 'AGENTS.md'), join(projectRoot, 'GROK.md')];
+    },
+
     async memoryPointers(_projectRoot?: string): Promise<string[]> {
       // v1: deep memory discovery is owned by domain checks; adapter reports
       // explicit config pointers when present. No invented paths.
