@@ -1,8 +1,51 @@
 ---
 ur: UR-002
 received: 2026-07-15
-status: intake
+status: captured
+classification: feature
+layers_in_scope: [cli, engine, adapters, surfaces]
+layer_decisions: {}
+reqs:
+  - { id: REQ-026, layer: none, integration_confidence: n/a }
+  - { id: REQ-027, layer: engine, integration_confidence: high }
+  - { id: REQ-028, layer: adapters, integration_confidence: high }
+  - { id: REQ-029, layer: cli, integration_confidence: high }
+  - { id: REQ-030, layer: none, integration_confidence: n/a }
+  - { id: REQ-031, layer: engine, integration_confidence: high }
+  - { id: REQ-032, layer: engine, integration_confidence: high }
+  - { id: REQ-033, layer: none, integration_confidence: n/a }
+  - { id: REQ-034, layer: engine, integration_confidence: high }
+  - { id: REQ-035, layer: none, integration_confidence: n/a }
+  - { id: REQ-036, layer: surfaces, integration_confidence: high }
+  - { id: REQ-037, layer: surfaces, integration_confidence: high }
+acknowledged_partials: []
 ---
+
+<!-- capture-summary-start -->
+## Capture summary (2026-07-15)
+
+| Item | Value |
+|---|---|
+| Classification | feature |
+| Layers in scope | cli, engine, adapters, surfaces |
+| Layer decisions | (none — all covered) |
+| REQs generated | 12 |
+
+| REQ | Layer | Integration confidence |
+|---|---|---|
+| REQ-026 | none | n/a |
+| REQ-027 | engine | high |
+| REQ-028 | adapters | high |
+| REQ-029 | cli | high |
+| REQ-030 | none | n/a |
+| REQ-031 | engine | high |
+| REQ-032 | engine | high |
+| REQ-033 | none | n/a |
+| REQ-034 | engine | high |
+| REQ-035 | none | n/a |
+| REQ-036 | surfaces | high |
+| REQ-037 | surfaces | high |
+<!-- capture-summary-end -->
 
 # UR-002: User Request
 
