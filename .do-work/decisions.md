@@ -4,3 +4,6 @@
 2026-07-14 | UR-001 | overall grade cannot be green on skills desync or hub conflict | clarification
 2026-07-14 | UR-001 | status --all has no project-count cap in v1 | clarification
 2026-07-14 | UR-001 | path-units per CLI command; foundation scaffold before init/status | capture split for runnable CLI first
+2026-07-15 | UR-002 | hierarchy fix is diagnose+plan+apply with minimal AGENTS.md stub | question session
+2026-07-15 | UR-002 | product links required on AGENTS.md plus non-pointer instruction files | question session
+2026-07-15 | UR-002 | Gemini hierarchy via map primary + file presence only (no deep adapter this UR) | question session
