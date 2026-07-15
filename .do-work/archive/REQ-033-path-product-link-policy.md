@@ -1,19 +1,14 @@
 # REQ-033: Path — Product link policy with hierarchy
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.40397
-**Claimed at:** 2026-07-15T09:56:23Z
-**Heartbeat:** 2026-07-15T09:56:23Z
-<!-- claimed-end -->
 
 **UR:** UR-002
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-15
 **Layer:** none
 **Entry point:** `agent-doctor status` / `check product` when product.md exists under hierarchy-aware project
 **Terminal state:** Product links required on AGENTS.md and any non-pointer instruction files; pure pointer files not required to link product.md directly
 **Parent:**
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:b150d73 tests:34 product+plan + 293 full
 **Criteria approved:** agent-drafted
 **Priority:** 2
 **Size:** M
@@ -30,10 +25,10 @@ Clarification: AGENTS.md plus any non-pointer instruction file. Avoid dual requi
 
 ## Acceptance Criteria
 
-- [ ] When AGENTS.md exists and lacks product link → finding
-- [ ] Pure pointer vendor file (references AGENTS.md, no substantial extra body beyond pointer/stub) → no product.missing_link for that file
-- [ ] Vendor file with unique body (non-pointer) → still requires product link if product.md exists
-- [ ] Fix plan appends product links to the correct targets only
+- [x] When AGENTS.md exists and lacks product link → finding
+- [x] Pure pointer vendor file (references AGENTS.md, no substantial extra body beyond pointer/stub) → no product.missing_link for that file
+- [x] Vendor file with unique body (non-pointer) → still requires product link if product.md exists
+- [x] Fix plan appends product links to the correct targets only
 
 ## Verification Steps
 
@@ -49,3 +44,10 @@ Clarification: AGENTS.md plus any non-pointer instruction file. Avoid dual requi
 **Data dependencies:** product.md presence, instruction file contents.
 
 **Service dependencies:** `src/domains/product.ts`, instructions hierarchy helpers if shared.
+
+## Outputs
+
+- src/domains/product.ts — projectRoot-scoped product links + pure pointer exemption
+- src/domains/product.test.ts — hierarchy product policy + home-path regression
+- src/fix/plan.ts — skip pure pointer product appends
+- src/fix/plan.test.ts — plan target tests
