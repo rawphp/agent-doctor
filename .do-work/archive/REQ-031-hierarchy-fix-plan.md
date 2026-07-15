@@ -1,19 +1,14 @@
 # REQ-031: Fix plan for hierarchy findings
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.85479
-**Claimed at:** 2026-07-15T10:12:56Z
-**Heartbeat:** 2026-07-15T10:12:56Z
-<!-- claimed-end -->
 
 **UR:** UR-002
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-15
 **Layer:** engine
 **Entry point:**
 **Terminal state:**
 **Parent:** REQ-030
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:827ae74 tests:src/fix/plan (28) + full suite (315)
 **Criteria approved:** agent-drafted
 **Priority:** 3
 **Size:** M
@@ -30,10 +25,10 @@ Reuse `append_instruction_link` / new kind e.g. `create_agents_stub` if needed; 
 
 ## Acceptance Criteria
 
-- [ ] `instructions.missing_agents_md` → plan action to create minimal stub at project root AGENTS.md
-- [ ] `instructions.missing_agents_pointer` → plan append pointer to target instruction file
-- [ ] Actions listed in dry-run format output
-- [ ] Tests for both finding → action mappings; rejected if projectRoot missing
+- [x] `instructions.missing_agents_md` → plan action to create minimal stub at project root AGENTS.md
+- [x] `instructions.missing_agents_pointer` → plan append pointer to target instruction file
+- [x] Actions listed in dry-run format output
+- [x] Tests for both finding → action mappings; rejected if projectRoot missing
 
 ## Verification Steps
 
@@ -49,3 +44,9 @@ Reuse `append_instruction_link` / new kind e.g. `create_agents_stub` if needed; 
 **Data dependencies:** Findings array, projectRoot.
 
 **Service dependencies:** `SAFE_FIX_KINDS`, existing append action patterns.
+
+## Outputs
+
+- src/fix/plan.ts — AC alias hierarchy findings + projectRoot gate
+- src/fix/plan.test.ts — REQ-031 edge coverage
+- src/engine/types.ts — HIERARCHY_PLAN_FINDING_IDS
