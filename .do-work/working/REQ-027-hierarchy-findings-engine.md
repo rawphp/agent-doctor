@@ -1,7 +1,13 @@
 # REQ-027: Hierarchy findings in instructions domain
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.40397
+**Claimed at:** 2026-07-15T09:48:30Z
+**Heartbeat:** 2026-07-15T09:48:30Z
+<!-- claimed-end -->
+
 **UR:** UR-002
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-15
 **Layer:** engine
 **Entry point:**
