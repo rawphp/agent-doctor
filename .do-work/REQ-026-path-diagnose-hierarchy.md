@@ -24,7 +24,7 @@ UR-002: CLI must support skill policies and vice-versa. Clarification: diagnose 
 
 ## Acceptance Criteria
 
-- [ ] Path-unit documents entry `status`/`check instructions` and terminal state with hierarchy findings present/absent correctly
+- [ ] Path-unit documents entry `status`/`check instructions` and terminal state: hierarchy findings appear when AGENTS.md is missing or a required vendor file lacks an AGENTS.md pointer; healthy trees produce zero hierarchy findings
 - [ ] Child REQs under this path deliver findings + adapter rules + CLI surface needed for diagnose
 - [ ] Finding ids are stable and documented for skill cross-reference
 
