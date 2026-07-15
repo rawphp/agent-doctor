@@ -54,6 +54,36 @@ export type Finding = {
   sync_target?: string;
 };
 
+/**
+ * Stable finding ids for the instructions domain.
+ *
+ * Project Instruction Hierarchy (REQ-026 path + REQ-027 engine; skill LOCAL POLICY §6):
+ * - `HIERARCHY_MISSING_AGENTS_MD` — project root has no AGENTS.md
+ * - `HIERARCHY_MISSING_POINTER` — required vendor instruction file absent or body
+ *   does not reference AGENTS.md (case-insensitive basename/path)
+ * - `MISSING_FILE` — adapter-expected instruction path missing (pre-existing)
+ *
+ * Canonical emit strings keep the `hierarchy_*` form from the REQ-026 path contract
+ * (do not rename lightly — skill / fix-plan / recommendations cross-reference them).
+ * REQ-027 AC listed preferred shorter names under `AC_PREFERRED` for documentation
+ * only; emitted findings use the hierarchy_* ids, not the preferred aliases.
+ */
+export const INSTRUCTION_FINDING_IDS = {
+  MISSING_FILE: 'instructions.missing_file',
+  HIERARCHY_MISSING_AGENTS_MD: 'instructions.hierarchy_missing_agents_md',
+  HIERARCHY_MISSING_POINTER: 'instructions.hierarchy_missing_pointer',
+  /** Documentation aliases only (REQ-027 AC wording) — not emitted as finding ids. */
+  AC_PREFERRED: {
+    MISSING_AGENTS_MD: 'instructions.missing_agents_md',
+    MISSING_AGENTS_POINTER: 'instructions.missing_agents_pointer',
+  },
+} as const;
+
+export type InstructionFindingId =
+  | (typeof INSTRUCTION_FINDING_IDS)['MISSING_FILE']
+  | (typeof INSTRUCTION_FINDING_IDS)['HIERARCHY_MISSING_AGENTS_MD']
+  | (typeof INSTRUCTION_FINDING_IDS)['HIERARCHY_MISSING_POINTER'];
+
 /** Concrete next step derived from findings (Mode B). */
 export type Recommendation = {
   id: string;
