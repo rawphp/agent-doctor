@@ -21,11 +21,11 @@ export type DomainCheckContext = {
 };
 
 /** Non-ignored agents in scope for fleet/sync checks. */
-export function agentsInScope(agents: AgentPresence[]): AgentPresence[] {
+export function agentsInScope(agents: readonly AgentPresence[]): AgentPresence[] {
   return agents.filter((a) => !a.ignored);
 }
 
 /** First-class deep agents that are non-ignored (consistency fleet). */
-export function firstClassInScope(agents: AgentPresence[]): AgentPresence[] {
+export function firstClassInScope(agents: readonly AgentPresence[]): AgentPresence[] {
   return agentsInScope(agents).filter((a) => a.depth === 'deep' && a.installed);
 }
