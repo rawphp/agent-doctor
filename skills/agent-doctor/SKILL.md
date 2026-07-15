@@ -22,7 +22,8 @@ Use the **agent-doctor CLI** for multi-agent setup health and safe wiring (skill
    - **`AGENTS.md` must exist** at the project root (minimal stub only — do not invent a long policy dump).
    - **Every other project instruction file** used by an installed or primary agent must **tell that agent to read `AGENTS.md`** (link / “read AGENTS.md first” pointer). Do **not** paste the full AGENTS body into `CLAUDE.md` / `GEMINI.md` / etc.
    - Known pointer files: `CLAUDE.md`, `GEMINI.md`, `GROK.md`, and any other project-level `*AGENTS*` / vendor instruction markdown the fleet uses.
-   - Create or update a pointer file when: it **already exists**, **or** that agent is **installed / primary** in the workspace (from `agent-doctor agents` or map primaries). Example: Gemini primary or `GEMINI.md` present → ensure `GEMINI.md` points at `AGENTS.md`.
+   - Create or update a pointer file when: it **already exists**, **or** that agent is **installed / primary** in the workspace (from `agent-doctor agents` or map primaries).
+   - **Gemini (and other non-deep agents):** hierarchy via **map primary + file presence only** — no deep Gemini adapter. If `primary: gemini` / Gemini installed as presence **or** `GEMINI.md` exists on disk, require the same pointer rules as Claude (`GEMINI.md` → `AGENTS.md`). Do not invent deeper Gemini wiring beyond that.
    - **Prefer `agent-doctor fix` for hierarchy when findings exist.** Diagnose with `status` / `check instructions`; plan with `fix --dry-run`; apply with `fix` / `fix --yes`. Stable finding ids: `instructions.hierarchy_missing_agents_md`, `instructions.hierarchy_missing_pointer`. Fix kinds: `create_agents_stub`, `append_agents_pointer`.
    - **Do not freestyle hierarchy writes** when the CLI covers them (ids/kinds above). Agent-side create/append is a last resort only if Doctor is unavailable or dry-run does not plan a needed covered step — still minimal stub / append-only pointer; never wholesale rewrite vendor files.
 7. **Do not rewrite whole** instruction files when a small append or Doctor plan covers it. Prefer `agent-doctor fix` for hub/product/vault **and** hierarchy (AGENTS stub + pointers). Agent freestyle only when the CLI does not cover the case.
@@ -55,9 +56,11 @@ Diagnose hierarchy whenever scope is **project** (cwd/project root has project s
 | --- | --- |
 | Always (project scope) | `AGENTS.md` exists (create if missing) |
 | `CLAUDE.md` exists **or** Claude Code is installed/primary | `CLAUDE.md` → points to `AGENTS.md` |
-| `GEMINI.md` exists **or** Gemini is installed/primary | `GEMINI.md` → points to `AGENTS.md` |
+| `GEMINI.md` exists **or** Gemini is map-primary / installed as presence | `GEMINI.md` → points to `AGENTS.md` |
 | `GROK.md` exists **or** Grok is installed/primary and project uses GROK.md | `GROK.md` → points to `AGENTS.md` |
 | Other vendor project instruction `.md` exists | That file → points to `AGENTS.md` |
+
+**Gemini contract (matches CLI):** map primary + file presence only — no deep Gemini adapter in v1. Pointer rules still apply when Gemini is primary/installed (presence-only depth is fine) or when `GEMINI.md` is already on disk. Same finding/fix path as other vendors: `instructions.hierarchy_missing_pointer` → `append_agents_pointer`.
 
 Codex and many agents already read `AGENTS.md` directly — still keep `AGENTS.md` as the hub; do not delete vendor pointer files that other tools need.
 
@@ -180,13 +183,13 @@ If install fails (no Node, no network), **stop** and tell the user. Do not inven
 1. Ensure the CLI is installed (`scripts/ensure-installed.sh` or version check).
 2. Detect scope: project vs machine vs user-explicit (see Picking table).
 3. Ensure map: `test -f ~/.agent-doctor/map.yml || agent-doctor init --yes`.
-4. If **project scope**: diagnose **Project Instruction Hierarchy** via `status` / `check instructions` (LOCAL POLICY §6) — look for `instructions.hierarchy_*` findings. Use `agent-doctor agents` when unsure which vendors are in play.
+4. If **project scope**: diagnose **Project Instruction Hierarchy** via `status` / `check instructions` (LOCAL POLICY §6) — look for `instructions.hierarchy_missing_agents_md` / `instructions.hierarchy_missing_pointer`. Use `agent-doctor agents` when unsure which vendors are in play (Gemini = map primary + file presence only).
 5. Diagnose with the narrowest matching command (`status`, `status --all`, `check`, `agents`).
 6. If grade is green enough for the task **and** hierarchy findings are clear, report and stop.
-7. Build a plan: `agent-doctor fix --dry-run` (+ `--sync-target` if conflict and hub is known). Hierarchy is included when findings exist (`create_agents_stub` / `append_agents_pointer`).
-8. If hub is still unresolved, list candidates, ask the user, then re-run dry-run with `--sync-target`.
-9. Summarize the dry-run plan (include hierarchy steps when present). **Do not apply** until consent (or explicit apply this turn). **Do not freestyle** hierarchy creates/appends when the plan covers them (LOCAL POLICY §6).
-10. Apply: `agent-doctor fix` (interactive) or `agent-doctor fix --yes` (approved non-interactive), with the same `--sync-target` if required. Add `--force` only under LOCAL POLICY §8.
+7. **CLI hierarchy plan before freestyle:** `agent-doctor fix --dry-run` (+ `--sync-target` if conflict and hub is known). When hierarchy findings exist, expect kinds `create_agents_stub` / `append_agents_pointer` in the plan — use that path; do not hand-write AGENTS/pointer files first.
+8. If hub is still unresolved, list candidates, ask the user (**no silent hub pick**), then re-run dry-run with `--sync-target`.
+9. Summarize the dry-run plan (include hierarchy steps when present). **Do not apply** until consent (or explicit apply this turn). **Do not freestyle** hierarchy creates/appends when the plan covers them (LOCAL POLICY §6). Never copy skill trees as a fix.
+10. Apply: `agent-doctor fix` (interactive) or `agent-doctor fix --yes` (approved non-interactive), with the same `--sync-target` if required. Add `--force` only under LOCAL POLICY §8. Dry-run always preceded this apply.
 11. Re-run the same diagnose command as step 5 (and hierarchy verify if needed). Report grade, what changed (including AGENTS/pointer via fix), and remaining blockers with exact next commands.
 
 ## Commands
@@ -235,10 +238,11 @@ agent-doctor fix --dry-run --sync-target ~/.agents/skills --html
 | `agent-doctor: command not found` | CLI missing or not on PATH | Run `scripts/ensure-installed.sh`; `export PATH="$HOME/.local/bin:$PATH"` |
 | Node version error on install | Node older than 20 | Stop; ask user to install Node 20+ |
 | No map / soft discover | Map missing | `agent-doctor init --yes` then re-status |
-| Overall RED/YELLOW + hub conflict | Multiple populated skills roots | Ask user for hub; `fix --dry-run --sync-target <path>` |
-| Empty dry-run plan + still red | Conflict or no safe auto actions | Read recommendations; do not claim healthy |
-| Missing `AGENTS.md` in project | `instructions.hierarchy_missing_agents_md` | `fix --dry-run` → apply `create_agents_stub` (LOCAL POLICY §6); re-status |
-| `CLAUDE.md` / `GEMINI.md` has no AGENTS pointer | `instructions.hierarchy_missing_pointer` | `fix --dry-run` → apply `append_agents_pointer`; do not paste full AGENTS body |
+| Overall RED/YELLOW + hub conflict | Multiple populated skills roots | Ask user for hub (**never silent hub pick**); `fix --dry-run --sync-target <path>` |
+| Empty dry-run plan + still red | Conflict or no safe auto actions | Read recommendations; do not claim healthy; do not copy skill trees |
+| Missing `AGENTS.md` in project | Finding `instructions.hierarchy_missing_agents_md` | `agent-doctor fix --dry-run` then `fix` / `fix --yes` → kind `create_agents_stub` (LOCAL POLICY §6); re-status |
+| Vendor pointer missing / no AGENTS ref | Finding `instructions.hierarchy_missing_pointer` (e.g. `CLAUDE.md`, `GEMINI.md`) | `agent-doctor fix --dry-run` then `fix` / `fix --yes` → kind `append_agents_pointer`; do not paste full AGENTS body |
+| Gemini primary / `GEMINI.md` present but no pointer | Same `instructions.hierarchy_missing_pointer` (map primary + file presence only; no deep Gemini adapter) | CLI plan/apply `append_agents_pointer` on `GEMINI.md` — same as Claude |
 | Unique rules only in `CLAUDE.md` | Policy forked | Move shared rules into `AGENTS.md` (consent if large); leave pointer; not a freestyle hierarchy stub case |
 | `product.missing_link` | Instruction files omit product/roadmap | Link from **AGENTS.md** (and via Doctor `append_instruction_link`); pure pointers stay thin |
 | Permission denied paths | FS access blocked | Report finding; no sudo |
@@ -349,6 +353,7 @@ Polling: None.
 
 Safety:
 - Use results to decide which pointer files (`CLAUDE.md`, `GEMINI.md`, …) to ensure under LOCAL POLICY §6.
+- Gemini (and similar) may report **presence-only** depth — hierarchy still applies via map primary + file presence only; do not require a deep Gemini adapter before enforcing `GEMINI.md` → `AGENTS.md`.
 
 Example:
 
@@ -378,7 +383,7 @@ agent-doctor check --help
 
 ### Ensure project instruction hierarchy
 
-Use the **CLI path** when scope is a project (LOCAL POLICY §6). Prefer `agent-doctor fix` over agent freestyle whenever hierarchy findings exist.
+Use the **CLI path** when scope is a project (LOCAL POLICY §6). Prefer `agent-doctor fix` over agent freestyle whenever hierarchy findings exist. Order is always diagnose → `fix --dry-run` → consent → `fix` / `fix --yes` — never freestyle before the plan, never silent hub, never skill-tree copy.
 
 **Stable finding ids** (must match CLI / design; do not invent aliases in prose when reporting):
 
@@ -394,6 +399,8 @@ Use the **CLI path** when scope is a project (LOCAL POLICY §6). Prefer `agent-d
 | `create_agents_stub` | Minimal `AGENTS.md` stub only (never invent long policy) |
 | `append_agents_pointer` | Append-only `AGENTS.md` pointer in vendor instruction file |
 
+**Gemini:** map primary + file presence only (presence-only depth is enough). No deep Gemini adapter required for hierarchy; `GEMINI.md` still follows the pointer finding/fix kinds above.
+
 Side effects: Via `agent-doctor fix` when the plan includes the kinds above — creates stub and/or appends pointer blocks. Does not wholesale rewrite vendor bodies.
 Polling: None. Re-run `status` / `check instructions` after apply.
 
@@ -401,7 +408,7 @@ Safety:
 - LOCAL POLICY §6 is authoritative: **prefer fix when findings exist; do not freestyle hierarchy when CLI covers it.**
 - Freestyle create/append only if Doctor is unavailable or dry-run omits a needed covered step — still minimal stub / append-only.
 - If migrating unique content from `CLAUDE.md` into `AGENTS.md`, get consent for non-trivial moves (not an auto-fix kind).
-- Do not create pointer files for agents that are neither installed/primary nor already present on disk.
+- Do not create pointer files for agents that are neither installed/primary nor already present on disk (Gemini: primary/installed presence **or** file on disk only).
 
 Example sequence:
 
