@@ -475,10 +475,7 @@ describe('Project Instruction Hierarchy (diagnose path contract)', () => {
   it('accepts case-insensitive AGENTS.md basename on disk', async () => {
     const project = tempDir();
     writeFileSync(join(project, 'agents.md'), '# agents hub\n');
-    writeFileSync(
-      join(project, 'CLAUDE.md'),
-      'Follow agents.md for project instructions.\n',
-    );
+    writeFileSync(join(project, 'CLAUDE.md'), 'Follow agents.md for project instructions.\n');
 
     const findings = await checkInstructions({
       map: emptyMap(),

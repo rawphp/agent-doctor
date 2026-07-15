@@ -220,10 +220,7 @@ describe('product link policy with hierarchy (REQ-033)', () => {
       map: emptyMap(),
       agents: [presence('claude-code'), presence('codex')],
       projectRoot: project,
-      adapters: [
-        stubAdapter('claude-code', [claude]),
-        stubAdapter('codex', [agentsMd]),
-      ],
+      adapters: [stubAdapter('claude-code', [claude]), stubAdapter('codex', [agentsMd])],
     });
 
     const missing = findings.filter((f) => f.id === 'product.missing_link');
@@ -235,10 +232,7 @@ describe('product link policy with hierarchy (REQ-033)', () => {
     const project = tempDir();
     writeFileSync(join(project, 'product.md'), '# product\n');
     const agentsMd = join(project, 'AGENTS.md');
-    writeFileSync(
-      agentsMd,
-      '# AGENTS\n\n## Product\n\n- See [product.md](./product.md).\n',
-    );
+    writeFileSync(agentsMd, '# AGENTS\n\n## Product\n\n- See [product.md](./product.md).\n');
     const claude = join(project, 'CLAUDE.md');
     writeFileSync(
       claude,
@@ -279,10 +273,7 @@ describe('product link policy with hierarchy (REQ-033)', () => {
       map: emptyMap(),
       agents: [presence('claude-code'), presence('codex')],
       projectRoot: project,
-      adapters: [
-        stubAdapter('claude-code', [claude]),
-        stubAdapter('codex', [agentsMd]),
-      ],
+      adapters: [stubAdapter('claude-code', [claude]), stubAdapter('codex', [agentsMd])],
     });
 
     const missing = findings.filter((f) => f.id === 'product.missing_link');
@@ -344,10 +335,7 @@ describe('product domain AGENTS-first AC (REQ-034)', () => {
       map: emptyMap(),
       agents: [presence('codex'), presence('claude-code')],
       projectRoot: project,
-      adapters: [
-        stubAdapter('codex', [agentsMd]),
-        stubAdapter('claude-code', []),
-      ],
+      adapters: [stubAdapter('codex', [agentsMd]), stubAdapter('claude-code', [])],
     });
 
     const missing = findings.filter((f) => f.id === 'product.missing_link');
@@ -357,7 +345,9 @@ describe('product domain AGENTS-first AC (REQ-034)', () => {
     expect(agentsFinding!.message).toMatch(/AGENTS\.md/i);
     expect(agentsFinding!.message).toMatch(/product\.md/i);
     expect(agentsFinding!.message).toBe('AGENTS.md missing link to product.md');
-    expect(agentsFinding!.evidence).toEqual(expect.arrayContaining([agentsMd, join(project, 'product.md')]));
+    expect(agentsFinding!.evidence).toEqual(
+      expect.arrayContaining([agentsMd, join(project, 'product.md')]),
+    );
   });
 
   it('AC: pointer-only CLAUDE.md is exempt from product.missing_link', async () => {
@@ -379,10 +369,7 @@ describe('product domain AGENTS-first AC (REQ-034)', () => {
       map: emptyMap(),
       agents: [presence('claude-code'), presence('codex')],
       projectRoot: project,
-      adapters: [
-        stubAdapter('claude-code', [claude]),
-        stubAdapter('codex', [agentsMd]),
-      ],
+      adapters: [stubAdapter('claude-code', [claude]), stubAdapter('codex', [agentsMd])],
     });
 
     const missing = findings.filter((f) => f.id === 'product.missing_link');
@@ -395,10 +382,7 @@ describe('product domain AGENTS-first AC (REQ-034)', () => {
     const project = tempDir();
     writeFileSync(join(project, 'product.md'), '# product\n');
     const agentsMd = join(project, 'AGENTS.md');
-    writeFileSync(
-      agentsMd,
-      '# AGENTS\n\n## Product\n\n- See [product.md](./product.md).\n',
-    );
+    writeFileSync(agentsMd, '# AGENTS\n\n## Product\n\n- See [product.md](./product.md).\n');
     const claude = join(project, 'CLAUDE.md');
     const fatBody =
       '# Claude local policy\n\n' +
@@ -465,10 +449,7 @@ describe('product domain AGENTS-first AC (REQ-034)', () => {
       map: emptyMap(),
       agents: [presence('claude-code'), presence('codex')],
       projectRoot: project,
-      adapters: [
-        stubAdapter('claude-code', [claude]),
-        stubAdapter('codex', [agentsMd]),
-      ],
+      adapters: [stubAdapter('claude-code', [claude]), stubAdapter('codex', [agentsMd])],
     });
 
     const missing = findings.filter((f) => f.id === 'product.missing_link');

@@ -452,10 +452,7 @@ function applyAppendAgentsPointer(action: FixAction, ctx: ApplyContext): ActionR
   }
 
   // Satisfied if body already references AGENTS.md (case-insensitive) or our marker
-  if (
-    content.includes('<!-- agent-doctor:agents-pointer -->') ||
-    /agents\.md/i.test(content)
-  ) {
+  if (content.includes('<!-- agent-doctor:agents-pointer -->') || /agents\.md/i.test(content)) {
     return { action, status: 'applied', reason: 'AGENTS.md pointer already present' };
   }
 

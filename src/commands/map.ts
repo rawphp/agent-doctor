@@ -61,10 +61,7 @@ export async function runMapCommand(options: MapCommandOptions = {}): Promise<Co
   }
 
   // --replace without a path
-  if (
-    vaultCli.path === undefined &&
-    (args.includes('--replace') || args.includes('--set-vault'))
-  ) {
+  if (vaultCli.path === undefined && (args.includes('--replace') || args.includes('--set-vault'))) {
     err('agent-doctor map: --replace / --set-vault requires a vault path');
     return emptyMapResult(1);
   }

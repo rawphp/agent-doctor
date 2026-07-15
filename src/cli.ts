@@ -57,12 +57,7 @@ function printHelp(): void {
 }
 
 function printCommandHelp(command: CommandName): void {
-  const common = [
-    '',
-    'Global:',
-    '  -h, --help     Show this help (does not run the command)',
-    '',
-  ];
+  const common = ['', 'Global:', '  -h, --help     Show this help (does not run the command)', ''];
 
   const bodies: Record<CommandName, string[]> = {
     init: [
@@ -175,11 +170,7 @@ async function main(argv: string[]): Promise<number> {
   const rest = args.slice(1);
 
   // Subcommand --help / -h never runs the command.
-  if (
-    first &&
-    V1_COMMANDS.some((c) => c.name === first) &&
-    wantsHelp(rest)
-  ) {
+  if (first && V1_COMMANDS.some((c) => c.name === first) && wantsHelp(rest)) {
     printCommandHelp(first as CommandName);
     return 0;
   }

@@ -847,11 +847,7 @@ describe('buildFixPlan with user syncTarget after hub conflict', () => {
 
     const plan = buildFixPlan(report, {
       syncTarget: hub,
-      adapters: [
-        stubAdapter('claude-code'),
-        stubAdapter('codex'),
-        stubAdapter('grok'),
-      ],
+      adapters: [stubAdapter('claude-code'), stubAdapter('codex'), stubAdapter('grok')],
       map: emptyMap({ global_roots: [hub, '/h/.claude/skills'], sync_target: null }),
       doctorHome: '/h/.agent-doctor',
     });
@@ -947,8 +943,8 @@ describe('buildFixPlan product link targets (REQ-033)', () => {
     const productLinks = plan.filter((a) => a.kind === 'append_instruction_link');
     expect(productLinks.some((a) => a.target === claude)).toBe(false);
     expect(productLinks.some((a) => a.target === agentsMd)).toBe(true);
-    expect(
-      productLinks.every((a) => a.value === product || a.value?.endsWith('product.md')),
-    ).toBe(true);
+    expect(productLinks.every((a) => a.value === product || a.value?.endsWith('product.md'))).toBe(
+      true,
+    );
   });
 });

@@ -148,10 +148,7 @@ function hasHubConflict(findings: Finding[]): boolean {
  * - Requires projectRoot; without it hierarchy mapping is rejected (no hub/path invention).
  * Accepts both `instructions.hierarchy_*` emit ids and `instructions.missing_agents_*` aliases.
  */
-function hierarchyActionsFromFindings(
-  findings: Finding[],
-  projectRoot?: string,
-): FixAction[] {
+function hierarchyActionsFromFindings(findings: Finding[], projectRoot?: string): FixAction[] {
   // Reject hierarchy plan when project scope is missing — do not invent AGENTS.md paths.
   if (projectRoot == null || projectRoot === '') {
     return [];
@@ -180,8 +177,7 @@ function hierarchyActionsFromFindings(
       const vendorPath = evidence[0];
       if (!vendorPath) continue;
       const agentsPath =
-        evidence.find((p) => basename(p).toLowerCase() === 'agents.md') ??
-        defaultAgentsMd;
+        evidence.find((p) => basename(p).toLowerCase() === 'agents.md') ?? defaultAgentsMd;
       const base = basename(vendorPath);
       out.push({
         id: `fix.append_agents_pointer_${base}`,
@@ -264,9 +260,8 @@ function appendActionsFromFindings(findings: Finding[]): FixAction[] {
         // No instruction targets left after pointer filter — if evidence had only
         // product path (no surface), still emit a generic action for apply context.
         const onlyProduct =
-          evidence.every(
-            (p) => p === product || /(?:^|[/\\])(product|roadmap)\.md$/i.test(p),
-          ) || evidence.filter((p) => p !== product && /\.md$/i.test(p)).length === 0;
+          evidence.every((p) => p === product || /(?:^|[/\\])(product|roadmap)\.md$/i.test(p)) ||
+          evidence.filter((p) => p !== product && /\.md$/i.test(p)).length === 0;
         if (!onlyProduct) {
           // All instruction evidence was pure pointers — skip (nothing correct to append)
           continue;
@@ -310,7 +305,10 @@ function agentIdsToWire(
   }
 
   // Hub conflict (or unresolved multi-root) — plan wires for the whole fleet.
-  if (hasHubConflict(findings) || findings.some((f) => f.domain === 'skills' && f.severity === 'error')) {
+  if (
+    hasHubConflict(findings) ||
+    findings.some((f) => f.domain === 'skills' && f.severity === 'error')
+  ) {
     if (agentsInScope && agentsInScope.length > 0) {
       for (const id of agentsInScope) ids.add(id);
     } else {
@@ -325,8 +323,7 @@ function agentIdsToWire(
  * Findings-driven plan builder (adapter proposeWire*).
  */
 function buildFixPlanFromFindings(input: BuildFixPlanInput): FixAction[] {
-  const { findings, map, adapters = [], hub, agentsInScope, doctorHome, projectRoot } =
-    input;
+  const { findings, map, adapters = [], hub, agentsInScope, doctorHome, projectRoot } = input;
   const actions: FixAction[] = [];
   // User-supplied hub (planning as if sync_target already set) unblocks wire.
   const effectiveMap: HomeMap =
@@ -406,9 +403,7 @@ function buildFixPlanFromFindings(input: BuildFixPlanInput): FixAction[] {
         .map((f) => vaultPathFromEvidence(f.evidence))
         .filter((v): v is string => Boolean(v));
       const scope =
-        agentsInScope && agentsInScope.length > 0
-          ? agentsInScope
-          : adapters.map((a) => a.id);
+        agentsInScope && agentsInScope.length > 0 ? agentsInScope : adapters.map((a) => a.id);
       for (const agentId of scope) {
         byAgent.set(agentId, [...vaults]);
       }
@@ -612,19 +607,13 @@ export function explainEmptyFixPlan(options: FormatFixPlanOptions = {}): string[
     lines.push('');
     lines.push('  Next:');
     lines.push('    1. Pick one hub path (often ~/.agents/skills).');
-    lines.push(
-      '    2. Re-run: agent-doctor fix --dry-run --sync-target /path/to/hub',
-    );
-    lines.push(
-      '    3. If the plan looks right: agent-doctor fix --yes --sync-target /path/to/hub',
-    );
+    lines.push('    2. Re-run: agent-doctor fix --dry-run --sync-target /path/to/hub');
+    lines.push('    3. If the plan looks right: agent-doctor fix --yes --sync-target /path/to/hub');
     lines.push('');
   } else if (hasErrors || hasWarns) {
     lines.push('  Why: findings exist, but none map to a v1 safe auto-fix');
     lines.push('  (or they still need a human choice). Open issues:');
-    const top = findings
-      .filter((f) => f.severity === 'error' || f.severity === 'warn')
-      .slice(0, 6);
+    const top = findings.filter((f) => f.severity === 'error' || f.severity === 'warn').slice(0, 6);
     for (const f of top) {
       lines.push(`    - [${f.severity}] ${f.id}: ${f.message}`);
     }

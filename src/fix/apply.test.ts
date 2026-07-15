@@ -735,8 +735,7 @@ describe('applyFixPlan hierarchy harden (REQ-032)', () => {
     const claude = join(base, 'CLAUDE.md');
     const agentsMd = join(base, 'AGENTS.md');
     // Hand-written pointer without our marker — still "already linked"
-    const original =
-      '# Claude Code\n\nSee AGENTS.md for shared project instructions.\n';
+    const original = '# Claude Code\n\nSee AGENTS.md for shared project instructions.\n';
     writeFileSync(claude, original);
     writeFileSync(agentsMd, '# AGENTS\n');
 
@@ -777,9 +776,8 @@ describe('applyFixPlan hierarchy harden (REQ-032)', () => {
     const first = applyFixPlan([action], {});
     expect(first[0]!.status).toBe('applied');
     const afterFirst = readFileSync(gemini, 'utf8');
-    const markerCountFirst = (
-      afterFirst.match(/<!-- agent-doctor:agents-pointer -->/g) ?? []
-    ).length;
+    const markerCountFirst = (afterFirst.match(/<!-- agent-doctor:agents-pointer -->/g) ?? [])
+      .length;
     expect(markerCountFirst).toBe(1);
 
     const second = applyFixPlan([action], {});

@@ -173,7 +173,8 @@ describe('formatTerminalReport', () => {
             id: 'instructions.hierarchy_missing_pointer',
             severity: 'warn',
             domain: 'instructions',
-            message: 'Required vendor instruction file missing for hierarchy: CLAUDE.md must exist and point at AGENTS.md',
+            message:
+              'Required vendor instruction file missing for hierarchy: CLAUDE.md must exist and point at AGENTS.md',
             evidence: ['/proj/CLAUDE.md', '/proj/AGENTS.md'],
             agents_affected: ['claude-code'],
           },

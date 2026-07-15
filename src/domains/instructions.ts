@@ -128,7 +128,6 @@ export function requiredVendorPointers(
   projectRoot: string,
   agents: readonly AgentPresence[],
 ): RequiredVendorPointer[] {
-
   const entries = listProjectBasenames(projectRoot);
   const required: RequiredVendorPointer[] = [];
   const seenBasenames = new Set<string>();

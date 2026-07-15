@@ -115,10 +115,7 @@ export function formatTerminalReport(report: Report): string {
   if (report.findings.length > 0) {
     lines.push('');
     lines.push('Findings:');
-    const severityWidth = Math.max(
-      ...report.findings.map((f) => f.severity.length),
-      5,
-    );
+    const severityWidth = Math.max(...report.findings.map((f) => f.severity.length), 5);
     for (const finding of report.findings) {
       const sev = finding.severity.padEnd(severityWidth);
       lines.push(`  ${sev}  ${finding.id}  ${finding.message}`);

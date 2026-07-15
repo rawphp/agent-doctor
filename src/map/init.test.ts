@@ -226,9 +226,7 @@ describe('init / map path-unit', () => {
 
     expect(map.vaults.some((v) => v.path === discovered)).toBe(true);
     expect(map.vaults).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ path: extra, source: 'manual' }),
-      ]),
+      expect.arrayContaining([expect.objectContaining({ path: extra, source: 'manual' })]),
     );
     expect(map.vaults.length).toBeGreaterThanOrEqual(2);
   });

@@ -235,11 +235,7 @@ export async function checkProduct(ctx: DomainCheckContext): Promise<Finding[]> 
     }
 
     const agentIds =
-      surface.agentIds.length > 0
-        ? surface.agentIds
-        : deepAgents.length > 0
-          ? deepAgents
-          : [];
+      surface.agentIds.length > 0 ? surface.agentIds : deepAgents.length > 0 ? deepAgents : [];
 
     for (const product of productFiles) {
       const base = product.split(/[/\\]/).pop() ?? product;
