@@ -1,19 +1,14 @@
 # REQ-028: Hierarchy presence rules (adapters + map)
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.40397
-**Claimed at:** 2026-07-15T09:56:21Z
-**Heartbeat:** 2026-07-15T09:56:21Z
-<!-- claimed-end -->
 
 **UR:** UR-002
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-15
 **Layer:** adapters
 **Entry point:**
 **Terminal state:**
 **Parent:** REQ-026
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:8f23fe1 tests:67 adapters+instructions + 294 full
 **Criteria approved:** agent-drafted
 **Priority:** 2
 **Size:** M
@@ -30,11 +25,11 @@ Clarification: Gemini hierarchy via map primary + file presence only. Skill dete
 
 ## Acceptance Criteria
 
-- [ ] Shared helper (or adapter hooks) returns required pointer basenames given agents + project files
-- [ ] If `GEMINI.md` exists or an agent entry is primary/id matching gemini/presence — require GEMINI.md → AGENTS.md pointer when project scope
-- [ ] Claude installed → require CLAUDE.md pointer (create expectation even if file missing, as today’s missing_file pattern, plus pointer check when file exists)
-- [ ] No deep gemini adapter package required for this UR
-- [ ] Tests for presence-only gemini primary and existing GEMINI.md without pointer
+- [x] Shared helper (or adapter hooks) returns required pointer basenames given agents + project files
+- [x] If `GEMINI.md` exists or an agent entry is primary/id matching gemini/presence — require GEMINI.md → AGENTS.md pointer when project scope
+- [x] Claude installed → require CLAUDE.md pointer (create expectation even if file missing, as today’s missing_file pattern, plus pointer check when file exists)
+- [x] No deep gemini adapter package required for this UR
+- [x] Tests for presence-only gemini primary and existing GEMINI.md without pointer
 
 ## Verification Steps
 
@@ -50,3 +45,9 @@ Clarification: Gemini hierarchy via map primary + file presence only. Skill dete
 **Data dependencies:** HomeMap agent entries (`primary`, `id`, `installed`), project root readdir.
 
 **Service dependencies:** Adapter registry; `src/adapters/types.ts` optional extension points.
+
+## Outputs
+
+- src/adapters/* — expectedInstructionFiles + presence rules
+- src/domains/instructions.ts — requiredPointerBasenames helper
+- src/domains/instructions.test.ts — Gemini/presence tests
