@@ -1,19 +1,14 @@
 # REQ-034: Product domain AGENTS-first + non-pointer
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.85479
-**Claimed at:** 2026-07-15T10:12:59Z
-**Heartbeat:** 2026-07-15T10:12:59Z
-<!-- claimed-end -->
 
 **UR:** UR-002
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-15
 **Layer:** engine
 **Entry point:**
 **Terminal state:**
 **Parent:** REQ-033
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:b1d3d83 tests:18 product + 315 full
 **Criteria approved:** agent-drafted
 **Priority:** 2
 **Size:** M
@@ -30,9 +25,9 @@ Skill: product linked from AGENTS.md; pointers stay thin.
 
 ## Acceptance Criteria
 
-- [ ] Unit tests for: AGENTS missing product link; pointer-only CLAUDE exempt; fat CLAUDE still flagged; no projectRoot no findings
-- [ ] Finding messages name the correct target files
-- [ ] No requirement that every agent id gets product links if AGENTS.md covers fleet
+- [x] Unit tests for: AGENTS missing product link; pointer-only CLAUDE exempt; fat CLAUDE still flagged; no projectRoot no findings
+- [x] Finding messages name the correct target files
+- [x] No requirement that every agent id gets product links if AGENTS.md covers fleet
 
 ## Verification Steps
 
@@ -48,3 +43,7 @@ Skill: product linked from AGENTS.md; pointers stay thin.
 **Data dependencies:** product files, instruction files from adapters.
 
 **Service dependencies:** adapter `instructionFiles`, shared “is pointer file” heuristic.
+
+## Outputs
+
+- src/domains/product.test.ts — REQ-034 AGENTS-first AC suite
