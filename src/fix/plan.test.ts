@@ -473,7 +473,131 @@ describe('buildFixPlan (report API)', () => {
     expect(SAFE_FIX_KINDS.has('symlink_skills_hub')).toBe(true);
     expect(SAFE_FIX_KINDS.has('append_instruction_link')).toBe(true);
     expect(SAFE_FIX_KINDS.has('set_sync_target')).toBe(true);
+    expect(SAFE_FIX_KINDS.has('create_agents_stub')).toBe(true);
+    expect(SAFE_FIX_KINDS.has('append_agents_pointer')).toBe(true);
     expect(SAFE_FIX_KINDS.has('copy_tree')).toBe(false);
+  });
+});
+
+describe('buildFixPlan hierarchy (REQ-030)', () => {
+  it('dry-run plan emits create_agents_stub for missing AGENTS.md finding', () => {
+    const plan = buildFixPlan({
+      findings: [
+        finding({
+          id: 'instructions.hierarchy_missing_agents_md',
+          severity: 'error',
+          domain: 'instructions',
+          message: 'Project instruction hierarchy requires AGENTS.md',
+          evidence: ['/proj/AGENTS.md'],
+          agents_affected: ['claude-code'],
+        }),
+      ],
+      map: emptyMap({ sync_target: '/hub' }),
+      projectRoot: '/proj',
+      hub: '/hub',
+      adapters: [stubAdapter('claude-code')],
+    });
+
+    const stub = plan.find((a) => a.kind === 'create_agents_stub');
+    expect(stub).toBeDefined();
+    expect(stub!.id).toBe('fix.create_agents_stub');
+    expect(stub!.target).toBe('/proj/AGENTS.md');
+    expect(stub!.finding_ids).toContain('instructions.hierarchy_missing_agents_md');
+    expect(stub!.description).toMatch(/minimal|stub|AGENTS\.md/i);
+  });
+
+  it('emits append_agents_pointer for hierarchy_missing_pointer findings', () => {
+    const plan = buildFixPlan({
+      findings: [
+        finding({
+          id: 'instructions.hierarchy_missing_pointer',
+          severity: 'warn',
+          domain: 'instructions',
+          message: 'CLAUDE.md must point at AGENTS.md',
+          evidence: ['/proj/CLAUDE.md', '/proj/AGENTS.md'],
+          agents_affected: ['claude-code'],
+        }),
+        finding({
+          id: 'instructions.hierarchy_missing_pointer',
+          severity: 'warn',
+          domain: 'instructions',
+          message: 'GEMINI.md must point at AGENTS.md',
+          evidence: ['/proj/GEMINI.md', '/proj/AGENTS.md'],
+          agents_affected: ['gemini'],
+        }),
+      ],
+      map: emptyMap({ sync_target: '/hub' }),
+      projectRoot: '/proj',
+      hub: '/hub',
+      adapters: [stubAdapter('claude-code')],
+    });
+
+    const pointers = plan.filter((a) => a.kind === 'append_agents_pointer');
+    expect(pointers).toHaveLength(2);
+    expect(pointers.map((a) => a.target).sort()).toEqual(['/proj/CLAUDE.md', '/proj/GEMINI.md']);
+    for (const p of pointers) {
+      expect(p.value).toBe('/proj/AGENTS.md');
+      expect(p.finding_ids).toContain('instructions.hierarchy_missing_pointer');
+      expect(p.id).toMatch(/^fix\.append_agents_pointer_/);
+      expect(p.description).toMatch(/pointer|append|AGENTS/i);
+    }
+  });
+
+  it('plans stub + pointer together and formatFixPlan lists both for dry-run', () => {
+    const plan = buildFixPlan({
+      findings: [
+        finding({
+          id: 'instructions.hierarchy_missing_agents_md',
+          severity: 'error',
+          domain: 'instructions',
+          evidence: ['/proj/AGENTS.md'],
+        }),
+        finding({
+          id: 'instructions.hierarchy_missing_pointer',
+          severity: 'warn',
+          domain: 'instructions',
+          evidence: ['/proj/CLAUDE.md', '/proj/AGENTS.md'],
+          agents_affected: ['claude-code'],
+        }),
+      ],
+      map: emptyMap(),
+      projectRoot: '/proj',
+    });
+
+    expect(plan.some((a) => a.kind === 'create_agents_stub')).toBe(true);
+    expect(plan.some((a) => a.kind === 'append_agents_pointer')).toBe(true);
+
+    const text = formatFixPlan(plan, { dryRun: true });
+    expect(text).toMatch(/create_agents_stub/);
+    expect(text).toMatch(/append_agents_pointer/);
+    expect(text).toMatch(/dry-run|Nothing written/i);
+  });
+
+  it('report API also maps hierarchy findings without adapters', () => {
+    const plan = buildFixPlan(
+      baseReport({
+        project_root: '/proj',
+        findings: [
+          finding({
+            id: 'instructions.hierarchy_missing_agents_md',
+            severity: 'error',
+            domain: 'instructions',
+            evidence: ['/proj/AGENTS.md'],
+          }),
+          finding({
+            id: 'instructions.hierarchy_missing_pointer',
+            severity: 'warn',
+            domain: 'instructions',
+            evidence: ['/proj/GROK.md', '/proj/AGENTS.md'],
+            agents_affected: ['grok'],
+          }),
+        ],
+      }),
+    );
+    expect(plan.some((a) => a.kind === 'create_agents_stub')).toBe(true);
+    expect(
+      plan.some((a) => a.kind === 'append_agents_pointer' && a.target === '/proj/GROK.md'),
+    ).toBe(true);
   });
 });
 

@@ -7,6 +7,7 @@
  * Never content-copies skill trees; never silently picks a hub on conflict.
  */
 
+import { basename, join } from 'node:path';
 import type { AgentAdapter } from '../adapters/types.js';
 import type { Finding, FixAction, HomeMap, Report } from '../engine/types.js';
 import { agentDoctorHome, mapPath } from '../map/load.js';
@@ -19,6 +20,10 @@ export const SAFE_FIX_KINDS = new Set([
   'append_link_block',
   'set_sync_target',
   'wire_memory_pointer',
+  /** Minimal AGENTS.md create (hierarchy — never invent long policy). */
+  'create_agents_stub',
+  /** Append-only AGENTS.md pointer in vendor instruction files. */
+  'append_agents_pointer',
 ]);
 
 /** Kinds that content-copy skill trees — always rejected. */
@@ -134,6 +139,56 @@ function hasHubConflict(findings: Finding[]): boolean {
 }
 
 /**
+ * Hierarchy plan actions from instructions.hierarchy_* findings (REQ-030).
+ * - missing AGENTS.md → create_agents_stub (minimal stub only)
+ * - missing pointer → append_agents_pointer (append-only; never rewrite vendor body)
+ */
+function hierarchyActionsFromFindings(
+  findings: Finding[],
+  projectRoot?: string,
+): FixAction[] {
+  const out: FixAction[] = [];
+  const defaultAgentsMd = projectRoot ? join(projectRoot, 'AGENTS.md') : undefined;
+
+  for (const finding of findings) {
+    if (finding.id === 'instructions.hierarchy_missing_agents_md') {
+      const target = finding.evidence?.[0] ?? defaultAgentsMd;
+      if (!target) continue;
+      out.push({
+        id: 'fix.create_agents_stub',
+        kind: 'create_agents_stub',
+        description:
+          'Create minimal AGENTS.md stub at project root (canonical shared instructions; do not invent long policy)',
+        target,
+        finding_ids: ['instructions.hierarchy_missing_agents_md'],
+      });
+      continue;
+    }
+
+    if (finding.id === 'instructions.hierarchy_missing_pointer') {
+      const evidence = finding.evidence ?? [];
+      const vendorPath = evidence[0];
+      if (!vendorPath) continue;
+      const agentsPath =
+        evidence.find((p) => basename(p).toLowerCase() === 'agents.md') ??
+        defaultAgentsMd;
+      const base = basename(vendorPath);
+      out.push({
+        id: `fix.append_agents_pointer_${base}`,
+        kind: 'append_agents_pointer',
+        description: `Append AGENTS.md pointer in ${base} (append-only; never wholesale rewrite vendor body)`,
+        target: vendorPath,
+        value: agentsPath,
+        agent_id: finding.agents_affected[0],
+        finding_ids: ['instructions.hierarchy_missing_pointer'],
+      });
+    }
+  }
+
+  return out;
+}
+
+/**
  * Generate append_instruction_link actions from product.missing_link findings.
  * Stable ids: fix.link_product_<agent>_<basename> (design / REQ-022).
  * When instruction paths appear in evidence, each becomes an action target.
@@ -229,7 +284,8 @@ function agentIdsToWire(
  * Findings-driven plan builder (adapter proposeWire*).
  */
 function buildFixPlanFromFindings(input: BuildFixPlanInput): FixAction[] {
-  const { findings, map, adapters = [], hub, agentsInScope, doctorHome } = input;
+  const { findings, map, adapters = [], hub, agentsInScope, doctorHome, projectRoot } =
+    input;
   const actions: FixAction[] = [];
   // User-supplied hub (planning as if sync_target already set) unblocks wire.
   const effectiveMap: HomeMap =
@@ -284,6 +340,10 @@ function buildFixPlanFromFindings(input: BuildFixPlanInput): FixAction[] {
   }
 
   for (const action of appendActionsFromFindings(findings)) {
+    actions.push(action);
+  }
+
+  for (const action of hierarchyActionsFromFindings(findings, projectRoot)) {
     actions.push(action);
   }
 
@@ -427,6 +487,10 @@ function buildFixPlanFromReport(report: Report, options: BuildFixPlanOptions = {
   }
 
   for (const action of appendActionsFromFindings(report.findings)) {
+    plan.push(action);
+  }
+
+  for (const action of hierarchyActionsFromFindings(report.findings, report.project_root)) {
     plan.push(action);
   }
 

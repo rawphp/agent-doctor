@@ -193,6 +193,35 @@ function applySymlink(action: FixAction, ctx: ApplyContext): ActionResult {
     return { action, status: 'skipped', reason: message };
   }
 }
+/**
+ * Minimal AGENTS.md stub (skill LOCAL POLICY §6 / REQ-030).
+ * Never invent project-specific policy beyond this template.
+ */
+export const MINIMAL_AGENTS_MD_STUB = `# AGENTS.md
+
+Shared project instructions for all AI coding agents on this machine.
+
+## Product
+
+- See [product.md](./product.md) when present.
+
+## Setup
+
+- Shared skills hub and fleet health: use the \`agent-doctor\` skill / \`agent-doctor status\`.
+- Vendor entry files (\`CLAUDE.md\`, \`GEMINI.md\`, …) should point here; do not fork policy into those files.
+`;
+
+/** Append-only AGENTS.md pointer block for vendor entry files. */
+export function agentsPointerBlock(): string {
+  return [
+    '',
+    '<!-- agent-doctor:agents-pointer -->',
+    'Read and follow **[AGENTS.md](./AGENTS.md)** for all project instructions, policies, and shared agent setup. Prefer AGENTS.md over duplicating rules here.',
+    '<!-- /agent-doctor:agents-pointer -->',
+    '',
+  ].join('\n');
+}
+
 function productLinkBlock(productPath: string): string {
   const base = basename(productPath);
   return [
@@ -333,6 +362,106 @@ function applyMemoryPointer(action: FixAction, ctx: ApplyContext): ActionResult 
 }
 
 /**
+ * Create minimal AGENTS.md stub only when missing.
+ * Never overwrites an existing AGENTS.md body (no wholesale rewrite).
+ */
+function applyCreateAgentsStub(action: FixAction, ctx: ApplyContext): ActionResult {
+  const target = action.target;
+  if (!target) {
+    return { action, status: 'skipped', reason: 'missing target path for AGENTS.md stub' };
+  }
+
+  if (existsSync(target)) {
+    return { action, status: 'applied', reason: 'AGENTS.md already exists (left unchanged)' };
+  }
+
+  if (ctx.dryRun) {
+    return { action, status: 'applied', reason: 'dry-run (would create minimal AGENTS.md stub)' };
+  }
+
+  try {
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, MINIMAL_AGENTS_MD_STUB, 'utf8');
+    return { action, status: 'applied' };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { action, status: 'skipped', reason: message };
+  }
+}
+
+/**
+ * Append-only AGENTS.md pointer on vendor instruction files.
+ * Creates a minimal pointer file when the vendor file is missing;
+ * never wholesale rewrites existing vendor body content.
+ */
+function applyAppendAgentsPointer(action: FixAction, ctx: ApplyContext): ActionResult {
+  const target = action.target;
+  if (!target) {
+    return {
+      action,
+      status: 'skipped',
+      reason: 'missing target path for AGENTS.md pointer',
+    };
+  }
+
+  if (!existsSync(target)) {
+    if (ctx.dryRun) {
+      return {
+        action,
+        status: 'applied',
+        reason: 'dry-run (would create vendor pointer file)',
+      };
+    }
+    try {
+      mkdirSync(dirname(target), { recursive: true });
+      // Minimal create: pointer-only body (file did not exist — no unique content to preserve)
+      writeFileSync(
+        target,
+        [
+          `# ${basename(target)} — project entry`,
+          '',
+          'Read and follow **[AGENTS.md](./AGENTS.md)** for all project instructions, policies, and shared agent setup. Prefer AGENTS.md over duplicating rules here.',
+          '',
+        ].join('\n'),
+        'utf8',
+      );
+      return { action, status: 'applied' };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { action, status: 'skipped', reason: message };
+    }
+  }
+
+  let content = '';
+  try {
+    content = readFileSync(target, 'utf8');
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { action, status: 'skipped', reason: message };
+  }
+
+  // Satisfied if body already references AGENTS.md (case-insensitive) or our marker
+  if (
+    content.includes('<!-- agent-doctor:agents-pointer -->') ||
+    /agents\.md/i.test(content)
+  ) {
+    return { action, status: 'applied', reason: 'AGENTS.md pointer already present' };
+  }
+
+  if (ctx.dryRun) {
+    return { action, status: 'applied', reason: 'dry-run (would append AGENTS.md pointer)' };
+  }
+
+  try {
+    appendFileSync(target, agentsPointerBlock(), 'utf8');
+    return { action, status: 'applied' };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { action, status: 'skipped', reason: message };
+  }
+}
+
+/**
  * Apply each safe action. On conflict/error: skip and continue.
  * Copy-tree kinds are always rejected (never content-copy skill trees).
  */
@@ -364,6 +493,12 @@ export function applyFixPlan(actions: FixAction[], ctx: ApplyContext = {}): Acti
         break;
       case 'wire_memory_pointer':
         result = applyMemoryPointer(action, ctx);
+        break;
+      case 'create_agents_stub':
+        result = applyCreateAgentsStub(action, ctx);
+        break;
+      case 'append_agents_pointer':
+        result = applyAppendAgentsPointer(action, ctx);
         break;
       default:
         result = {

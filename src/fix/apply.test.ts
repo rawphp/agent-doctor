@@ -424,3 +424,197 @@ describe('applyFixPlan', () => {
     expect((readFileSync(instr, 'utf8').match(/<!-- agent-doctor:link -->/g) ?? []).length).toBe(1);
   });
 });
+
+describe('applyFixPlan hierarchy (REQ-030)', () => {
+  it('creates minimal AGENTS.md stub when missing', () => {
+    const base = tempDir();
+    const agentsMd = join(base, 'AGENTS.md');
+
+    const results = applyFixPlan(
+      [
+        {
+          id: 'fix.create_agents_stub',
+          kind: 'create_agents_stub',
+          description: 'Create minimal AGENTS.md stub',
+          target: agentsMd,
+          finding_ids: ['instructions.hierarchy_missing_agents_md'],
+        },
+      ],
+      {},
+    );
+
+    expect(results[0]!.status).toBe('applied');
+    expect(existsSync(agentsMd)).toBe(true);
+    const content = readFileSync(agentsMd, 'utf8');
+    expect(content).toMatch(/# AGENTS\.md/);
+    expect(content).toMatch(/Shared project instructions/i);
+    // Minimal stub only — not a long invented policy dump
+    expect(content.length).toBeLessThan(800);
+  });
+
+  it('does not overwrite existing AGENTS.md body on create_agents_stub', () => {
+    const base = tempDir();
+    const agentsMd = join(base, 'AGENTS.md');
+    const original = '# Existing project policy\n\nDo not wipe me.\n';
+    writeFileSync(agentsMd, original);
+
+    const results = applyFixPlan(
+      [
+        {
+          id: 'fix.create_agents_stub',
+          kind: 'create_agents_stub',
+          description: 'stub',
+          target: agentsMd,
+        },
+      ],
+      {},
+    );
+
+    expect(results[0]!.status).toBe('applied');
+    expect(results[0]!.reason).toMatch(/already exists|present/i);
+    expect(readFileSync(agentsMd, 'utf8')).toBe(original);
+  });
+
+  it('appends AGENTS.md pointer without deleting existing vendor body', () => {
+    const base = tempDir();
+    const claude = join(base, 'CLAUDE.md');
+    const agentsMd = join(base, 'AGENTS.md');
+    writeFileSync(claude, '# Claude local notes\n\nUnique rules stay here.\n');
+    writeFileSync(agentsMd, '# AGENTS\n');
+
+    const results = applyFixPlan(
+      [
+        {
+          id: 'fix.append_agents_pointer_CLAUDE.md',
+          kind: 'append_agents_pointer',
+          description: 'Append AGENTS.md pointer in CLAUDE.md',
+          target: claude,
+          value: agentsMd,
+        },
+      ],
+      {},
+    );
+
+    expect(results[0]!.status).toBe('applied');
+    const content = readFileSync(claude, 'utf8');
+    expect(content.startsWith('# Claude local notes')).toBe(true);
+    expect(content).toMatch(/Unique rules stay here/);
+    expect(content).toMatch(/agents\.md/i);
+    // Must not be a wholesale rewrite to pointer-only
+    expect(content).not.toBe(
+      'Read and follow **[AGENTS.md](./AGENTS.md)** for all project instructions, policies, and shared agent setup. Prefer AGENTS.md over duplicating rules here.\n',
+    );
+  });
+
+  it('creates missing vendor pointer file with minimal pointer content', () => {
+    const base = tempDir();
+    const claude = join(base, 'CLAUDE.md');
+    const agentsMd = join(base, 'AGENTS.md');
+    writeFileSync(agentsMd, '# AGENTS\n');
+
+    const results = applyFixPlan(
+      [
+        {
+          id: 'fix.append_agents_pointer_CLAUDE.md',
+          kind: 'append_agents_pointer',
+          description: 'Create CLAUDE.md pointer',
+          target: claude,
+          value: agentsMd,
+        },
+      ],
+      {},
+    );
+
+    expect(results[0]!.status).toBe('applied');
+    expect(existsSync(claude)).toBe(true);
+    expect(readFileSync(claude, 'utf8')).toMatch(/agents\.md/i);
+  });
+
+  it('append_agents_pointer is idempotent', () => {
+    const base = tempDir();
+    const claude = join(base, 'CLAUDE.md');
+    const agentsMd = join(base, 'AGENTS.md');
+    writeFileSync(claude, '# Claude\n');
+    writeFileSync(agentsMd, '# AGENTS\n');
+
+    const action: FixAction = {
+      id: 'fix.append_agents_pointer_CLAUDE.md',
+      kind: 'append_agents_pointer',
+      description: 'pointer',
+      target: claude,
+      value: agentsMd,
+    };
+
+    const first = applyFixPlan([action], {});
+    expect(first[0]!.status).toBe('applied');
+    const afterFirst = readFileSync(claude, 'utf8');
+
+    const second = applyFixPlan([action], {});
+    expect(second[0]!.status).toBe('applied');
+    expect(second[0]!.reason).toMatch(/already present|pointer already/i);
+    expect(readFileSync(claude, 'utf8')).toBe(afterFirst);
+  });
+
+  it('dry-run hierarchy actions never write', () => {
+    const base = tempDir();
+    const agentsMd = join(base, 'AGENTS.md');
+    const claude = join(base, 'CLAUDE.md');
+    writeFileSync(claude, '# Claude only\n');
+
+    const results = applyFixPlan(
+      [
+        {
+          id: 'fix.create_agents_stub',
+          kind: 'create_agents_stub',
+          description: 'stub',
+          target: agentsMd,
+        },
+        {
+          id: 'fix.append_agents_pointer_CLAUDE.md',
+          kind: 'append_agents_pointer',
+          description: 'pointer',
+          target: claude,
+          value: agentsMd,
+        },
+      ],
+      { dryRun: true },
+    );
+
+    expect(results.every((r) => r.status === 'applied')).toBe(true);
+    expect(results.every((r) => r.reason?.match(/dry-run/i))).toBe(true);
+    expect(existsSync(agentsMd)).toBe(false);
+    expect(readFileSync(claude, 'utf8')).toBe('# Claude only\n');
+  });
+
+  it('apply stub + pointer then hierarchy re-check would clear those findings', () => {
+    const base = tempDir();
+    const agentsMd = join(base, 'AGENTS.md');
+    const claude = join(base, 'CLAUDE.md');
+    writeFileSync(claude, '# Vendor body\n\nLocal only.\n');
+
+    const results = applyFixPlan(
+      [
+        {
+          id: 'fix.create_agents_stub',
+          kind: 'create_agents_stub',
+          description: 'stub',
+          target: agentsMd,
+        },
+        {
+          id: 'fix.append_agents_pointer_CLAUDE.md',
+          kind: 'append_agents_pointer',
+          description: 'pointer',
+          target: claude,
+          value: agentsMd,
+        },
+      ],
+      {},
+    );
+
+    expect(results.every((r) => r.status === 'applied')).toBe(true);
+    expect(existsSync(agentsMd)).toBe(true);
+    const vendor = readFileSync(claude, 'utf8');
+    expect(vendor).toMatch(/Local only/);
+    expect(vendor).toMatch(/agents\.md/i);
+  });
+});
