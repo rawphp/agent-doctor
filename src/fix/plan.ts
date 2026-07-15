@@ -7,8 +7,10 @@
  * Never content-copies skill trees; never silently picks a hub on conflict.
  */
 
+import { readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import type { AgentAdapter } from '../adapters/types.js';
+import { isPureAgentsPointer } from '../domains/product.js';
 import type { Finding, FixAction, HomeMap, Report } from '../engine/types.js';
 import { agentDoctorHome, mapPath } from '../map/load.js';
 
@@ -189,9 +191,25 @@ function hierarchyActionsFromFindings(
 }
 
 /**
+ * Pure AGENTS.md pointer vendor files must not receive product link appends
+ * (REQ-033 — product links land on AGENTS.md / non-pointer bodies only).
+ */
+function isExemptProductLinkTarget(instrPath: string): boolean {
+  if (basename(instrPath).toLowerCase() === 'agents.md') return false;
+  try {
+    const content = readFileSync(instrPath, 'utf8');
+    return isPureAgentsPointer(content);
+  } catch {
+    // Unreadable / missing path: keep as target (product domain already decided)
+    return false;
+  }
+}
+
+/**
  * Generate append_instruction_link actions from product.missing_link findings.
  * Stable ids: fix.link_product_<agent>_<basename> (design / REQ-022).
  * When instruction paths appear in evidence, each becomes an action target.
+ * Hierarchy policy (REQ-033): skip pure AGENTS.md pointer files; prefer correct surfaces.
  */
 function appendActionsFromFindings(findings: Finding[]): FixAction[] {
   const out: FixAction[] = [];
@@ -204,25 +222,30 @@ function appendActionsFromFindings(findings: Finding[]): FixAction[] {
     const product =
       evidence.find((p) => /(?:^|[/\\])(product|roadmap)\.md$/i.test(p)) ??
       evidence[evidence.length - 1]!;
-    const basename = productBasename(evidence);
-    const instructions = evidence.filter((p) => p !== product && /\.md$/i.test(p));
+    const productBase = productBasename(evidence);
+    const instructions = evidence.filter(
+      (p) => p !== product && /\.md$/i.test(p) && !isExemptProductLinkTarget(p),
+    );
     const agents = finding.agents_affected.length > 0 ? finding.agents_affected : [undefined];
 
     for (const agentId of agents) {
       const id = agentId
-        ? `fix.link_product_${agentId}_${basename}`
-        : `fix.link_product_${basename}`;
+        ? `fix.link_product_${agentId}_${productBase}`
+        : `fix.link_product_${productBase}`;
       const description = agentId
-        ? `Append link to ${basename} in ${agentId} instruction files`
-        : `Append link to ${basename} in instruction files`;
+        ? `Append link to ${productBase} in ${agentId} instruction files`
+        : `Append link to ${productBase} in instruction files`;
 
       if (instructions.length > 0) {
         for (const instr of instructions) {
+          const fileBase = instr.split(/[/\\]/).pop() ?? instr;
           out.push({
-            id: instructions.length === 1 ? id : `${id}__${instr.split(/[/\\]/).pop()}`,
+            id: instructions.length === 1 ? id : `${id}__${fileBase}`,
             kind: 'append_instruction_link',
             description:
-              instructions.length === 1 ? description : `Append link to ${basename} in ${instr}`,
+              instructions.length === 1
+                ? description
+                : `Append link to ${productBase} in ${fileBase}`,
             target: instr,
             value: product,
             agent_id: agentId,
@@ -230,6 +253,16 @@ function appendActionsFromFindings(findings: Finding[]): FixAction[] {
           });
         }
       } else {
+        // No instruction targets left after pointer filter — if evidence had only
+        // product path (no surface), still emit a generic action for apply context.
+        const onlyProduct =
+          evidence.every(
+            (p) => p === product || /(?:^|[/\\])(product|roadmap)\.md$/i.test(p),
+          ) || evidence.filter((p) => p !== product && /\.md$/i.test(p)).length === 0;
+        if (!onlyProduct) {
+          // All instruction evidence was pure pointers — skip (nothing correct to append)
+          continue;
+        }
         out.push({
           id,
           kind: 'append_instruction_link',

@@ -179,3 +179,152 @@ describe('checkProduct', () => {
     expect(findings.filter((f) => f.id === 'product.missing_link')).toEqual([]);
   });
 });
+
+describe('product link policy with hierarchy (REQ-033)', () => {
+  it('flags AGENTS.md when it exists and lacks product link', async () => {
+    const project = tempDir();
+    writeFileSync(join(project, 'product.md'), '# product\n');
+    const agentsMd = join(project, 'AGENTS.md');
+    writeFileSync(agentsMd, '# AGENTS\nShared setup without product link.\n');
+
+    const findings = await checkProduct({
+      map: emptyMap(),
+      agents: [presence('codex')],
+      projectRoot: project,
+      adapters: [stubAdapter('codex', [agentsMd])],
+    });
+
+    const missing = findings.filter((f) => f.id === 'product.missing_link');
+    expect(missing.length).toBeGreaterThanOrEqual(1);
+    expect(missing.some((f) => f.evidence.includes(agentsMd))).toBe(true);
+    expect(missing.some((f) => f.message.toLowerCase().includes('agents.md'))).toBe(true);
+  });
+
+  it('does not emit product.missing_link for pure AGENTS.md pointer vendor files', async () => {
+    const project = tempDir();
+    writeFileSync(join(project, 'product.md'), '# product\n');
+    const agentsMd = join(project, 'AGENTS.md');
+    writeFileSync(
+      agentsMd,
+      '# AGENTS\n\n## Product\n\n- See [product.md](./product.md) when present.\n',
+    );
+    const claude = join(project, 'CLAUDE.md');
+    writeFileSync(
+      claude,
+      '# Claude Code — project entry\n\n' +
+        'Read and follow **[AGENTS.md](./AGENTS.md)** for all project instructions, ' +
+        'policies, and shared agent setup. Prefer AGENTS.md over duplicating rules here.\n',
+    );
+
+    const findings = await checkProduct({
+      map: emptyMap(),
+      agents: [presence('claude-code'), presence('codex')],
+      projectRoot: project,
+      adapters: [
+        stubAdapter('claude-code', [claude]),
+        stubAdapter('codex', [agentsMd]),
+      ],
+    });
+
+    const missing = findings.filter((f) => f.id === 'product.missing_link');
+    expect(missing).toEqual([]);
+    expect(missing.every((f) => !f.evidence.includes(claude))).toBe(true);
+  });
+
+  it('still requires product link on vendor files with unique non-pointer body', async () => {
+    const project = tempDir();
+    writeFileSync(join(project, 'product.md'), '# product\n');
+    const agentsMd = join(project, 'AGENTS.md');
+    writeFileSync(
+      agentsMd,
+      '# AGENTS\n\n## Product\n\n- See [product.md](./product.md).\n',
+    );
+    const claude = join(project, 'CLAUDE.md');
+    writeFileSync(
+      claude,
+      '# Claude local policy\n\n' +
+        'Also see AGENTS.md for shared rules.\n\n' +
+        '## Unique project rules (do not move)\n\n' +
+        '- Always run tests before commit in this monorepo.\n' +
+        '- Prefer Vitest over Jest for frontend packages.\n' +
+        '- Never invent secrets in fixtures; use placeholders only.\n' +
+        '- Claude-specific tooling notes live only in this file for now.\n',
+    );
+
+    const findings = await checkProduct({
+      map: emptyMap(),
+      agents: [presence('claude-code')],
+      projectRoot: project,
+      adapters: [stubAdapter('claude-code', [claude])],
+    });
+
+    const missing = findings.filter((f) => f.id === 'product.missing_link');
+    expect(missing.some((f) => f.evidence.includes(claude))).toBe(true);
+    // AGENTS already links product — should not flag AGENTS
+    expect(missing.every((f) => !f.evidence.includes(agentsMd))).toBe(true);
+  });
+
+  it('emits findings only for surfaces that need product links (AGENTS, not pure pointer)', async () => {
+    const project = tempDir();
+    writeFileSync(join(project, 'product.md'), '# product\n');
+    const agentsMd = join(project, 'AGENTS.md');
+    writeFileSync(agentsMd, '# AGENTS\nShared without product.\n');
+    const claude = join(project, 'CLAUDE.md');
+    writeFileSync(
+      claude,
+      'Read and follow **[AGENTS.md](./AGENTS.md)** for all project instructions.\n',
+    );
+
+    const findings = await checkProduct({
+      map: emptyMap(),
+      agents: [presence('claude-code'), presence('codex')],
+      projectRoot: project,
+      adapters: [
+        stubAdapter('claude-code', [claude]),
+        stubAdapter('codex', [agentsMd]),
+      ],
+    });
+
+    const missing = findings.filter((f) => f.id === 'product.missing_link');
+    expect(missing.length).toBeGreaterThanOrEqual(1);
+    expect(missing.every((f) => !f.evidence.includes(claude))).toBe(true);
+    expect(missing.some((f) => f.evidence.includes(agentsMd))).toBe(true);
+  });
+
+  it('ignores adapter-returned user-home instruction paths for product.missing_link', async () => {
+    // Regression: adapters return ~/.codex/AGENTS.md, home CLAUDE.md, config.toml
+    // alongside project surfaces. Only projectRoot paths must be product-link checked.
+    const project = tempDir();
+    const home = tempDir('product-user-home-');
+    writeFileSync(join(project, 'product.md'), '# product\n');
+    const projectAgents = join(project, 'AGENTS.md');
+    writeFileSync(
+      projectAgents,
+      '# AGENTS\n\n## Product\n\n- See [product.md](./product.md) when present.\n',
+    );
+    const homeAgents = join(home, 'AGENTS.md');
+    writeFileSync(homeAgents, '# user-home AGENTS — deliberately no product link\n');
+    const homeConfig = join(home, 'config.toml');
+    writeFileSync(homeConfig, 'model = "gpt"\n');
+    const homeClaude = join(home, 'CLAUDE.md');
+    writeFileSync(homeClaude, '# user-home CLAUDE without product.md link\n');
+
+    const findings = await checkProduct({
+      map: emptyMap(),
+      agents: [presence('codex'), presence('claude-code')],
+      projectRoot: project,
+      adapters: [
+        stubAdapter('codex', [homeAgents, homeConfig, projectAgents]),
+        stubAdapter('claude-code', [homeClaude]),
+      ],
+    });
+
+    const missing = findings.filter((f) => f.id === 'product.missing_link');
+    expect(missing).toEqual([]);
+    for (const f of findings) {
+      expect(f.evidence.includes(homeAgents)).toBe(false);
+      expect(f.evidence.includes(homeConfig)).toBe(false);
+      expect(f.evidence.includes(homeClaude)).toBe(false);
+    }
+  });
+});

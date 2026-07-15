@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
 import type { AgentAdapter, AdapterContext } from '../adapters/types.js';
 import type { AgentPresence, Finding, FixAction, HomeMap, Report } from '../engine/types.js';
 import {
@@ -9,6 +12,14 @@ import {
   explainEmptyFixPlan,
   formatFixPlan,
 } from './plan.js';
+
+const planTemps: string[] = [];
+
+afterEach(() => {
+  while (planTemps.length > 0) {
+    rmSync(planTemps.pop()!, { recursive: true, force: true });
+  }
+});
 
 function emptyMap(overrides: Partial<HomeMap['skills']> = {}): HomeMap {
   return {
@@ -703,5 +714,68 @@ describe('formatFixPlan empty plan messaging', () => {
   it('explainEmptyFixPlan is quiet-ish when there are no findings', () => {
     const lines = explainEmptyFixPlan({ findings: [] });
     expect(lines.join('\n')).toMatch(/No findings/i);
+  });
+});
+
+describe('buildFixPlan product link targets (REQ-033)', () => {
+  it('plans product link append only on AGENTS.md when evidence lists that surface', () => {
+    const plan = buildFixPlan({
+      findings: [
+        finding({
+          id: 'product.missing_link',
+          severity: 'warn',
+          domain: 'product',
+          message: 'AGENTS.md missing link to product.md',
+          evidence: ['/proj/AGENTS.md', '/proj/product.md'],
+          agents_affected: ['codex'],
+        }),
+      ],
+      map: emptyMap({ sync_target: '/hub' }),
+      adapters: [stubAdapter('codex')],
+      hub: '/hub',
+    });
+
+    const productLinks = plan.filter((a) => a.kind === 'append_instruction_link');
+    expect(productLinks).toHaveLength(1);
+    expect(productLinks[0]!.target).toBe('/proj/AGENTS.md');
+    expect(productLinks[0]!.value).toBe('/proj/product.md');
+  });
+
+  it('does not plan product link append for pure AGENTS.md pointer vendor files', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'plan-product-'));
+    planTemps.push(dir);
+    const product = join(dir, 'product.md');
+    const agentsMd = join(dir, 'AGENTS.md');
+    const claude = join(dir, 'CLAUDE.md');
+    writeFileSync(product, '# product\n');
+    writeFileSync(agentsMd, '# AGENTS\nno product yet\n');
+    writeFileSync(
+      claude,
+      'Read and follow **[AGENTS.md](./AGENTS.md)** for all project instructions.\n',
+    );
+
+    // Stale/over-broad evidence including pure pointer — plan must skip CLAUDE.md
+    const plan = buildFixPlan({
+      findings: [
+        finding({
+          id: 'product.missing_link',
+          severity: 'warn',
+          domain: 'product',
+          message: 'missing product',
+          evidence: [claude, agentsMd, product],
+          agents_affected: ['claude-code'],
+        }),
+      ],
+      map: emptyMap({ sync_target: '/hub' }),
+      adapters: [stubAdapter('claude-code')],
+      hub: '/hub',
+    });
+
+    const productLinks = plan.filter((a) => a.kind === 'append_instruction_link');
+    expect(productLinks.some((a) => a.target === claude)).toBe(false);
+    expect(productLinks.some((a) => a.target === agentsMd)).toBe(true);
+    expect(
+      productLinks.every((a) => a.value === product || a.value?.endsWith('product.md')),
+    ).toBe(true);
   });
 });
