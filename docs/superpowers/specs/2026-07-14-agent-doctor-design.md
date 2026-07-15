@@ -221,6 +221,22 @@ Codex and similar agents read `AGENTS.md` natively — still require the hub fil
 
 Constants live in `src/domains/instructions.ts` (`HIERARCHY_FINDING_IDS`, `VENDOR_POINTER_BASENAMES`). Hierarchy findings flow through `runChecks` → status/check like other instruction findings; recommendations include `rec.ensure_agents_md` / `rec.ensure_agents_md_pointers`.
 
+### Project Instruction Hierarchy (plan/apply path)
+
+| | |
+|--|--|
+| **Entry** | `agent-doctor fix --dry-run` then `fix` / `fix --yes` with hierarchy findings present |
+| **Terminal** | Dry-run lists hierarchy actions; apply creates minimal stub and/or append-only pointers; re-status clears those findings |
+
+**Stable fix kinds** (skill / plan cross-reference — do not rename lightly):
+
+| Fix kind | Finding id(s) | Effect |
+|----------|---------------|--------|
+| `create_agents_stub` | `instructions.hierarchy_missing_agents_md` | Minimal `AGENTS.md` stub only (never invent long policy) |
+| `append_agents_pointer` | `instructions.hierarchy_missing_pointer` | Append-only AGENTS.md pointer in vendor instruction file |
+
+**Skill ↔ CLI contract (parity):** Skill LOCAL POLICY prefers `agent-doctor fix` for hierarchy when these findings exist. Skill text documents the same finding ids and fix kinds. Agents must **not** freestyle hierarchy creates/appends when the CLI plan covers them; freestyle is a last resort only if Doctor is unavailable or dry-run omits a needed covered step. Score/fix safety remains CLI-owned.
+
 ### Recommendation style (normative)
 
 ```
@@ -275,7 +291,9 @@ interface AgentAdapter {
 
 ### Safe v1 fix actions
 
-- Append recommended **link/pointer blocks** to `CLAUDE.md` / `AGENTS.md` (and adapter-known instruction files)  
+- Append recommended **link/pointer blocks** to `CLAUDE.md` / `AGENTS.md` (and adapter-known instruction files) (`append_instruction_link`)  
+- Create minimal **`AGENTS.md` stub** for hierarchy (`create_agents_stub`) — never invent long policy  
+- Append **AGENTS.md pointer** blocks to vendor instruction files (`append_agents_pointer`) — append-only; never wholesale rewrite  
 - Wire agent config to the **chosen skills sync target** when the adapter supports a non-destructive setting or documented project file  
 - Create stub `product.md` / `roadmap.md` **only if** the user selected those plan items  
 - Update `~/.agent-doctor/map.yml` (sync_target, ignored, roots)  
@@ -396,4 +414,6 @@ These do not change product purpose or user-visible modes.
 | Architecture | Check engine + dual surface (terminal + HTML) |
 | Core thesis | Sync all agents to shared skills/memory/config; low duplication; always multi-agent |
 | Project instructions | **AGENTS.md-first hierarchy** — vendor files point at AGENTS.md; diagnose via status / check instructions; stable ids `instructions.hierarchy_*` |
+| Hierarchy plan/apply | `create_agents_stub` + `append_agents_pointer` from hierarchy findings; skill prefers CLI over freestyle when covered |
+| Skill ↔ CLI parity | Skill documents finding ids / fix kinds; defers hierarchy writes to `fix` when findings exist; CLI owns score/fix safety |
 | Hierarchy Gemini | Map primary + file presence only (no deep Gemini adapter required for pointer rules) |
