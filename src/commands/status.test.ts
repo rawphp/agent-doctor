@@ -211,6 +211,48 @@ describe('runStatus', () => {
     expect(exitCode).toBe(0);
   });
 
+  it('status --json surfaces hierarchy findings with stable ids (REQ-029)', async () => {
+    const lines: string[] = [];
+    const base = tempDir('status-hierarchy-');
+    const hub = makePopulatedRoot(base, 'hub');
+    const projectRoot = join(base, 'project');
+    mkdirSync(projectRoot, { recursive: true });
+    // Vendor file without AGENTS.md pointer → hierarchy_missing_agents_md + pointer
+    writeFileSync(join(projectRoot, 'CLAUDE.md'), '# project-local only\n');
+
+    const { report, exitCode } = await runStatus({
+      args: ['--json'],
+      checks: {
+        map: baseMap({ global_roots: [hub], sync_target: hub }),
+        adapters: [stubAdapter('claude-code', [hub])],
+        projectRoot,
+      },
+      stdout: (line) => lines.push(line),
+      applyProcessExitCode: false,
+    });
+
+    const parsed = JSON.parse(lines.join('\n')) as Report;
+    const ids = parsed.findings.map((f) => f.id);
+    expect(ids).toContain('instructions.hierarchy_missing_agents_md');
+    expect(ids).toContain('instructions.hierarchy_missing_pointer');
+
+    const missingAgents = parsed.findings.find(
+      (f) => f.id === 'instructions.hierarchy_missing_agents_md',
+    );
+    expect(missingAgents?.domain).toBe('instructions');
+    expect(missingAgents?.evidence.some((e) => e.includes(projectRoot))).toBe(true);
+
+    // Recommendations carry the same stable ids (discoverability without special-casing)
+    const recIds = parsed.recommendations.flatMap((r) => r.finding_ids);
+    expect(recIds).toContain('instructions.hierarchy_missing_agents_md');
+    expect(recIds).toContain('instructions.hierarchy_missing_pointer');
+
+    // Report object matches JSON stdout (no filtering hacks)
+    expect(report.findings.map((f) => f.id)).toEqual(expect.arrayContaining(ids));
+    // Exit code follows overall grade mapping (not a hierarchy special-case)
+    expect([0, 1, 2]).toContain(exitCode);
+  });
+
   it('status --json writes Report without terminal decoration', async () => {
     const lines: string[] = [];
     const base = tempDir();

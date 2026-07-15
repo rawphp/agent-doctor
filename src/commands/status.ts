@@ -1,6 +1,10 @@
 /**
  * `agent-doctor status` path-unit (design §4–§5, §10).
  * Default hybrid scope → run checks → terminal or JSON → exit by grade.
+ *
+ * Hierarchy diagnose (REQ-029): project-scope hierarchy findings from the
+ * instructions domain appear in Report.findings (and status --json) with stable
+ * ids — same pipeline as every other domain, no CLI special-casing.
  */
 
 import { EXIT_TOOL_ERROR, exitCodeForGrade } from '../engine/score.js';
