@@ -186,4 +186,45 @@ describe('runCheck', () => {
     expect(exitCode).toBe(0);
     expect(lines.join('\n')).toMatch(/Overall:/);
   });
+
+  it('check instructions runs hierarchy checks with stable finding ids (REQ-029)', async () => {
+    const lines: string[] = [];
+    const base = tempDir('check-hierarchy-');
+    const hub = makePopulatedRoot(base, 'hub');
+    const projectRoot = join(base, 'project');
+    mkdirSync(projectRoot, { recursive: true });
+    writeFileSync(join(projectRoot, 'CLAUDE.md'), '# no AGENTS pointer\n');
+
+    const { report, exitCode } = await runCheck({
+      args: ['instructions', '--json'],
+      checks: {
+        map: baseMap({ global_roots: [hub], sync_target: hub }),
+        adapters: [stubAdapter('claude-code', [hub])],
+        projectRoot,
+      },
+      stdout: (line) => lines.push(line),
+      applyProcessExitCode: false,
+    });
+
+    // Domain filter keeps only instructions findings (hierarchy is same domain)
+    for (const f of report.findings) {
+      expect(f.domain).toBe('instructions');
+    }
+    expect(report.findings.some((f) => f.id === 'instructions.hierarchy_missing_agents_md')).toBe(
+      true,
+    );
+    expect(report.findings.some((f) => f.id === 'instructions.hierarchy_missing_pointer')).toBe(
+      true,
+    );
+
+    // JSON stdout carries the same ids (no special-case stripping)
+    const parsed = JSON.parse(lines.join('\n')) as { findings: { id: string; domain: string }[] };
+    const jsonIds = parsed.findings.map((f) => f.id);
+    expect(jsonIds).toContain('instructions.hierarchy_missing_agents_md');
+    expect(jsonIds).toContain('instructions.hierarchy_missing_pointer');
+
+    expect(report.domains.length).toBe(1);
+    expect(report.domains[0]?.domain).toMatch(/instruction/);
+    expect(exitCode).toBeGreaterThan(0);
+  });
 });

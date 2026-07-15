@@ -1,6 +1,11 @@
 /**
  * `agent-doctor check [domain]` path-unit (design §5).
  * Optional single-domain run: filter report to one domain module.
+ *
+ * Hierarchy diagnose (REQ-029): `check instructions` uses the same instructions
+ * domain as full status — no special-case path. Stable ids
+ * `instructions.hierarchy_missing_agents_md` / `instructions.hierarchy_missing_pointer`
+ * flow through runChecks → filterReportToDomain → JSON/terminal output.
  */
 
 import { EXIT_TOOL_ERROR, exitCodeForGrade, computeOverall } from '../engine/score.js';

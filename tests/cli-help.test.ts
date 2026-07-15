@@ -76,6 +76,26 @@ describe('agent-doctor <command> --help', () => {
     expect(status).toBe(0);
     expect(stdout).toMatch(/Usage:\s*agent-doctor dashboard/i);
   });
+
+  it('check --help lists instructions domain and hierarchy finding ids', () => {
+    const { status, stdout, stderr } = runCli(['check', '--help']);
+    const text = `${stdout}\n${stderr}`;
+    expect(status).toBe(0);
+    expect(text).toMatch(/Usage:\s*agent-doctor check/i);
+    expect(text).toMatch(/\binstructions\b/);
+    expect(text).toMatch(/instructions\.hierarchy_missing_agents_md/);
+    expect(text).toMatch(/instructions\.hierarchy_missing_pointer/);
+    // Help must not execute a full check run
+    expect(text).not.toMatch(/Overall:\s*\d+/);
+  });
+
+  it('check instructions --help does not crash and shows check usage', () => {
+    const { status, stdout, stderr } = runCli(['check', 'instructions', '--help']);
+    const text = `${stdout}\n${stderr}`;
+    expect(status).toBe(0);
+    expect(text).toMatch(/Usage:\s*agent-doctor check/i);
+    expect(text).toMatch(/\binstructions\b/);
+  });
 });
 
 describe('package metadata', () => {
