@@ -1,19 +1,14 @@
 # REQ-029: CLI surfaces hierarchy diagnose
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.40397
-**Claimed at:** 2026-07-15T09:56:22Z
-**Heartbeat:** 2026-07-15T09:56:22Z
-<!-- claimed-end -->
 
 **UR:** UR-002
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-15
 **Layer:** cli
 **Entry point:**
 **Terminal state:**
 **Parent:** REQ-026
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:c12bb2a tests:57 cli + check help runtime
 **Criteria approved:** agent-drafted
 **Priority:** 2
 **Size:** S
@@ -30,9 +25,9 @@ Diagnose path must be reachable by agents/humans the same way as other domains.
 
 ## Acceptance Criteria
 
-- [ ] Hierarchy findings appear in `status --json` findings array with stable ids
-- [ ] `check instructions` runs hierarchy checks (same domain)
-- [ ] No regression in `agent-doctor --help` / command help
+- [x] Hierarchy findings appear in `status --json` findings array with stable ids
+- [x] `check instructions` runs hierarchy checks (same domain)
+- [x] No regression in `agent-doctor --help` / command help
 
 ## Verification Steps
 
@@ -48,3 +43,9 @@ Diagnose path must be reachable by agents/humans the same way as other domains.
 **Data dependencies:** Report from `runChecks`.
 
 **Service dependencies:** `src/engine/run-checks.ts`, instructions domain.
+
+## Outputs
+
+- src/cli.ts — check help hierarchy ids
+- src/commands/check.ts,status.ts — hierarchy surface notes
+- tests — status/check/help hierarchy tests
