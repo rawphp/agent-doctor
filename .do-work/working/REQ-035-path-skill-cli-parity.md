@@ -1,7 +1,13 @@
 # REQ-035: Path — Skill ↔ CLI contract parity
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.85479
+**Claimed at:** 2026-07-15T10:13:01Z
+**Heartbeat:** 2026-07-15T10:13:01Z
+<!-- claimed-end -->
+
 **UR:** UR-002
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-15
 **Layer:** none
 **Entry point:** Agent loads `skills/agent-doctor/SKILL.md` and runs Execution Loop against CLI that implements hierarchy + product policy
@@ -12,7 +18,7 @@
 **Priority:** 2
 **Size:** S
 **Files:** skills/agent-doctor/SKILL.md, product.md, docs/superpowers/specs/2026-07-14-agent-doctor-design.md
-**Depends on:** REQ-030 REQ-033
+**Depends on:** REQ-030, REQ-033
 
 ## Task
 
