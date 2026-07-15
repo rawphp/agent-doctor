@@ -1,7 +1,13 @@
 # REQ-031: Fix plan for hierarchy findings
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.85479
+**Claimed at:** 2026-07-15T10:12:56Z
+**Heartbeat:** 2026-07-15T10:12:56Z
+<!-- claimed-end -->
+
 **UR:** UR-002
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-15
 **Layer:** engine
 **Entry point:**
@@ -12,7 +18,7 @@
 **Priority:** 3
 **Size:** M
 **Files:** src/fix/plan.ts, src/fix/plan.test.ts, src/engine/types.ts
-**Depends on:** REQ-027 REQ-030
+**Depends on:** REQ-027, REQ-030
 
 ## Task
 
