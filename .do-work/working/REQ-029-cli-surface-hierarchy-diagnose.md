@@ -1,7 +1,13 @@
 # REQ-029: CLI surfaces hierarchy diagnose
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.40397
+**Claimed at:** 2026-07-15T09:56:22Z
+**Heartbeat:** 2026-07-15T09:56:22Z
+<!-- claimed-end -->
+
 **UR:** UR-002
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-15
 **Layer:** cli
 **Entry point:**
