@@ -1,7 +1,13 @@
 # REQ-036: Skill documents CLI hierarchy contract
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.85479
+**Claimed at:** 2026-07-15T10:30:16Z
+**Heartbeat:** 2026-07-15T10:30:16Z
+<!-- claimed-end -->
+
 **UR:** UR-002
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-15
 **Layer:** surfaces
 **Entry point:**
@@ -12,7 +18,7 @@
 **Priority:** 1
 **Size:** S
 **Files:** skills/agent-doctor/SKILL.md
-**Depends on:** REQ-032 REQ-034 REQ-035
+**Depends on:** REQ-032, REQ-034, REQ-035
 
 ## Task
 
