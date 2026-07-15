@@ -1,19 +1,14 @@
 # REQ-035: Path — Skill ↔ CLI contract parity
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.85479
-**Claimed at:** 2026-07-15T10:13:01Z
-**Heartbeat:** 2026-07-15T10:13:01Z
-<!-- claimed-end -->
 
 **UR:** UR-002
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-15
 **Layer:** none
 **Entry point:** Agent loads `skills/agent-doctor/SKILL.md` and runs Execution Loop against CLI that implements hierarchy + product policy
 **Terminal state:** Skill text only claims diagnose/plan/apply capabilities the CLI implements; finding ids and fix kinds listed; no “agent freestyle hierarchy when Doctor lacks steps” for covered cases
 **Parent:**
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:1f0ce66 tests:npm test (309 passed)
 **Criteria approved:** agent-drafted
 **Priority:** 2
 **Size:** S
@@ -30,10 +25,10 @@ Vice-versa half of the brief. Skill currently allows agent-side hierarchy writes
 
 ## Acceptance Criteria
 
-- [ ] LOCAL POLICY §6 says prefer `agent-doctor fix` for hierarchy when findings exist
-- [ ] Command details list hierarchy finding ids and fix kinds matching implementation
-- [ ] Remove or gate language that encourages freestyle hierarchy when CLI covers it
-- [ ] product.md notes AGENTS.md-first if still accurate
+- [x] LOCAL POLICY §6 says prefer `agent-doctor fix` for hierarchy when findings exist
+- [x] Command details list hierarchy finding ids and fix kinds matching implementation
+- [x] Remove or gate language that encourages freestyle hierarchy when CLI covers it
+- [x] product.md notes AGENTS.md-first if still accurate
 
 ## Verification Steps
 
@@ -49,3 +44,9 @@ Vice-versa half of the brief. Skill currently allows agent-side hierarchy writes
 **Data dependencies:** Implemented finding ids from engine REQs.
 
 **Service dependencies:** None runtime.
+
+## Outputs
+
+- skills/agent-doctor/SKILL.md — CLI hierarchy contract parity
+- product.md — AGENTS.md-first notes
+- docs/superpowers/specs/2026-07-14-agent-doctor-design.md — parity design notes
