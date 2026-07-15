@@ -73,7 +73,17 @@ function homeRel(id: string): string {
   }
 }
 
-describe('presence-only adapter', () => {
+describe('presence-only adapter (gemini / map-only hierarchy)', () => {
+  it('gemini remains presence-only — no deep expectedInstructionFiles package required', () => {
+    const support = listAdapterSupport();
+    const gemini = support.find((e) => e.id === 'gemini');
+    expect(gemini?.supportLevel).toBe('presence');
+    const adapter = createPresenceAdapter({ id: 'gemini' });
+    // Hierarchy for Gemini is map primary + file presence in instructions domain,
+    // not a deep gemini adapter with expectedInstructionFiles.
+    expect(adapter.expectedInstructionFiles).toBeUndefined();
+  });
+
   it('detects installed agent when marker/home exists', async () => {
     const home = makeTempDir();
     mkdirSync(join(home, 'config'), { recursive: true });

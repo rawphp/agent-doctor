@@ -75,6 +75,16 @@ describe('Codex adapter', () => {
     });
   });
 
+  describe('expectedInstructionFiles (hierarchy presence)', () => {
+    it('expects AGENTS.md only (native reader — no separate vendor pointer)', () => {
+      const adapter = createCodexAdapter({ home: HOME_WITH_SKILLS });
+      expect(adapter.expectedInstructionFiles).toBeTypeOf('function');
+      const expected = adapter.expectedInstructionFiles!(PROJECT_ROOT);
+      expect(expected).toEqual([join(PROJECT_ROOT, 'AGENTS.md')]);
+      expect(adapter.expectedInstructionFiles!()).toEqual([]);
+    });
+  });
+
   describe('memoryPointers', () => {
     it('returns an array (empty when no memory config discovered)', async () => {
       const adapter = createCodexAdapter({ home: HOME_WITH_SKILLS });

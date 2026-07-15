@@ -30,8 +30,17 @@ export interface AgentAdapter {
   /**
    * Instruction files the agent reads (user + project).
    * When projectRoot is set, include project-level files such as CLAUDE.md.
+   * AGENTS.md-first: deep adapters should also list project AGENTS.md when present.
    */
   instructionFiles(projectRoot?: string): Promise<string[]>;
+
+  /**
+   * Optional: expected project instruction paths for presence / missing_file checks.
+   * Paths may not exist yet — domain treats missing paths as findings.
+   * AGENTS.md-first: Codex → AGENTS.md; Claude → CLAUDE.md pointer; Grok → AGENTS.md then GROK.md.
+   * Presence-only agents (e.g. Gemini) omit this — hierarchy uses map primary + file presence.
+   */
+  expectedInstructionFiles?(projectRoot?: string): string[];
 
   /**
    * Memory / vault pointer paths discovered for this agent

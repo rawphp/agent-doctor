@@ -55,15 +55,7 @@ export const VENDOR_POINTER_BASENAMES: Readonly<Record<string, string>> = {
 /** Canonical project instruction hub basename. */
 export const AGENTS_MD_BASENAME = 'AGENTS.md';
 
-/**
- * Optional extension: adapters may declare expected instruction paths
- * (including missing ones). Domain falls back to well-known basenames.
- */
-type AdapterWithExpected = AgentAdapter & {
-  expectedInstructionFiles?: (projectRoot?: string) => string[];
-};
-
-/** Default expected project-level instruction basenames per adapter id. */
+/** Default expected project-level instruction basenames per adapter id (fallback). */
 const DEFAULT_PROJECT_INSTRUCTIONS: Record<string, string[]> = {
   'claude-code': ['CLAUDE.md'],
   codex: ['AGENTS.md'],
@@ -75,9 +67,9 @@ function expectedFiles(
   agentId: string,
   projectRoot?: string,
 ): string[] {
-  const withExpected = adapter as AdapterWithExpected | undefined;
-  if (withExpected?.expectedInstructionFiles) {
-    return withExpected.expectedInstructionFiles(projectRoot);
+  // Prefer adapter hook (REQ-028 AGENTS.md-first surfaces on deep adapters).
+  if (adapter?.expectedInstructionFiles) {
+    return adapter.expectedInstructionFiles(projectRoot);
   }
 
   // Without projectRoot and without adapter helper, nothing project-level to require
@@ -118,24 +110,40 @@ function resolveCaseInsensitive(
   return actual ? join(projectRoot, actual) : undefined;
 }
 
+export type RequiredVendorPointer = {
+  agentId: string;
+  basename: string;
+  path: string;
+  exists: boolean;
+};
+
 /**
  * Which vendor pointer files are required for this project.
  * Required when the file already exists on disk OR the matching agent is
  * installed / primary (including presence-only adapters such as Gemini).
+ * Gemini participates via map primary / installed presence + GEMINI.md file only
+ * — no deep Gemini adapter package.
  */
 export function requiredVendorPointers(
   projectRoot: string,
   agents: readonly AgentPresence[],
-): { agentId: string; basename: string; path: string; exists: boolean }[] {
+): RequiredVendorPointer[] {
+
   const entries = listProjectBasenames(projectRoot);
-  const required: { agentId: string; basename: string; path: string; exists: boolean }[] = [];
+  const required: RequiredVendorPointer[] = [];
   const seenBasenames = new Set<string>();
 
   const inScope = agentsInScope(agents);
 
   for (const [agentId, basename] of Object.entries(VENDOR_POINTER_BASENAMES)) {
     const onDisk = resolveCaseInsensitive(projectRoot, basename, entries);
-    const agent = inScope.find((a) => a.id === agentId || a.adapter === agentId);
+    const agent = inScope.find(
+      (a) =>
+        a.id === agentId ||
+        a.adapter === agentId ||
+        // Tolerate bare "claude" map ids for Claude Code pointer rules
+        (agentId === 'claude-code' && (a.id === 'claude' || a.adapter === 'claude')),
+    );
     const agentInPlay = Boolean(agent && (agent.installed || agent.primary));
 
     if (!onDisk && !agentInPlay) continue;
@@ -187,6 +195,17 @@ export function requiredVendorPointers(
   }
 
   return required;
+}
+
+/**
+ * Required vendor pointer basenames only (shared helper for hierarchy / adapters / map).
+ * Codex is omitted (AGENTS.md-native). Gemini included when primary/installed or GEMINI.md exists.
+ */
+export function requiredPointerBasenames(
+  projectRoot: string,
+  agents: readonly AgentPresence[],
+): string[] {
+  return requiredVendorPointers(projectRoot, agents).map((v) => v.basename);
 }
 
 /**
