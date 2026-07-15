@@ -1,19 +1,14 @@
 # REQ-037: Surfaces report hierarchy findings clearly
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.85479
-**Claimed at:** 2026-07-15T10:05:48Z
-**Heartbeat:** 2026-07-15T10:05:48Z
-<!-- claimed-end -->
 
 **UR:** UR-002
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-15
 **Layer:** surfaces
 **Entry point:**
 **Terminal state:**
 **Parent:** REQ-026
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:b8cb643 tests:38 surfaces+status + 302 full
 **Criteria approved:** agent-drafted
 **Priority:** 1
 **Size:** S
@@ -30,9 +25,9 @@ Diagnose path UX for humans/agents; layer surfaces coverage for UR-002.
 
 ## Acceptance Criteria
 
-- [ ] Hierarchy findings visible in terminal status output via existing findings list or domain section
-- [ ] Recommendations include a next step referencing fix dry-run when hierarchy findings exist (if recommendations are generated from findings)
-- [ ] No dashboard regression; JSON remains source of truth
+- [x] Hierarchy findings visible in terminal status output via existing findings list or domain section
+- [x] Recommendations include a next step referencing fix dry-run when hierarchy findings exist (if recommendations are generated from findings)
+- [x] No dashboard regression; JSON remains source of truth
 
 ## Verification Steps
 
@@ -48,3 +43,11 @@ Diagnose path UX for humans/agents; layer surfaces coverage for UR-002.
 **Data dependencies:** Report.findings.
 
 **Service dependencies:** Existing recommendation builder if present in status/score modules.
+
+## Outputs
+
+- src/surfaces/terminal.ts — Findings list
+- src/surfaces/terminal.test.ts — hierarchy readability
+- src/engine/run-checks.ts — fix --dry-run recommendations
+- src/commands/status.ts — surfaces note
+- src/commands/status.test.ts — coverage
