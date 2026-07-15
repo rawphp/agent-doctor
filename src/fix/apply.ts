@@ -362,8 +362,8 @@ function applyMemoryPointer(action: FixAction, ctx: ApplyContext): ActionResult 
 }
 
 /**
- * Create minimal AGENTS.md stub only when missing.
- * Never overwrites an existing AGENTS.md body (no wholesale rewrite).
+ * Create minimal AGENTS.md stub when missing or empty.
+ * Never overwrites a non-empty AGENTS.md body (no wholesale rewrite).
  */
 function applyCreateAgentsStub(action: FixAction, ctx: ApplyContext): ActionResult {
   const target = action.target;
@@ -372,7 +372,18 @@ function applyCreateAgentsStub(action: FixAction, ctx: ApplyContext): ActionResu
   }
 
   if (existsSync(target)) {
-    return { action, status: 'applied', reason: 'AGENTS.md already exists (left unchanged)' };
+    let existing = '';
+    try {
+      existing = readFileSync(target, 'utf8');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { action, status: 'skipped', reason: message };
+    }
+    // Non-empty body: leave unchanged (REQ-032 skip non-empty AGENTS)
+    if (existing.trim().length > 0) {
+      return { action, status: 'applied', reason: 'AGENTS.md already exists (left unchanged)' };
+    }
+    // Empty/whitespace-only: treat as missing content and fill stub below
   }
 
   if (ctx.dryRun) {
