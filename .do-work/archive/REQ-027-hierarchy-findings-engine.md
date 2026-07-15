@@ -1,19 +1,14 @@
 # REQ-027: Hierarchy findings in instructions domain
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.40397
-**Claimed at:** 2026-07-15T09:48:30Z
-**Heartbeat:** 2026-07-15T09:48:30Z
-<!-- claimed-end -->
 
 **UR:** UR-002
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-15
 **Layer:** engine
 **Entry point:**
 **Terminal state:**
 **Parent:** REQ-026
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:e47c943 tests:17 instructions domain + full suite 275
 **Criteria approved:** agent-drafted
 **Priority:** 3
 **Size:** M
@@ -30,11 +25,11 @@ Skill: AGENTS.md required; CLAUDE.md/GEMINI.md/etc. must point at it. Today `che
 
 ## Acceptance Criteria
 
-- [ ] Missing `AGENTS.md` under project root → finding id `instructions.missing_agents_md` (or equivalent stable id), severity warn or error, domain `instructions`
-- [ ] Required pointer file present but no AGENTS.md reference → finding id `instructions.missing_agents_pointer` with evidence paths
-- [ ] Healthy tree (AGENTS.md + pointers that mention AGENTS.md) → no hierarchy findings
-- [ ] Machine/global scope without projectRoot → no hierarchy findings
-- [ ] Tests cover missing AGENTS, missing pointer, healthy, and “pointer file not required” cases
+- [x] Missing `AGENTS.md` under project root → finding id `instructions.missing_agents_md` (or equivalent stable id), severity warn or error, domain `instructions`
+- [x] Required pointer file present but no AGENTS.md reference → finding id `instructions.missing_agents_pointer` with evidence paths
+- [x] Healthy tree (AGENTS.md + pointers that mention AGENTS.md) → no hierarchy findings
+- [x] Machine/global scope without projectRoot → no hierarchy findings
+- [x] Tests cover missing AGENTS, missing pointer, healthy, and “pointer file not required” cases
 
 ## Verification Steps
 
@@ -50,3 +45,9 @@ Skill: AGENTS.md required; CLAUDE.md/GEMINI.md/etc. must point at it. Today `che
 **Data dependencies:** `DomainCheckContext.projectRoot`, `ctx.agents` installed/primary flags.
 
 **Service dependencies:** `pathExists`, adapter `expectedInstructionFiles` / default basenames (extended by REQ-028).
+
+## Outputs
+
+- src/domains/instructions.ts — Hierarchy findings wired to INSTRUCTION_FINDING_IDS
+- src/domains/instructions.test.ts — Hardened AC coverage tests
+- src/engine/types.ts — INSTRUCTION_FINDING_IDS stable contract
