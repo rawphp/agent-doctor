@@ -610,6 +610,179 @@ describe('buildFixPlan hierarchy (REQ-030)', () => {
       plan.some((a) => a.kind === 'append_agents_pointer' && a.target === '/proj/GROK.md'),
     ).toBe(true);
   });
+
+  // REQ-031: AC preferred aliases + projectRoot gate
+  it('maps AC preferred instructions.missing_agents_md → create_agents_stub', () => {
+    const plan = buildFixPlan({
+      findings: [
+        finding({
+          id: 'instructions.missing_agents_md',
+          severity: 'error',
+          domain: 'instructions',
+          message: 'Project instruction hierarchy requires AGENTS.md',
+          evidence: ['/proj/AGENTS.md'],
+          agents_affected: ['claude-code'],
+        }),
+      ],
+      map: emptyMap({ sync_target: '/hub' }),
+      projectRoot: '/proj',
+      hub: '/hub',
+    });
+
+    const stub = plan.find((a) => a.kind === 'create_agents_stub');
+    expect(stub).toBeDefined();
+    expect(stub!.id).toBe('fix.create_agents_stub');
+    expect(stub!.target).toBe('/proj/AGENTS.md');
+    expect(stub!.finding_ids).toContain('instructions.missing_agents_md');
+    expect(stub!.description).toMatch(/minimal|stub|AGENTS\.md/i);
+  });
+
+  it('maps AC preferred instructions.missing_agents_pointer → append_agents_pointer', () => {
+    const plan = buildFixPlan({
+      findings: [
+        finding({
+          id: 'instructions.missing_agents_pointer',
+          severity: 'warn',
+          domain: 'instructions',
+          message: 'CLAUDE.md must point at AGENTS.md',
+          evidence: ['/proj/CLAUDE.md', '/proj/AGENTS.md'],
+          agents_affected: ['claude-code'],
+        }),
+      ],
+      map: emptyMap({ sync_target: '/hub' }),
+      projectRoot: '/proj',
+      hub: '/hub',
+    });
+
+    const pointer = plan.find((a) => a.kind === 'append_agents_pointer');
+    expect(pointer).toBeDefined();
+    expect(pointer!.id).toBe('fix.append_agents_pointer_CLAUDE.md');
+    expect(pointer!.target).toBe('/proj/CLAUDE.md');
+    expect(pointer!.value).toBe('/proj/AGENTS.md');
+    expect(pointer!.finding_ids).toContain('instructions.missing_agents_pointer');
+  });
+
+  it('rejects hierarchy plan actions when projectRoot is missing', () => {
+    const plan = buildFixPlan({
+      findings: [
+        finding({
+          id: 'instructions.hierarchy_missing_agents_md',
+          severity: 'error',
+          domain: 'instructions',
+          evidence: ['/proj/AGENTS.md'],
+        }),
+        finding({
+          id: 'instructions.missing_agents_md',
+          severity: 'error',
+          domain: 'instructions',
+          evidence: ['/proj/AGENTS.md'],
+        }),
+        finding({
+          id: 'instructions.hierarchy_missing_pointer',
+          severity: 'warn',
+          domain: 'instructions',
+          evidence: ['/proj/CLAUDE.md', '/proj/AGENTS.md'],
+          agents_affected: ['claude-code'],
+        }),
+        finding({
+          id: 'instructions.missing_agents_pointer',
+          severity: 'warn',
+          domain: 'instructions',
+          evidence: ['/proj/GEMINI.md', '/proj/AGENTS.md'],
+          agents_affected: ['gemini'],
+        }),
+      ],
+      map: emptyMap(),
+      // projectRoot intentionally omitted — hierarchy mapping must reject
+    });
+
+    expect(plan.some((a) => a.kind === 'create_agents_stub')).toBe(false);
+    expect(plan.some((a) => a.kind === 'append_agents_pointer')).toBe(false);
+  });
+
+  it('rejects hierarchy plan actions when report.project_root is missing', () => {
+    const plan = buildFixPlan(
+      baseReport({
+        project_root: undefined,
+        findings: [
+          finding({
+            id: 'instructions.hierarchy_missing_agents_md',
+            severity: 'error',
+            domain: 'instructions',
+            evidence: ['/proj/AGENTS.md'],
+          }),
+          finding({
+            id: 'instructions.missing_agents_pointer',
+            severity: 'warn',
+            domain: 'instructions',
+            evidence: ['/proj/CLAUDE.md', '/proj/AGENTS.md'],
+            agents_affected: ['claude-code'],
+          }),
+        ],
+      }),
+    );
+    expect(plan.some((a) => a.kind === 'create_agents_stub')).toBe(false);
+    expect(plan.some((a) => a.kind === 'append_agents_pointer')).toBe(false);
+  });
+
+  it('dry-run format lists create_agents_stub and append_agents_pointer for AC aliases', () => {
+    const plan = buildFixPlan({
+      findings: [
+        finding({
+          id: 'instructions.missing_agents_md',
+          severity: 'error',
+          domain: 'instructions',
+          evidence: ['/proj/AGENTS.md'],
+        }),
+        finding({
+          id: 'instructions.missing_agents_pointer',
+          severity: 'warn',
+          domain: 'instructions',
+          evidence: ['/proj/CLAUDE.md', '/proj/AGENTS.md'],
+          agents_affected: ['claude-code'],
+        }),
+      ],
+      map: emptyMap(),
+      projectRoot: '/proj',
+    });
+
+    const text = formatFixPlan(plan, { dryRun: true });
+    expect(text).toMatch(/create_agents_stub/);
+    expect(text).toMatch(/append_agents_pointer/);
+    expect(text).toMatch(/AGENTS\.md/);
+    expect(text).toMatch(/dry-run|Nothing written/i);
+  });
+
+  it('dedupes create_agents_stub when both hierarchy and AC-preferred ids are present', () => {
+    const plan = buildFixPlan({
+      findings: [
+        finding({
+          id: 'instructions.hierarchy_missing_agents_md',
+          severity: 'error',
+          domain: 'instructions',
+          evidence: ['/proj/AGENTS.md'],
+        }),
+        finding({
+          id: 'instructions.missing_agents_md',
+          severity: 'error',
+          domain: 'instructions',
+          evidence: ['/proj/AGENTS.md'],
+        }),
+      ],
+      map: emptyMap(),
+      projectRoot: '/proj',
+    });
+
+    const stubs = plan.filter((a) => a.kind === 'create_agents_stub');
+    expect(stubs).toHaveLength(1);
+    expect(stubs[0]!.id).toBe('fix.create_agents_stub');
+    expect(stubs[0]!.finding_ids).toEqual(
+      expect.arrayContaining([
+        'instructions.hierarchy_missing_agents_md',
+        'instructions.missing_agents_md',
+      ]),
+    );
+  });
 });
 
 describe('HomeMap type smoke for set_sync_target plan', () => {
