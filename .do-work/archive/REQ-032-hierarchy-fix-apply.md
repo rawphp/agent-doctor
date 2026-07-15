@@ -1,19 +1,14 @@
 # REQ-032: Fix apply for hierarchy stub and pointers
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.85479
-**Claimed at:** 2026-07-15T10:23:56Z
-**Heartbeat:** 2026-07-15T10:23:56Z
-<!-- claimed-end -->
 
 **UR:** UR-002
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-15
 **Layer:** engine
 **Entry point:**
 **Terminal state:**
 **Parent:** REQ-030
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:7ab833f tests:apply 28 + full 327
 **Criteria approved:** agent-drafted
 **Priority:** 3
 **Size:** M
@@ -30,10 +25,10 @@ Clarification: minimal stub only; append-only pointers. Skill pointer examples a
 
 ## Acceptance Criteria
 
-- [ ] Missing AGENTS.md → file created with minimal stub content (product.md bullet only if product exists or soft wording per skill)
-- [ ] Existing AGENTS.md non-empty → stub action no-op / applied already
-- [ ] Pointer append uses marker or clear block; second apply is idempotent
-- [ ] Tests cover create, skip-existing, append, already-linked
+- [x] Missing AGENTS.md → file created with minimal stub content (product.md bullet only if product exists or soft wording per skill)
+- [x] Existing AGENTS.md non-empty → stub action no-op / applied already
+- [x] Pointer append uses marker or clear block; second apply is idempotent
+- [x] Tests cover create, skip-existing, append, already-linked
 
 ## Verification Steps
 
@@ -49,3 +44,8 @@ Clarification: minimal stub only; append-only pointers. Skill pointer examples a
 **Data dependencies:** FixAction target/value paths under project root.
 
 **Service dependencies:** `fs` write/append; existing product link block helpers as pattern.
+
+## Outputs
+
+- src/fix/apply.ts — create_agents_stub hardening
+- src/fix/apply.test.ts — REQ-032 AC tests
