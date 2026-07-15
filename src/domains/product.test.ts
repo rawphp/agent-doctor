@@ -290,4 +290,41 @@ describe('product link policy with hierarchy (REQ-033)', () => {
     expect(missing.every((f) => !f.evidence.includes(claude))).toBe(true);
     expect(missing.some((f) => f.evidence.includes(agentsMd))).toBe(true);
   });
+
+  it('ignores adapter-returned user-home instruction paths for product.missing_link', async () => {
+    // Regression: adapters return ~/.codex/AGENTS.md, home CLAUDE.md, config.toml
+    // alongside project surfaces. Only projectRoot paths must be product-link checked.
+    const project = tempDir();
+    const home = tempDir('product-user-home-');
+    writeFileSync(join(project, 'product.md'), '# product\n');
+    const projectAgents = join(project, 'AGENTS.md');
+    writeFileSync(
+      projectAgents,
+      '# AGENTS\n\n## Product\n\n- See [product.md](./product.md) when present.\n',
+    );
+    const homeAgents = join(home, 'AGENTS.md');
+    writeFileSync(homeAgents, '# user-home AGENTS — deliberately no product link\n');
+    const homeConfig = join(home, 'config.toml');
+    writeFileSync(homeConfig, 'model = "gpt"\n');
+    const homeClaude = join(home, 'CLAUDE.md');
+    writeFileSync(homeClaude, '# user-home CLAUDE without product.md link\n');
+
+    const findings = await checkProduct({
+      map: emptyMap(),
+      agents: [presence('codex'), presence('claude-code')],
+      projectRoot: project,
+      adapters: [
+        stubAdapter('codex', [homeAgents, homeConfig, projectAgents]),
+        stubAdapter('claude-code', [homeClaude]),
+      ],
+    });
+
+    const missing = findings.filter((f) => f.id === 'product.missing_link');
+    expect(missing).toEqual([]);
+    for (const f of findings) {
+      expect(f.evidence.includes(homeAgents)).toBe(false);
+      expect(f.evidence.includes(homeConfig)).toBe(false);
+      expect(f.evidence.includes(homeClaude)).toBe(false);
+    }
+  });
 });

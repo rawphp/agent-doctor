@@ -10,11 +10,11 @@
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { basename, join, sep } from 'node:path';
 import type { Finding } from '../engine/types.js';
 import { agentsInScope, type DomainCheckContext } from './context.js';
 import { contentPointsToAgentsMd } from './instructions.js';
-import { pathExists } from './paths.js';
+import { pathExists, resolvePath } from './paths.js';
 
 /** Basenames considered product-context files (case variants on disk). */
 const PRODUCT_BASENAMES = ['product.md', 'roadmap.md'] as const;
@@ -54,6 +54,19 @@ function resolveAgentsMd(projectRoot: string): string | undefined {
 
 function isAgentsMdPath(filePath: string): boolean {
   return basename(filePath).toLowerCase() === 'agents.md';
+}
+
+/**
+ * True when filePath resolves under projectRoot (project-scoped instruction surface).
+ * User-home adapter paths (~/.codex/AGENTS.md, home CLAUDE.md, config.toml) must not
+ * be checked against project product.md.
+ */
+function isUnderProjectRoot(filePath: string, projectRoot: string): boolean {
+  const root = resolvePath(projectRoot);
+  const resolved = resolvePath(filePath);
+  if (resolved === root) return true;
+  const prefix = root.endsWith(sep) ? root : root + sep;
+  return resolved.startsWith(prefix);
 }
 
 /**
@@ -112,12 +125,14 @@ type InstrSurface = {
 
 /**
  * Collect project instruction surfaces that participate in product-link policy:
- * AGENTS.md (always when present) + adapter-reported project markdown files.
+ * AGENTS.md (always when present) + adapter-reported files under projectRoot only.
+ * User-home instruction files returned by adapters are excluded.
  */
 async function collectInstructionSurfaces(ctx: DomainCheckContext): Promise<InstrSurface[]> {
   const byPath = new Map<string, string[]>();
+  const projectRoot = ctx.projectRoot!;
 
-  const agentsMd = resolveAgentsMd(ctx.projectRoot!);
+  const agentsMd = resolveAgentsMd(projectRoot);
   if (agentsMd) {
     byPath.set(agentsMd, []);
   }
@@ -130,11 +145,12 @@ async function collectInstructionSurfaces(ctx: DomainCheckContext): Promise<Inst
     const adapter = ctx.adapters?.find((a) => a.id === agent.id);
     if (!adapter) continue;
 
-    const instructionFiles = await adapter.instructionFiles(ctx.projectRoot);
+    const instructionFiles = await adapter.instructionFiles(projectRoot);
     for (const f of instructionFiles) {
       if (f.endsWith('.json')) continue;
-      // Prefer project-rooted files; still allow existing external paths adapters return
       if (!pathExists(f)) continue;
+      // Only project-scoped surfaces — never user-home AGENTS.md / CLAUDE.md / config.toml
+      if (!isUnderProjectRoot(f, projectRoot)) continue;
 
       const agents = byPath.get(f) ?? [];
       if (!agents.includes(agent.id)) agents.push(agent.id);
