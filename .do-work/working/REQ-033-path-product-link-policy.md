@@ -1,7 +1,13 @@
 # REQ-033: Path — Product link policy with hierarchy
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.40397
+**Claimed at:** 2026-07-15T09:56:23Z
+**Heartbeat:** 2026-07-15T09:56:23Z
+<!-- claimed-end -->
+
 **UR:** UR-002
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-15
 **Layer:** none
 **Entry point:** `agent-doctor status` / `check product` when product.md exists under hierarchy-aware project
