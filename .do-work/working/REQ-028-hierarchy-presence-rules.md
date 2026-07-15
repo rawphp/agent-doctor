@@ -1,7 +1,13 @@
 # REQ-028: Hierarchy presence rules (adapters + map)
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.40397
+**Claimed at:** 2026-07-15T09:56:21Z
+**Heartbeat:** 2026-07-15T09:56:21Z
+<!-- claimed-end -->
+
 **UR:** UR-002
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-15
 **Layer:** adapters
 **Entry point:**
