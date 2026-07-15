@@ -3,10 +3,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AgentAdapter, AdapterContext } from '../adapters/types.js';
-import type { AgentPresence, FixAction, HomeMap } from '../engine/types.js';
+import {
+  INSTRUCTION_FINDING_IDS,
+  type AgentPresence,
+  type FixAction,
+  type HomeMap,
+} from '../engine/types.js';
 import {
   HIERARCHY_FINDING_IDS,
   VENDOR_POINTER_BASENAMES,
+  checkInstructionHierarchy,
   checkInstructions,
   contentPointsToAgentsMd,
 } from './instructions.js';
@@ -174,10 +180,26 @@ describe('checkInstructions', () => {
 
 describe('Project Instruction Hierarchy (diagnose path contract)', () => {
   it('exports stable hierarchy finding ids for skill cross-reference', () => {
+    // Canonical ids keep hierarchy_* form from REQ-026 (REQ-027 AC preferred shorter
+    // names instructions.missing_agents_md / instructions.missing_agents_pointer are aliases).
     expect(HIERARCHY_FINDING_IDS.MISSING_AGENTS_MD).toBe(
       'instructions.hierarchy_missing_agents_md',
     );
     expect(HIERARCHY_FINDING_IDS.MISSING_POINTER).toBe('instructions.hierarchy_missing_pointer');
+    expect(INSTRUCTION_FINDING_IDS.HIERARCHY_MISSING_AGENTS_MD).toBe(
+      HIERARCHY_FINDING_IDS.MISSING_AGENTS_MD,
+    );
+    expect(INSTRUCTION_FINDING_IDS.HIERARCHY_MISSING_POINTER).toBe(
+      HIERARCHY_FINDING_IDS.MISSING_POINTER,
+    );
+    expect(INSTRUCTION_FINDING_IDS.MISSING_FILE).toBe('instructions.missing_file');
+    // Preferred AC names document the same contract (do not emit as alternate ids)
+    expect(INSTRUCTION_FINDING_IDS.AC_PREFERRED.MISSING_AGENTS_MD).toBe(
+      'instructions.missing_agents_md',
+    );
+    expect(INSTRUCTION_FINDING_IDS.AC_PREFERRED.MISSING_AGENTS_POINTER).toBe(
+      'instructions.missing_agents_pointer',
+    );
     expect(VENDOR_POINTER_BASENAMES).toEqual(
       expect.objectContaining({
         'claude-code': 'CLAUDE.md',
@@ -207,11 +229,12 @@ describe('Project Instruction Hierarchy (diagnose path contract)', () => {
     const missing = findings.filter((f) => f.id === HIERARCHY_FINDING_IDS.MISSING_AGENTS_MD);
     expect(missing).toHaveLength(1);
     expect(missing[0]!.domain).toBe('instructions');
+    expect(missing[0]!.severity).toBe('error');
     expect(missing[0]!.evidence.some((e) => e.endsWith('AGENTS.md'))).toBe(true);
     expect(missing[0]!.agents_affected).toContain('claude-code');
   });
 
-  it('flags vendor file that lacks AGENTS.md pointer', async () => {
+  it('flags vendor file that lacks AGENTS.md pointer with evidence paths', async () => {
     const project = tempDir();
     writeFileSync(join(project, 'AGENTS.md'), '# AGENTS\nShared rules\n');
     writeFileSync(join(project, 'CLAUDE.md'), '# Claude\nLocal only rules with no pointer\n');
@@ -227,7 +250,10 @@ describe('Project Instruction Hierarchy (diagnose path contract)', () => {
 
     const missingPtr = findings.filter((f) => f.id === HIERARCHY_FINDING_IDS.MISSING_POINTER);
     expect(missingPtr.length).toBeGreaterThanOrEqual(1);
+    expect(missingPtr[0]!.domain).toBe('instructions');
+    expect(missingPtr[0]!.severity).toBe('warn');
     expect(missingPtr[0]!.evidence.some((e) => e.endsWith('CLAUDE.md'))).toBe(true);
+    expect(missingPtr[0]!.evidence.some((e) => /agents\.md$/i.test(e))).toBe(true);
     expect(missingPtr[0]!.agents_affected).toContain('claude-code');
   });
 
@@ -306,7 +332,7 @@ describe('Project Instruction Hierarchy (diagnose path contract)', () => {
     expect(hierarchy).toEqual([]);
   });
 
-  it('skips hierarchy checks without projectRoot (machine-only)', async () => {
+  it('skips hierarchy checks without projectRoot (machine-only / global scope)', async () => {
     const findings = await checkInstructions({
       map: emptyMap(),
       agents: [presence('claude-code')],
@@ -320,9 +346,16 @@ describe('Project Instruction Hierarchy (diagnose path contract)', () => {
           f.id === HIERARCHY_FINDING_IDS.MISSING_POINTER,
       ),
     ).toEqual([]);
+    // Direct hierarchy entry also no-ops without projectRoot
+    expect(
+      checkInstructionHierarchy({
+        map: emptyMap(),
+        agents: [presence('claude-code')],
+      }),
+    ).toEqual([]);
   });
 
-  it('does not require pointer for Codex (AGENTS.md is native)', async () => {
+  it('does not require pointer for Codex (AGENTS.md is native — pointer file not required)', async () => {
     const project = tempDir();
     writeFileSync(join(project, 'AGENTS.md'), '# AGENTS\n');
 
@@ -335,5 +368,48 @@ describe('Project Instruction Hierarchy (diagnose path contract)', () => {
 
     expect(findings.filter((f) => f.id === HIERARCHY_FINDING_IDS.MISSING_POINTER)).toEqual([]);
     expect(findings.filter((f) => f.id === HIERARCHY_FINDING_IDS.MISSING_AGENTS_MD)).toEqual([]);
+  });
+
+  it('does not require vendor pointer when agent uninstalled and file absent', async () => {
+    const project = tempDir();
+    writeFileSync(join(project, 'AGENTS.md'), '# AGENTS\n');
+    // no CLAUDE.md, claude-code not installed / not primary → pointer not required
+
+    const findings = await checkInstructions({
+      map: emptyMap(),
+      agents: [{ ...presence('claude-code'), installed: false, primary: false }],
+      projectRoot: project,
+      adapters: [stubAdapter('claude-code', [], [join(project, 'CLAUDE.md')])],
+    });
+
+    expect(
+      findings.filter(
+        (f) =>
+          f.id === HIERARCHY_FINDING_IDS.MISSING_POINTER &&
+          f.evidence.some((e) => e.endsWith('CLAUDE.md')),
+      ),
+    ).toEqual([]);
+    expect(findings.filter((f) => f.id === HIERARCHY_FINDING_IDS.MISSING_AGENTS_MD)).toEqual([]);
+  });
+
+  it('accepts case-insensitive AGENTS.md basename on disk', async () => {
+    const project = tempDir();
+    writeFileSync(join(project, 'agents.md'), '# agents hub\n');
+    writeFileSync(
+      join(project, 'CLAUDE.md'),
+      'Follow agents.md for project instructions.\n',
+    );
+
+    const findings = await checkInstructions({
+      map: emptyMap(),
+      agents: [presence('claude-code')],
+      projectRoot: project,
+      adapters: [
+        stubAdapter('claude-code', [join(project, 'CLAUDE.md')], [join(project, 'CLAUDE.md')]),
+      ],
+    });
+
+    expect(findings.filter((f) => f.id === HIERARCHY_FINDING_IDS.MISSING_AGENTS_MD)).toEqual([]);
+    expect(findings.filter((f) => f.id === HIERARCHY_FINDING_IDS.MISSING_POINTER)).toEqual([]);
   });
 });

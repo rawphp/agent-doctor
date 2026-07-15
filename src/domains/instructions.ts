@@ -1,30 +1,43 @@
 /**
  * Instructions domain (design §7.3).
  * Expected user/project instruction files exist.
- * Project Instruction Hierarchy diagnose path (REQ-026 / skill LOCAL POLICY §6):
+ * Project Instruction Hierarchy diagnose path (REQ-026 / REQ-027 / skill LOCAL POLICY §6):
  *   AGENTS.md must exist; required vendor instruction files must point at it.
+ * Diagnose only — does not create or rewrite files (plan/apply are separate REQs).
  *
  * Entry: `agent-doctor status` / `agent-doctor check instructions` (project/hybrid scope).
  * Terminal: hierarchy findings when AGENTS.md missing or required vendor files lack
  *   AGENTS.md pointers; healthy trees produce zero hierarchy findings.
+ *
+ * Stable ids (canonical, emitted on findings — keep hierarchy_* from REQ-026):
+ * - instructions.hierarchy_missing_agents_md  (AC preferred alias: instructions.missing_agents_md)
+ * - instructions.hierarchy_missing_pointer    (AC preferred alias: instructions.missing_agents_pointer)
+ * Constants: INSTRUCTION_FINDING_IDS in engine/types; HIERARCHY_FINDING_IDS re-export below.
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AgentAdapter } from '../adapters/types.js';
-import type { AgentPresence, Finding } from '../engine/types.js';
+import {
+  INSTRUCTION_FINDING_IDS,
+  type AgentPresence,
+  type Finding,
+  type InstructionFindingId,
+} from '../engine/types.js';
 import { agentsInScope, type DomainCheckContext } from './context.js';
 import { pathExists } from './paths.js';
 
 /**
- * Stable hierarchy finding ids — skill cross-reference contract (do not rename lightly).
- * - MISSING_AGENTS_MD: project root has no AGENTS.md
+ * Hierarchy finding ids — domain-facing aliases of INSTRUCTION_FINDING_IDS.
+ * Skill / fix-plan / recommendations cross-reference these strings; do not rename lightly.
+ * - MISSING_AGENTS_MD: project root has no AGENTS.md (severity error)
  * - MISSING_POINTER: required vendor instruction file is absent or does not reference AGENTS.md
+ *   (severity warn; evidence includes vendor path and AGENTS.md path when applicable)
  */
 export const HIERARCHY_FINDING_IDS = {
-  MISSING_AGENTS_MD: 'instructions.hierarchy_missing_agents_md',
-  MISSING_POINTER: 'instructions.hierarchy_missing_pointer',
-} as const;
+  MISSING_AGENTS_MD: INSTRUCTION_FINDING_IDS.HIERARCHY_MISSING_AGENTS_MD,
+  MISSING_POINTER: INSTRUCTION_FINDING_IDS.HIERARCHY_MISSING_POINTER,
+} as const satisfies Record<string, InstructionFindingId>;
 
 export type HierarchyFindingId = (typeof HIERARCHY_FINDING_IDS)[keyof typeof HIERARCHY_FINDING_IDS];
 
@@ -277,7 +290,7 @@ export async function checkInstructions(ctx: DomainCheckContext): Promise<Findin
     // All missing — report each path (or the set)
     for (const path of expected) {
       findings.push({
-        id: 'instructions.missing_file',
+        id: INSTRUCTION_FINDING_IDS.MISSING_FILE,
         severity: 'warn',
         domain: 'instructions',
         message: `Expected instruction file missing for ${agent.id}: ${path}`,
