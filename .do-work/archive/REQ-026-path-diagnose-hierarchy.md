@@ -1,19 +1,14 @@
 # REQ-026: Path — Diagnose instruction hierarchy
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.40397
-**Claimed at:** 2026-07-15T09:40:23Z
-**Heartbeat:** 2026-07-15T09:40:23Z
-<!-- claimed-end -->
 
 **UR:** UR-002
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-15
 **Layer:** none
 **Entry point:** `agent-doctor status` / `agent-doctor check instructions` in a project root (or hybrid scope with project)
 **Terminal state:** Report includes stable hierarchy findings when AGENTS.md is missing or required vendor files lack AGENTS.md pointers; healthy hierarchy projects produce no hierarchy findings
 **Parent:**
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:d666ea3 tests:15 instructions + runtime check instructions on fixture missing AGENTS.md
 **Criteria approved:** agent-drafted
 **Priority:** 3
 **Size:** M
@@ -30,9 +25,9 @@ UR-002: CLI must support skill policies and vice-versa. Clarification: diagnose 
 
 ## Acceptance Criteria
 
-- [ ] Path-unit documents entry `status`/`check instructions` and terminal state: hierarchy findings appear when AGENTS.md is missing or a required vendor file lacks an AGENTS.md pointer; healthy trees produce zero hierarchy findings
-- [ ] Child REQs under this path deliver findings + adapter rules + CLI surface needed for diagnose
-- [ ] Finding ids are stable and documented for skill cross-reference
+- [x] Path-unit documents entry `status`/`check instructions` and terminal state: hierarchy findings appear when AGENTS.md is missing or a required vendor file lacks an AGENTS.md pointer; healthy trees produce zero hierarchy findings
+- [x] Child REQs under this path deliver findings + adapter rules + CLI surface needed for diagnose
+- [x] Finding ids are stable and documented for skill cross-reference
 
 ## Verification Steps
 
@@ -48,3 +43,10 @@ UR-002: CLI must support skill policies and vice-versa. Clarification: diagnose 
 **Data dependencies:** Project root, map agents (installed/primary), filesystem instruction files.
 
 **Service dependencies:** Domain engine `src/engine/run-checks.ts`, instructions domain.
+
+## Outputs
+
+- src/domains/instructions.ts — Hierarchy diagnose contract — stable finding ids, pointer rules, checkInstructionHierarchy
+- src/domains/instructions.test.ts — Hierarchy path-contract tests (red→green)
+- src/engine/run-checks.ts — Hierarchy recommendations wired into Report recommendations
+- docs/superpowers/specs/2026-07-14-agent-doctor-design.md — Entry/terminal path docs + stable hierarchy finding id table
