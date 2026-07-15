@@ -26,6 +26,7 @@ import {
   runAllDomainChecks,
   type DomainCheckContext,
 } from '../domains/index.js';
+import { HIERARCHY_FINDING_IDS } from '../domains/instructions.js';
 import { discover } from '../map/discover.js';
 import { agentDoctorHome, loadMap } from '../map/load.js';
 import { computeOverall, scoreToGrade } from './score.js';
@@ -641,6 +642,29 @@ function buildRecommendations(
       finding_ids: access.map((f) => f.id),
       message: 'Fix filesystem permissions on denied paths, then re-run status',
       priority: 2,
+    });
+  }
+
+  // Project Instruction Hierarchy (skill LOCAL POLICY §6 / REQ-026 path contract)
+  const missingAgentsMd = findings.filter((f) => f.id === HIERARCHY_FINDING_IDS.MISSING_AGENTS_MD);
+  if (missingAgentsMd.length > 0) {
+    recs.push({
+      id: 'rec.ensure_agents_md',
+      finding_ids: missingAgentsMd.map((f) => f.id),
+      message:
+        'Create minimal AGENTS.md stub at the project root (canonical shared instructions; do not invent long policy)',
+      priority: 1,
+    });
+  }
+
+  const missingPointers = findings.filter((f) => f.id === HIERARCHY_FINDING_IDS.MISSING_POINTER);
+  if (missingPointers.length > 0) {
+    recs.push({
+      id: 'rec.ensure_agents_md_pointers',
+      finding_ids: missingPointers.map((f) => f.id),
+      message:
+        'Ensure required vendor instruction files (CLAUDE.md / GEMINI.md / GROK.md / …) point at AGENTS.md',
+      priority: 1,
     });
   }
 

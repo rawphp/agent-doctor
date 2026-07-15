@@ -184,10 +184,42 @@ Sync is the **lens** on every domain—not only a sixth checkbox.
 
 1. **Agent presence** — Installed? Config home exists? Adapter depth?  
 2. **Shared skills path** — Global hub(s) exist; each non-ignored first-class agent can see the **same** sync target; project overlay consistent; duplication across agent homes flagged.  
-3. **Instruction files** — Expected user/project instruction files exist (`CLAUDE.md`, `AGENTS.md`, adapter-specific equivalents).  
-4. **Product context** — If `product.md` / `roadmap.md` (and common variants) exist, instruction files **link** them; missing links are findings. Stubs only via fix plan if user selects them—never forced.  
+3. **Instruction files** — Expected user/project instruction files exist (`CLAUDE.md`, `AGENTS.md`, adapter-specific equivalents). **Plus Project Instruction Hierarchy** (below).  
+4. **Product context** — If `product.md` / `roadmap.md` (and common variants) exist, instruction files **link** them; missing links are findings. Stubs only via fix plan if user selects them—never forced. Prefer links on **`AGENTS.md`** (and non-pointer instruction bodies); vendor pointer files stay thin.  
 5. **Obsidian** — Vaults discovered/mapped; agents’ instruction surfaces reference the vault when memory is in play; broken links flagged. **No vault note body writes in v1.**  
 6. **Cross-agent consistency** — Same hubs and pointers across the fleet; divergent skills roots, memory paths, or product links are errors/warns that dominate overall grade.  
+
+### Project Instruction Hierarchy (diagnose path)
+
+Aligns CLI with skill LOCAL POLICY §6: **`AGENTS.md` is the single source of truth** in a project; vendor entry files must **point at** it, not duplicate the body.
+
+| | |
+|--|--|
+| **Entry** | `agent-doctor status` (hybrid, project root) or `agent-doctor check instructions` |
+| **Terminal (broken)** | Report includes hierarchy findings when `AGENTS.md` is missing **or** a required vendor instruction file is missing / lacks an `AGENTS.md` pointer |
+| **Terminal (healthy)** | Zero hierarchy findings for that project |
+
+**Stable finding ids** (skill / fix-plan cross-reference — do not rename lightly):
+
+| Finding id | When |
+|------------|------|
+| `instructions.hierarchy_missing_agents_md` | Project root has no `AGENTS.md` |
+| `instructions.hierarchy_missing_pointer` | Required vendor file absent or body does not reference `AGENTS.md` (case-insensitive) |
+| `instructions.missing_file` | Adapter-expected instruction path missing (pre-existing domain id) |
+
+**Who needs a vendor pointer file** (create/update rules for diagnose):
+
+| Condition | File |
+|-----------|------|
+| Always (project scope) | `AGENTS.md` must exist |
+| File exists **or** Claude Code installed/primary | `CLAUDE.md` → points to `AGENTS.md` |
+| File exists **or** Gemini installed/primary (presence-only ok) | `GEMINI.md` → points to `AGENTS.md` |
+| File exists **or** Grok installed/primary | `GROK.md` → points to `AGENTS.md` |
+| Other vendor `*AGENTS*` / entry `.md` already on disk | That file → points to `AGENTS.md` |
+
+Codex and similar agents read `AGENTS.md` natively — still require the hub file; no separate vendor pointer for Codex. Machine-only scope (`status --all` global layer without a project root) skips hierarchy file requirements until a project root is in scope.
+
+Constants live in `src/domains/instructions.ts` (`HIERARCHY_FINDING_IDS`, `VENDOR_POINTER_BASENAMES`). Hierarchy findings flow through `runChecks` → status/check like other instruction findings; recommendations include `rec.ensure_agents_md` / `rec.ensure_agents_md_pointers`.
 
 ### Recommendation style (normative)
 
@@ -363,3 +395,5 @@ These do not change product purpose or user-visible modes.
 | Init | Discover and save home map |
 | Architecture | Check engine + dual surface (terminal + HTML) |
 | Core thesis | Sync all agents to shared skills/memory/config; low duplication; always multi-agent |
+| Project instructions | **AGENTS.md-first hierarchy** — vendor files point at AGENTS.md; diagnose via status / check instructions; stable ids `instructions.hierarchy_*` |
+| Hierarchy Gemini | Map primary + file presence only (no deep Gemini adapter required for pointer rules) |
