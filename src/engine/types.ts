@@ -65,18 +65,36 @@ export type Finding = {
  *
  * Canonical emit strings keep the `hierarchy_*` form from the REQ-026 path contract
  * (do not rename lightly — skill / fix-plan / recommendations cross-reference them).
- * REQ-027 AC listed preferred shorter names under `AC_PREFERRED` for documentation
- * only; emitted findings use the hierarchy_* ids, not the preferred aliases.
+ * REQ-027 AC listed preferred shorter names under `AC_PREFERRED` for documentation;
+ * emitted findings use the hierarchy_* ids. REQ-031 plan mapping accepts both forms.
  */
 export const INSTRUCTION_FINDING_IDS = {
   MISSING_FILE: 'instructions.missing_file',
   HIERARCHY_MISSING_AGENTS_MD: 'instructions.hierarchy_missing_agents_md',
   HIERARCHY_MISSING_POINTER: 'instructions.hierarchy_missing_pointer',
-  /** Documentation aliases only (REQ-027 AC wording) — not emitted as finding ids. */
+  /**
+   * AC / skill preferred shorter names (REQ-027 wording; REQ-031 plan aliases).
+   * Not emitted by the instructions domain — accepted by buildFixPlan only.
+   */
   AC_PREFERRED: {
     MISSING_AGENTS_MD: 'instructions.missing_agents_md',
     MISSING_AGENTS_POINTER: 'instructions.missing_agents_pointer',
   },
+} as const;
+
+/**
+ * Finding ids that map to hierarchy FixActions in buildFixPlan (REQ-031).
+ * Includes canonical hierarchy_* emit ids and AC preferred aliases.
+ */
+export const HIERARCHY_PLAN_FINDING_IDS = {
+  MISSING_AGENTS_MD: new Set<string>([
+    INSTRUCTION_FINDING_IDS.HIERARCHY_MISSING_AGENTS_MD,
+    INSTRUCTION_FINDING_IDS.AC_PREFERRED.MISSING_AGENTS_MD,
+  ]),
+  MISSING_POINTER: new Set<string>([
+    INSTRUCTION_FINDING_IDS.HIERARCHY_MISSING_POINTER,
+    INSTRUCTION_FINDING_IDS.AC_PREFERRED.MISSING_AGENTS_POINTER,
+  ]),
 } as const;
 
 export type InstructionFindingId =

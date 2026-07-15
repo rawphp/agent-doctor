@@ -12,6 +12,7 @@ import { basename, join } from 'node:path';
 import type { AgentAdapter } from '../adapters/types.js';
 import { isPureAgentsPointer } from '../domains/product.js';
 import type { Finding, FixAction, HomeMap, Report } from '../engine/types.js';
+import { HIERARCHY_PLAN_FINDING_IDS } from '../engine/types.js';
 import { agentDoctorHome, mapPath } from '../map/load.js';
 
 /** Safe v1 auto-fix kinds (design §9). */
@@ -141,19 +142,26 @@ function hasHubConflict(findings: Finding[]): boolean {
 }
 
 /**
- * Hierarchy plan actions from instructions.hierarchy_* findings (REQ-030).
+ * Hierarchy plan actions from hierarchy / AC-preferred finding ids (REQ-030/031).
  * - missing AGENTS.md → create_agents_stub (minimal stub only)
  * - missing pointer → append_agents_pointer (append-only; never rewrite vendor body)
+ * - Requires projectRoot; without it hierarchy mapping is rejected (no hub/path invention).
+ * Accepts both `instructions.hierarchy_*` emit ids and `instructions.missing_agents_*` aliases.
  */
 function hierarchyActionsFromFindings(
   findings: Finding[],
   projectRoot?: string,
 ): FixAction[] {
+  // Reject hierarchy plan when project scope is missing — do not invent AGENTS.md paths.
+  if (projectRoot == null || projectRoot === '') {
+    return [];
+  }
+
   const out: FixAction[] = [];
-  const defaultAgentsMd = projectRoot ? join(projectRoot, 'AGENTS.md') : undefined;
+  const defaultAgentsMd = join(projectRoot, 'AGENTS.md');
 
   for (const finding of findings) {
-    if (finding.id === 'instructions.hierarchy_missing_agents_md') {
+    if (HIERARCHY_PLAN_FINDING_IDS.MISSING_AGENTS_MD.has(finding.id)) {
       const target = finding.evidence?.[0] ?? defaultAgentsMd;
       if (!target) continue;
       out.push({
@@ -162,12 +170,12 @@ function hierarchyActionsFromFindings(
         description:
           'Create minimal AGENTS.md stub at project root (canonical shared instructions; do not invent long policy)',
         target,
-        finding_ids: ['instructions.hierarchy_missing_agents_md'],
+        finding_ids: [finding.id],
       });
       continue;
     }
 
-    if (finding.id === 'instructions.hierarchy_missing_pointer') {
+    if (HIERARCHY_PLAN_FINDING_IDS.MISSING_POINTER.has(finding.id)) {
       const evidence = finding.evidence ?? [];
       const vendorPath = evidence[0];
       if (!vendorPath) continue;
@@ -182,7 +190,7 @@ function hierarchyActionsFromFindings(
         target: vendorPath,
         value: agentsPath,
         agent_id: finding.agents_affected[0],
-        finding_ids: ['instructions.hierarchy_missing_pointer'],
+        finding_ids: [finding.id],
       });
     }
   }
