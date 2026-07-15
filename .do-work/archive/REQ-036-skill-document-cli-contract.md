@@ -1,19 +1,14 @@
 # REQ-036: Skill documents CLI hierarchy contract
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.85479
-**Claimed at:** 2026-07-15T10:30:16Z
-**Heartbeat:** 2026-07-15T10:30:16Z
-<!-- claimed-end -->
 
 **UR:** UR-002
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-15
 **Layer:** surfaces
 **Entry point:**
 **Terminal state:**
 **Parent:** REQ-035
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:622b9c5 skill docs complete
 **Criteria approved:** agent-drafted
 **Priority:** 1
 **Size:** S
@@ -30,10 +25,10 @@ Path REQ-035; depends on apply + product implementation so docs match reality.
 
 ## Acceptance Criteria
 
-- [ ] Error table includes hierarchy findings → fix dry-run/apply commands
-- [ ] Execution Loop uses CLI hierarchy plan/apply before freestyle writes
-- [ ] Explicit: no silent hub; no skill-tree copy; dry-run before apply (unchanged)
-- [ ] Gemini: map primary + file presence only, matching CLI
+- [x] Error table includes hierarchy findings → fix dry-run/apply commands
+- [x] Execution Loop uses CLI hierarchy plan/apply before freestyle writes
+- [x] Explicit: no silent hub; no skill-tree copy; dry-run before apply (unchanged)
+- [x] Gemini: map primary + file presence only, matching CLI
 
 ## Verification Steps
 
@@ -49,3 +44,7 @@ Path REQ-035; depends on apply + product implementation so docs match reality.
 **Data dependencies:** Final finding id strings from REQ-027/031.
 
 **Service dependencies:** None.
+
+## Outputs
+
+- skills/agent-doctor/SKILL.md — CLI hierarchy contract docs complete
