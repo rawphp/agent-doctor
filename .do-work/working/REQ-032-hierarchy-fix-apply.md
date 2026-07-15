@@ -1,7 +1,13 @@
 # REQ-032: Fix apply for hierarchy stub and pointers
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.85479
+**Claimed at:** 2026-07-15T10:23:56Z
+**Heartbeat:** 2026-07-15T10:23:56Z
+<!-- claimed-end -->
+
 **UR:** UR-002
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-15
 **Layer:** engine
 **Entry point:**
