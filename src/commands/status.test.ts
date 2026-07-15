@@ -247,10 +247,51 @@ describe('runStatus', () => {
     expect(recIds).toContain('instructions.hierarchy_missing_agents_md');
     expect(recIds).toContain('instructions.hierarchy_missing_pointer');
 
+    // Hierarchy recommendations point at fix --dry-run (REQ-037 surfaces copy)
+    const hierarchyRecs = parsed.recommendations.filter((r) =>
+      r.finding_ids.some((id) => id.startsWith('instructions.hierarchy_')),
+    );
+    expect(hierarchyRecs.length).toBeGreaterThan(0);
+    for (const rec of hierarchyRecs) {
+      expect(rec.message).toMatch(/fix\s+--dry-run/);
+    }
+
     // Report object matches JSON stdout (no filtering hacks)
     expect(report.findings.map((f) => f.id)).toEqual(expect.arrayContaining(ids));
     // Exit code follows overall grade mapping (not a hierarchy special-case)
     expect([0, 1, 2]).toContain(exitCode);
+  });
+
+  it('status terminal output shows hierarchy findings and dry-run next step (REQ-037)', async () => {
+    const lines: string[] = [];
+    const base = tempDir('status-hierarchy-term-');
+    const hub = makePopulatedRoot(base, 'hub');
+    const projectRoot = join(base, 'project');
+    mkdirSync(projectRoot, { recursive: true });
+    writeFileSync(join(projectRoot, 'CLAUDE.md'), '# project-local only\n');
+
+    await runStatus({
+      args: [],
+      checks: {
+        map: baseMap({ global_roots: [hub], sync_target: hub }),
+        adapters: [stubAdapter('claude-code', [hub])],
+        projectRoot,
+      },
+      stdout: (line) => lines.push(line),
+      applyProcessExitCode: false,
+    });
+
+    const out = lines.join('\n');
+    // Readable hierarchy findings (generic Findings list — not JSON-only)
+    expect(out).toMatch(/Findings:/);
+    expect(out).toMatch(/instructions\.hierarchy_missing_agents_md/);
+    expect(out).toMatch(/instructions\.hierarchy_missing_pointer/);
+    expect(out).toMatch(/AGENTS\.md/);
+    // Recommendations mention fix dry-run when hierarchy is broken
+    expect(out).toMatch(/Recommendations:/);
+    expect(out).toMatch(/fix\s+--dry-run/);
+    // Domain section still present
+    expect(out).toMatch(/Domains:/);
   });
 
   it('status --json writes Report without terminal decoration', async () => {

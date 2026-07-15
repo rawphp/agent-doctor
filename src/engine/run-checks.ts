@@ -646,13 +646,14 @@ function buildRecommendations(
   }
 
   // Project Instruction Hierarchy (skill LOCAL POLICY §6 / REQ-026 path contract)
+  // Surfaces copy (REQ-037): point humans/agents at fix --dry-run when hierarchy is broken.
   const missingAgentsMd = findings.filter((f) => f.id === HIERARCHY_FINDING_IDS.MISSING_AGENTS_MD);
   if (missingAgentsMd.length > 0) {
     recs.push({
       id: 'rec.ensure_agents_md',
       finding_ids: missingAgentsMd.map((f) => f.id),
       message:
-        'Create minimal AGENTS.md stub at the project root (canonical shared instructions; do not invent long policy)',
+        'Create minimal AGENTS.md stub at the project root (canonical shared instructions; do not invent long policy) — preview with `agent-doctor fix --dry-run`',
       priority: 1,
     });
   }
@@ -663,7 +664,7 @@ function buildRecommendations(
       id: 'rec.ensure_agents_md_pointers',
       finding_ids: missingPointers.map((f) => f.id),
       message:
-        'Ensure required vendor instruction files (CLAUDE.md / GEMINI.md / GROK.md / …) point at AGENTS.md',
+        'Ensure required vendor instruction files (CLAUDE.md / GEMINI.md / GROK.md / …) point at AGENTS.md — preview with `agent-doctor fix --dry-run`',
       priority: 1,
     });
   }

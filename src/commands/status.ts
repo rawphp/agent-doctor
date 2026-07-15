@@ -5,6 +5,10 @@
  * Hierarchy diagnose (REQ-029): project-scope hierarchy findings from the
  * instructions domain appear in Report.findings (and status --json) with stable
  * ids — same pipeline as every other domain, no CLI special-casing.
+ *
+ * Surfaces copy (REQ-037): terminal renders hierarchy findings via the generic
+ * Findings list; recommendations from the engine mention `fix --dry-run` when
+ * hierarchy is broken. JSON remains the machine source of truth.
  */
 
 import { EXIT_TOOL_ERROR, exitCodeForGrade } from '../engine/score.js';

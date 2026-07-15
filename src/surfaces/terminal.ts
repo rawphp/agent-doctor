@@ -111,6 +111,20 @@ export function formatTerminalReport(report: Report): string {
     }
   }
 
+  // Findings (generic list — hierarchy and all other domains; JSON remains source of truth)
+  if (report.findings.length > 0) {
+    lines.push('');
+    lines.push('Findings:');
+    const severityWidth = Math.max(
+      ...report.findings.map((f) => f.severity.length),
+      5,
+    );
+    for (const finding of report.findings) {
+      const sev = finding.severity.padEnd(severityWidth);
+      lines.push(`  ${sev}  ${finding.id}  ${finding.message}`);
+    }
+  }
+
   // Top recommendations (sync-first style: print Report fields only)
   if (report.recommendations.length > 0) {
     lines.push('');
