@@ -1,12 +1,19 @@
 /**
  * Product domain (design §7.4).
  * If product.md / roadmap.md (and variants) exist, instruction files must link them.
+ *
+ * Hierarchy-aware product link policy (REQ-033 / skill LOCAL POLICY):
+ * - AGENTS.md is the primary product surface — must link product docs when present.
+ * - Pure AGENTS.md pointer vendor files (thin stubs that only delegate) are exempt
+ *   from product.missing_link.
+ * - Vendor files with unique non-pointer body still require a product link.
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { basename, join } from 'node:path';
 import type { Finding } from '../engine/types.js';
 import { agentsInScope, type DomainCheckContext } from './context.js';
+import { contentPointsToAgentsMd } from './instructions.js';
 import { pathExists } from './paths.js';
 
 /** Basenames considered product-context files (case variants on disk). */
@@ -32,6 +39,23 @@ function findProductFiles(projectRoot: string): string[] {
   return found;
 }
 
+function resolveAgentsMd(projectRoot: string): string | undefined {
+  let entries: string[] = [];
+  try {
+    entries = readdirSync(projectRoot);
+  } catch {
+    return undefined;
+  }
+  const actual = entries.find((e) => e.toLowerCase() === 'agents.md');
+  if (!actual) return undefined;
+  const full = join(projectRoot, actual);
+  return pathExists(full) ? full : undefined;
+}
+
+function isAgentsMdPath(filePath: string): boolean {
+  return basename(filePath).toLowerCase() === 'agents.md';
+}
+
 /**
  * Whether file content references the product file (md link, bare path, or basename).
  */
@@ -47,14 +71,56 @@ function contentLinksProduct(content: string, productPath: string): boolean {
 }
 
 /**
- * Flag instruction files that do not link existing product/roadmap docs.
+ * True when content is a thin AGENTS.md pointer/stub: references AGENTS.md and has
+ * no substantial unique body beyond pointer boilerplate (skill hierarchy policy).
+ * AGENTS.md itself is never classified as a pure pointer for product checks.
  */
-export async function checkProduct(ctx: DomainCheckContext): Promise<Finding[]> {
-  const findings: Finding[] = [];
-  if (!ctx.projectRoot) return findings;
+export function isPureAgentsPointer(content: string): boolean {
+  if (!contentPointsToAgentsMd(content)) return false;
 
-  const productFiles = findProductFiles(ctx.projectRoot);
-  if (productFiles.length === 0) return findings;
+  const residual = content
+    .split(/\r?\n/)
+    .filter((line) => {
+      const t = line.trim();
+      if (!t) return false;
+      // Headings / titles are boilerplate for pointer stubs
+      if (/^#{1,6}\s/.test(t)) return false;
+      // Any line that is the AGENTS.md pointer itself
+      if (/agents\.md/i.test(t)) return false;
+      // Common pointer phrasing without the basename on the same line
+      if (
+        /^(read and follow|prefer agents|do not (duplicate|fork|paste)|project entry|shared (project )?instructions|for all project instructions)/i.test(
+          t,
+        )
+      ) {
+        return false;
+      }
+      return true;
+    })
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Allow tiny residual (punctuation / one short note); unique policy is larger
+  return residual.length <= 80;
+}
+
+type InstrSurface = {
+  path: string;
+  agentIds: string[];
+};
+
+/**
+ * Collect project instruction surfaces that participate in product-link policy:
+ * AGENTS.md (always when present) + adapter-reported project markdown files.
+ */
+async function collectInstructionSurfaces(ctx: DomainCheckContext): Promise<InstrSurface[]> {
+  const byPath = new Map<string, string[]>();
+
+  const agentsMd = resolveAgentsMd(ctx.projectRoot!);
+  if (agentsMd) {
+    byPath.set(agentsMd, []);
+  }
 
   const inScope = agentsInScope(ctx.agents).filter((a) => a.installed);
 
@@ -65,74 +131,115 @@ export async function checkProduct(ctx: DomainCheckContext): Promise<Finding[]> 
     if (!adapter) continue;
 
     const instructionFiles = await adapter.instructionFiles(ctx.projectRoot);
-    // Prefer project-level instruction files under projectRoot
-    const projectInstr = instructionFiles.filter(
-      (f) =>
-        f.startsWith(ctx.projectRoot!) ||
-        f.includes(`${ctx.projectRoot}/`) ||
-        // also allow exact relative resolution
-        pathExists(f),
-    );
+    for (const f of instructionFiles) {
+      if (f.endsWith('.json')) continue;
+      // Prefer project-rooted files; still allow existing external paths adapters return
+      if (!pathExists(f)) continue;
 
-    // If adapter only returns existing files, use those that live under project
-    const filesToCheck = projectInstr.filter((f) => {
-      try {
-        return f.startsWith(ctx.projectRoot!) || f.includes(ctx.projectRoot!);
-      } catch {
-        return false;
-      }
-    });
+      const agents = byPath.get(f) ?? [];
+      if (!agents.includes(agent.id)) agents.push(agent.id);
+      byPath.set(f, agents);
+    }
+  }
 
-    // Fall back: any instruction files returned for this agent
-    const targets = filesToCheck.length > 0 ? filesToCheck : instructionFiles;
-    if (targets.length === 0) {
-      // No instruction surface — one finding per product file
-      for (const product of productFiles) {
-        const base = product.split(/[/\\]/).pop() ?? product;
+  return [...byPath.entries()].map(([path, agentIds]) => ({ path, agentIds }));
+}
+
+/**
+ * Flag instruction surfaces that do not link existing product/roadmap docs.
+ * Pure AGENTS.md pointer files are exempt; AGENTS.md and unique vendor bodies are not.
+ */
+export async function checkProduct(ctx: DomainCheckContext): Promise<Finding[]> {
+  const findings: Finding[] = [];
+  if (!ctx.projectRoot) return findings;
+
+  const productFiles = findProductFiles(ctx.projectRoot);
+  if (productFiles.length === 0) return findings;
+
+  const surfaces = await collectInstructionSurfaces(ctx);
+  const deepAgents = agentsInScope(ctx.agents)
+    .filter((a) => a.installed && a.depth !== 'presence-only')
+    .map((a) => a.id);
+
+  if (surfaces.length === 0) {
+    // No instruction surface — one finding per product file (per in-scope deep agent)
+    const agents =
+      deepAgents.length > 0
+        ? deepAgents
+        : agentsInScope(ctx.agents)
+            .filter((a) => a.installed)
+            .map((a) => a.id);
+    for (const product of productFiles) {
+      const base = product.split(/[/\\]/).pop() ?? product;
+      if (agents.length === 0) {
         findings.push({
           id: 'product.missing_link',
           severity: 'warn',
           domain: 'product',
-          message: `No instruction file for ${agent.id} links ${base}`,
+          message: `No instruction file links ${base}`,
           evidence: [product],
-          agents_affected: [agent.id],
+          agents_affected: [],
+        });
+        continue;
+      }
+      for (const agentId of agents) {
+        // Only emit for agents that have an adapter (deep path) — match prior behaviour
+        const adapter = ctx.adapters?.find((a) => a.id === agentId);
+        if (!adapter) continue;
+        findings.push({
+          id: 'product.missing_link',
+          severity: 'warn',
+          domain: 'product',
+          message: `No instruction file for ${agentId} links ${base}`,
+          evidence: [product],
+          agents_affected: [agentId],
         });
       }
+    }
+    return findings;
+  }
+
+  for (const surface of surfaces) {
+    const instr = surface.path;
+    if (!pathExists(instr)) continue;
+
+    let content = '';
+    let unreadable = false;
+    try {
+      content = readFileSync(instr, 'utf8');
+    } catch {
+      unreadable = true;
+      content = '';
+    }
+
+    const isAgents = isAgentsMdPath(instr);
+    // Pure pointer vendor files: exempt from product.missing_link
+    if (!isAgents && !unreadable && isPureAgentsPointer(content)) {
       continue;
     }
 
+    const agentIds =
+      surface.agentIds.length > 0
+        ? surface.agentIds
+        : deepAgents.length > 0
+          ? deepAgents
+          : [];
+
     for (const product of productFiles) {
       const base = product.split(/[/\\]/).pop() ?? product;
-      let linked = false;
-      const unchecked: string[] = [];
-
-      for (const instr of targets) {
-        if (!pathExists(instr)) continue;
-        // Skip pure JSON settings — only markdown-ish instruction surfaces
-        if (instr.endsWith('.json')) continue;
-        unchecked.push(instr);
-        let content = '';
-        try {
-          content = readFileSync(instr, 'utf8');
-        } catch {
-          continue;
-        }
-        if (contentLinksProduct(content, product)) {
-          linked = true;
-          break;
-        }
+      if (!unreadable && contentLinksProduct(content, product)) {
+        continue;
       }
 
-      if (!linked) {
-        findings.push({
-          id: 'product.missing_link',
-          severity: 'warn',
-          domain: 'product',
-          message: `Instruction file(s) for ${agent.id} missing link to ${base}`,
-          evidence: [...unchecked, product],
-          agents_affected: [agent.id],
-        });
-      }
+      const fileBase = basename(instr);
+      findings.push({
+        id: 'product.missing_link',
+        severity: 'warn',
+        domain: 'product',
+        message: `${fileBase} missing link to ${base}`,
+        evidence: [instr, product],
+        agents_affected: agentIds,
+      });
     }
   }
 
