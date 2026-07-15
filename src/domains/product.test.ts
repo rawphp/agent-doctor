@@ -1,10 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AgentAdapter, AdapterContext } from '../adapters/types.js';
 import type { AgentPresence, FixAction, HomeMap } from '../engine/types.js';
-import { checkProduct } from './product.js';
+import { checkProduct, isPureAgentsPointer } from './product.js';
 
 const temps: string[] = [];
 
@@ -326,5 +326,210 @@ describe('product link policy with hierarchy (REQ-033)', () => {
       expect(f.evidence.includes(homeConfig)).toBe(false);
       expect(f.evidence.includes(homeClaude)).toBe(false);
     }
+  });
+});
+
+/**
+ * REQ-034 AC lock: AGENTS-first product policy + message targets + fleet coverage.
+ * Implementation lives in product.ts (REQ-033); this suite hardens the acceptance contract.
+ */
+describe('product domain AGENTS-first AC (REQ-034)', () => {
+  it('AC: AGENTS.md missing product link → product.missing_link naming AGENTS.md + product.md', async () => {
+    const project = tempDir();
+    writeFileSync(join(project, 'product.md'), '# product\n');
+    const agentsMd = join(project, 'AGENTS.md');
+    writeFileSync(agentsMd, '# AGENTS\nNo product reference.\n');
+
+    const findings = await checkProduct({
+      map: emptyMap(),
+      agents: [presence('codex'), presence('claude-code')],
+      projectRoot: project,
+      adapters: [
+        stubAdapter('codex', [agentsMd]),
+        stubAdapter('claude-code', []),
+      ],
+    });
+
+    const missing = findings.filter((f) => f.id === 'product.missing_link');
+    expect(missing.length).toBeGreaterThanOrEqual(1);
+    const agentsFinding = missing.find((f) => f.evidence.includes(agentsMd));
+    expect(agentsFinding).toBeDefined();
+    expect(agentsFinding!.message).toMatch(/AGENTS\.md/i);
+    expect(agentsFinding!.message).toMatch(/product\.md/i);
+    expect(agentsFinding!.message).toBe('AGENTS.md missing link to product.md');
+    expect(agentsFinding!.evidence).toEqual(expect.arrayContaining([agentsMd, join(project, 'product.md')]));
+  });
+
+  it('AC: pointer-only CLAUDE.md is exempt from product.missing_link', async () => {
+    const project = tempDir();
+    writeFileSync(join(project, 'product.md'), '# product\n');
+    const agentsMd = join(project, 'AGENTS.md');
+    writeFileSync(
+      agentsMd,
+      '# AGENTS\n\n## Product\n\n- See [product.md](./product.md) when present.\n',
+    );
+    const claude = join(project, 'CLAUDE.md');
+    writeFileSync(
+      claude,
+      '# Claude Code\n\nRead and follow **[AGENTS.md](./AGENTS.md)** for all project instructions.\n',
+    );
+    expect(isPureAgentsPointer(readFileSync(claude, 'utf8'))).toBe(true);
+
+    const findings = await checkProduct({
+      map: emptyMap(),
+      agents: [presence('claude-code'), presence('codex')],
+      projectRoot: project,
+      adapters: [
+        stubAdapter('claude-code', [claude]),
+        stubAdapter('codex', [agentsMd]),
+      ],
+    });
+
+    const missing = findings.filter((f) => f.id === 'product.missing_link');
+    expect(missing).toEqual([]);
+    expect(missing.every((f) => !f.evidence.includes(claude))).toBe(true);
+    expect(missing.every((f) => !/CLAUDE\.md/i.test(f.message))).toBe(true);
+  });
+
+  it('AC: fat (non-pointer) CLAUDE.md is still flagged with correct target names', async () => {
+    const project = tempDir();
+    writeFileSync(join(project, 'product.md'), '# product\n');
+    const agentsMd = join(project, 'AGENTS.md');
+    writeFileSync(
+      agentsMd,
+      '# AGENTS\n\n## Product\n\n- See [product.md](./product.md).\n',
+    );
+    const claude = join(project, 'CLAUDE.md');
+    const fatBody =
+      '# Claude local policy\n\n' +
+      'Also see AGENTS.md for shared rules.\n\n' +
+      '## Unique project rules (do not move)\n\n' +
+      '- Always run tests before commit in this monorepo.\n' +
+      '- Prefer Vitest over Jest for frontend packages.\n' +
+      '- Never invent secrets in fixtures; use placeholders only.\n' +
+      '- Claude-specific tooling notes live only in this file for now.\n';
+    writeFileSync(claude, fatBody);
+    expect(isPureAgentsPointer(fatBody)).toBe(false);
+
+    const findings = await checkProduct({
+      map: emptyMap(),
+      agents: [presence('claude-code')],
+      projectRoot: project,
+      adapters: [stubAdapter('claude-code', [claude])],
+    });
+
+    const missing = findings.filter((f) => f.id === 'product.missing_link');
+    const claudeFinding = missing.find((f) => f.evidence.includes(claude));
+    expect(claudeFinding).toBeDefined();
+    expect(claudeFinding!.message).toBe('CLAUDE.md missing link to product.md');
+    expect(claudeFinding!.evidence).toEqual(
+      expect.arrayContaining([claude, join(project, 'product.md')]),
+    );
+    // AGENTS already links product — must not be re-flagged
+    expect(missing.every((f) => !f.evidence.includes(agentsMd))).toBe(true);
+    expect(missing.every((f) => !/^AGENTS\.md missing/i.test(f.message))).toBe(true);
+  });
+
+  it('AC: no projectRoot → no product findings (even with adapters)', async () => {
+    const findings = await checkProduct({
+      map: emptyMap(),
+      agents: [presence('claude-code'), presence('codex')],
+      adapters: [
+        stubAdapter('claude-code', ['/tmp/does-not-matter/CLAUDE.md']),
+        stubAdapter('codex', ['/tmp/does-not-matter/AGENTS.md']),
+      ],
+    });
+    expect(findings).toEqual([]);
+    expect(findings.filter((f) => f.id === 'product.missing_link')).toEqual([]);
+  });
+
+  it('AC: finding messages name the correct instruction + product target files', async () => {
+    const project = tempDir();
+    writeFileSync(join(project, 'product.md'), '# product\n');
+    writeFileSync(join(project, 'roadmap.md'), '# roadmap\n');
+    const agentsMd = join(project, 'AGENTS.md');
+    writeFileSync(agentsMd, '# AGENTS\nShared without links.\n');
+    const claude = join(project, 'CLAUDE.md');
+    writeFileSync(
+      claude,
+      '# Fat vendor body\n\n' +
+        'Also see AGENTS.md.\n\n' +
+        '## Unique rules for Claude only\n\n' +
+        '- Always run the full monorepo suite before merge.\n' +
+        '- Prefer typed fixtures over free-form mocks in tests.\n' +
+        '- Keep Claude-only notes out of AGENTS.md for this repo.\n' +
+        '- Document local slash-command habits only here.\n',
+    );
+
+    const findings = await checkProduct({
+      map: emptyMap(),
+      agents: [presence('claude-code'), presence('codex')],
+      projectRoot: project,
+      adapters: [
+        stubAdapter('claude-code', [claude]),
+        stubAdapter('codex', [agentsMd]),
+      ],
+    });
+
+    const missing = findings.filter((f) => f.id === 'product.missing_link');
+    const messages = missing.map((f) => f.message).sort();
+
+    // Messages must name instruction basename + product basename (not agent ids only)
+    expect(messages).toEqual(
+      expect.arrayContaining([
+        'AGENTS.md missing link to product.md',
+        'AGENTS.md missing link to roadmap.md',
+        'CLAUDE.md missing link to product.md',
+        'CLAUDE.md missing link to roadmap.md',
+      ]),
+    );
+    for (const f of missing) {
+      expect(f.message).toMatch(/^(AGENTS|CLAUDE)\.md missing link to (product|roadmap)\.md$/);
+      expect(f.evidence.length).toBe(2);
+      expect(f.evidence[0]).toMatch(/(AGENTS|CLAUDE)\.md$/);
+      expect(f.evidence[1]).toMatch(/(product|roadmap)\.md$/);
+    }
+  });
+
+  it('AC: AGENTS.md product coverage is enough for the fleet — pure pointers need no per-agent product link', async () => {
+    // Multi-agent project: AGENTS links product; CLAUDE + GROK are thin pointers.
+    // Must NOT require product.missing_link on every agent id / vendor file.
+    const project = tempDir();
+    writeFileSync(join(project, 'product.md'), '# product\n');
+    writeFileSync(join(project, 'roadmap.md'), '# roadmap\n');
+    const agentsMd = join(project, 'AGENTS.md');
+    writeFileSync(
+      agentsMd,
+      '# AGENTS\n\n## Product\n\n' +
+        '- See [product.md](./product.md) and [roadmap.md](./roadmap.md).\n',
+    );
+    const claude = join(project, 'CLAUDE.md');
+    writeFileSync(
+      claude,
+      'Read and follow **[AGENTS.md](./AGENTS.md)** for all project instructions.\n',
+    );
+    const grok = join(project, 'GROK.md');
+    writeFileSync(
+      grok,
+      '# Grok\n\nPrefer AGENTS.md for shared project instructions. Do not duplicate policy here.\n',
+    );
+
+    const findings = await checkProduct({
+      map: emptyMap(),
+      agents: [presence('claude-code'), presence('codex'), presence('grok')],
+      projectRoot: project,
+      adapters: [
+        stubAdapter('claude-code', [claude]),
+        stubAdapter('codex', [agentsMd]),
+        stubAdapter('grok', [grok, agentsMd]),
+      ],
+    });
+
+    const missing = findings.filter((f) => f.id === 'product.missing_link');
+    expect(missing).toEqual([]);
+    // No per-agent "instruction file for <id> links …" requirement when AGENTS covers fleet
+    expect(missing.every((f) => !/No instruction file for /.test(f.message))).toBe(true);
+    expect(missing.every((f) => !f.evidence.includes(claude))).toBe(true);
+    expect(missing.every((f) => !f.evidence.includes(grok))).toBe(true);
   });
 });
