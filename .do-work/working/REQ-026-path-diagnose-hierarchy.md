@@ -1,7 +1,13 @@
 # REQ-026: Path — Diagnose instruction hierarchy
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.40397
+**Claimed at:** 2026-07-15T09:40:23Z
+**Heartbeat:** 2026-07-15T09:40:23Z
+<!-- claimed-end -->
+
 **UR:** UR-002
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-15
 **Layer:** none
 **Entry point:** `agent-doctor status` / `agent-doctor check instructions` in a project root (or hybrid scope with project)
