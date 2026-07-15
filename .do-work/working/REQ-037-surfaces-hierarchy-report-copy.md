@@ -1,7 +1,13 @@
 # REQ-037: Surfaces report hierarchy findings clearly
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.85479
+**Claimed at:** 2026-07-15T10:05:48Z
+**Heartbeat:** 2026-07-15T10:05:48Z
+<!-- claimed-end -->
+
 **UR:** UR-002
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-15
 **Layer:** surfaces
 **Entry point:**
