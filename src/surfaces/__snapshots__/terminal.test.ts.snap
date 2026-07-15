@@ -16,6 +16,9 @@ Domains:
   agent_presence      100 GREEN   2 first-class agent(s) detected
   shared_skills_path   50 YELLOW  1 agent(s) off skills hub
 
+Findings:
+  error  skills.agent_not_on_hub  codex is not wired to the skills sync target
+
 Recommendations:
   1. Wire codex to /hub/skills (no copy)  [skills.agent_not_on_hub]
   2. Optional cleanup

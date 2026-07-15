@@ -143,6 +143,75 @@ describe('formatTerminalReport', () => {
     expect(text).toMatch(/2\.\s+Optional cleanup/);
   });
 
+  it('renders findings with readable id, severity, and message (generic list)', () => {
+    const text = formatTerminalReport(sampleReport());
+    expect(text).toMatch(/Findings:/);
+    expect(text).toMatch(/skills\.agent_not_on_hub/);
+    expect(text).toMatch(/error/i);
+    expect(text).toMatch(/codex is not wired to the skills sync target/);
+    // Findings appear before Recommendations when both present
+    const findingsIdx = text.indexOf('Findings:');
+    const recsIdx = text.indexOf('Recommendations:');
+    expect(findingsIdx).toBeGreaterThanOrEqual(0);
+    expect(findingsIdx).toBeLessThan(recsIdx);
+  });
+
+  it('surfaces hierarchy finding messages in the findings list (REQ-037)', () => {
+    const text = formatTerminalReport(
+      sampleReport({
+        findings: [
+          {
+            id: 'instructions.hierarchy_missing_agents_md',
+            severity: 'error',
+            domain: 'instructions',
+            message:
+              'Project instruction hierarchy requires AGENTS.md at the project root (canonical shared instructions).',
+            evidence: ['/proj/AGENTS.md'],
+            agents_affected: [],
+          },
+          {
+            id: 'instructions.hierarchy_missing_pointer',
+            severity: 'warn',
+            domain: 'instructions',
+            message: 'Required vendor instruction file missing for hierarchy: CLAUDE.md must exist and point at AGENTS.md',
+            evidence: ['/proj/CLAUDE.md', '/proj/AGENTS.md'],
+            agents_affected: ['claude-code'],
+          },
+        ],
+        recommendations: [
+          {
+            id: 'rec.ensure_agents_md',
+            finding_ids: ['instructions.hierarchy_missing_agents_md'],
+            message:
+              'Create minimal AGENTS.md stub at the project root — preview with `agent-doctor fix --dry-run`',
+            priority: 1,
+          },
+        ],
+        domains: [
+          {
+            domain: 'instruction_files',
+            score: 45,
+            grade: 'red',
+            summary: '1 error(s), 1 warning(s) (score 45)',
+          },
+        ],
+      }),
+    );
+
+    expect(text).toMatch(/Findings:/);
+    expect(text).toMatch(/instructions\.hierarchy_missing_agents_md/);
+    expect(text).toMatch(/instructions\.hierarchy_missing_pointer/);
+    expect(text).toMatch(/Project instruction hierarchy requires AGENTS\.md/);
+    expect(text).toMatch(/CLAUDE\.md must exist and point at AGENTS\.md/);
+    // Domain section still present (hierarchy not a special matrix)
+    expect(text).toMatch(/instruction_files/);
+  });
+
+  it('omits Findings section when report has no findings', () => {
+    const text = formatTerminalReport(sampleReport({ findings: [], recommendations: [] }));
+    expect(text).not.toMatch(/Findings:/);
+  });
+
   it('does not invent recommendations when report has none', () => {
     const text = formatTerminalReport(sampleReport({ recommendations: [] }));
     expect(text).not.toMatch(/Recommendations:/);
