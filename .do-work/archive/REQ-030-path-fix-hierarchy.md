@@ -1,19 +1,14 @@
 # REQ-030: Path — Plan and apply hierarchy fixes
 
-<!-- claimed-start -->
-**Claimed by:** Toms-MacBook-Pro.local.40397
-**Claimed at:** 2026-07-15T09:48:30Z
-**Heartbeat:** 2026-07-15T09:48:30Z
-<!-- claimed-end -->
 
 **UR:** UR-002
-**Status:** in-progress
+**Status:** done
 **Created:** 2026-07-15
 **Layer:** none
 **Entry point:** `agent-doctor fix --dry-run` then `agent-doctor fix` / `--yes` with project hierarchy findings
 **Terminal state:** Dry-run lists create-AGENTS-stub and append-pointer actions; apply creates minimal stub and append-only pointer blocks; re-status shows hierarchy findings cleared for those items
 **Parent:**
-**Closure proof:**
+**Closure proof:** checkpoint_log:passed commit:3e23a83 tests:npm test -- src/fix (42 passed) + src/commands/fix (12 passed)
 **Criteria approved:** agent-drafted
 **Priority:** 3
 **Size:** M
@@ -30,9 +25,9 @@ Clarification: diagnose + plan + apply; minimal stub only; no wholesale CLAUDE r
 
 ## Acceptance Criteria
 
-- [ ] Dry-run emits plan steps for missing AGENTS.md and missing pointers
-- [ ] Apply creates stub / appends pointer without deleting existing vendor body
-- [ ] Apply still requires confirm / `--yes`; dry-run never writes
+- [x] Dry-run emits plan steps for missing AGENTS.md and missing pointers
+- [x] Apply creates stub / appends pointer without deleting existing vendor body
+- [x] Apply still requires confirm / `--yes`; dry-run never writes
 
 ## Verification Steps
 
@@ -48,3 +43,10 @@ Clarification: diagnose + plan + apply; minimal stub only; no wholesale CLAUDE r
 **Data dependencies:** Hierarchy findings from instructions domain.
 
 **Service dependencies:** `src/fix/plan.ts`, `src/fix/apply.ts`.
+
+## Outputs
+
+- src/fix/plan.ts — hierarchyActionsFromFindings + create_agents_stub / append_agents_pointer
+- src/fix/apply.ts — apply create_agents_stub and append_agents_pointer
+- src/fix/plan.test.ts — hierarchy plan dry-run tests
+- src/fix/apply.test.ts — hierarchy apply tests
