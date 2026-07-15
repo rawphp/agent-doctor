@@ -1,7 +1,13 @@
 # REQ-030: Path — Plan and apply hierarchy fixes
 
+<!-- claimed-start -->
+**Claimed by:** Toms-MacBook-Pro.local.40397
+**Claimed at:** 2026-07-15T09:48:30Z
+**Heartbeat:** 2026-07-15T09:48:30Z
+<!-- claimed-end -->
+
 **UR:** UR-002
-**Status:** backlog
+**Status:** in-progress
 **Created:** 2026-07-15
 **Layer:** none
 **Entry point:** `agent-doctor fix --dry-run` then `agent-doctor fix` / `--yes` with project hierarchy findings
