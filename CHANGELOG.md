@@ -7,9 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-06
+
 Inventory of client-visible work from the `refactor/happy-single-choke-points`
-branch (UR-003 / ORI-779–783). Package version remains `0.1.0` until a release
-cuts this section into a versioned heading.
+branch (UR-003 / ORI-779–783).
 
 ### Added
 
