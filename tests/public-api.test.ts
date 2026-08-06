@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -75,5 +75,16 @@ describe('package public API (src/index.ts)', () => {
         }
       }
     }
+  });
+
+  it('ships CHANGELOG.md in package files for published consumers (ORI-786)', () => {
+    const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
+      files?: string[];
+    };
+    const changelogPath = join(root, 'CHANGELOG.md');
+
+    expect(pkg.files, 'package.json files must list CHANGELOG.md').toBeDefined();
+    expect(pkg.files).toContain('CHANGELOG.md');
+    expect(existsSync(changelogPath), 'CHANGELOG.md must exist on disk').toBe(true);
   });
 });
