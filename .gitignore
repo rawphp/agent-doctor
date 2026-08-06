@@ -3,4 +3,5 @@ dist/
 *.log
 .DS_Store
 .do-work/
+.worktrees/
 coverage/
