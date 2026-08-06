@@ -4,7 +4,6 @@
  * Apply stays CLI-only; this surface never mutates.
  */
 
-import { spawn } from 'node:child_process';
 import { EXIT_TOOL_ERROR } from '../engine/score.js';
 import { runChecks, type RunChecksOptions } from '../engine/run-checks.js';
 import type { Report, ReportScope } from '../engine/types.js';
@@ -13,6 +12,7 @@ import {
   type DashboardServer,
   type DashboardServerOptions,
 } from '../surfaces/dashboard/server.js';
+import { defaultOpenBrowser } from '../surfaces/open-browser.js';
 
 /** Preferred default when --port is omitted (design: configurable port). */
 export const DEFAULT_DASHBOARD_PORT = 4173;
@@ -134,38 +134,6 @@ async function startWithPortRetry(
     }
   }
   throw lastErr instanceof Error ? lastErr : new Error(`No free port near ${preferredPort}`);
-}
-
-/**
- * Open URL in the default browser (macOS `open`, Linux `xdg-open`, Windows `start`).
- * Failures are swallowed — the server URL is still printed.
- */
-export async function defaultOpenBrowser(url: string): Promise<void> {
-  const platform = process.platform;
-  let cmd: string;
-  let args: string[];
-  if (platform === 'darwin') {
-    cmd = 'open';
-    args = [url];
-  } else if (platform === 'win32') {
-    cmd = 'cmd';
-    args = ['/c', 'start', '', url];
-  } else {
-    cmd = 'xdg-open';
-    args = [url];
-  }
-
-  await new Promise<void>((resolve) => {
-    const child = spawn(cmd, args, {
-      stdio: 'ignore',
-      detached: true,
-    });
-    child.once('error', () => resolve());
-    child.once('spawn', () => {
-      child.unref();
-      resolve();
-    });
-  });
 }
 
 function emptyErrorReport(scope: ReportScope): Report {
