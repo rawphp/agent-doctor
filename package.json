@@ -3,6 +3,15 @@
   "version": "0.1.0",
   "description": "Diagnose and fix AI-agent project setup (skills hub, adapters, maps, status)",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "bin": {
     "agent-doctor": "./dist/cli.js"
   },
