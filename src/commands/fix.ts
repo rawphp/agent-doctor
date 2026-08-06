@@ -5,10 +5,13 @@
 
 import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
-import { createAdapterRegistry, type AgentAdapter } from '../adapters/index.js';
 import { defaultOpenBrowser } from '../surfaces/open-browser.js';
 import { EXIT_TOOL_ERROR, exitCodeForGrade } from '../engine/score.js';
-import { runChecks, type RunChecksOptions } from '../engine/run-checks.js';
+import {
+  buildDefaultAdapters,
+  runChecks,
+  type RunChecksOptions,
+} from '../engine/run-checks.js';
 import type { FixAction, HomeMap, Report } from '../engine/types.js';
 import { agentDoctorHome, loadMap } from '../map/load.js';
 import {
@@ -20,30 +23,6 @@ import {
 } from '../fix/index.js';
 import { renderFixPlanHtml } from '../surfaces/fix-plan/template.js';
 import { startFixPlanServer } from '../surfaces/fix-plan/server.js';
-
-/** Build live adapters for plan generation (same ids as map / detect). */
-function adaptersForPlan(map: HomeMap, injected?: AgentAdapter[]): AgentAdapter[] {
-  if (injected && injected.length > 0) {
-    return injected;
-  }
-  const registry = createAdapterRegistry();
-  const adapters: AgentAdapter[] = [];
-  for (const entry of map.agents) {
-    if (entry.ignored) continue;
-    const adapter = registry.getAdapter(entry.id, {
-      home: entry.config_home || undefined,
-    });
-    if (adapter) adapters.push(adapter);
-  }
-  // Ensure deep defaults exist even if map is sparse
-  for (const id of ['claude-code', 'codex', 'grok'] as const) {
-    if (!adapters.some((a) => a.id === id)) {
-      const a = registry.getAdapter(id);
-      if (a) adapters.push(a);
-    }
-  }
-  return adapters;
-}
 
 export type FixFlags = {
   dryRun: boolean;
@@ -179,7 +158,8 @@ export async function runFix(options: FixRunOptions = {}): Promise<FixResult> {
         projects: { roots: [], entries: [] },
       } satisfies HomeMap);
 
-    const adapters = adaptersForPlan(map, options.checks?.adapters);
+    // Shared choke point with runChecks — inject or buildDefaultAdapters (ORI-779).
+    const adapters = options.checks?.adapters ?? buildDefaultAdapters(map);
 
     const plan =
       options.planOverride ??
