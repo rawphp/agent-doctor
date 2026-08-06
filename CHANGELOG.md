@@ -41,6 +41,25 @@ cuts this section into a versioned heading.
 
 ### Changed
 
+- **Package `exports` deep-import break (upgrade note)** — published surface is
+  restricted by `package.json` `"exports"` to `"."` and `"./package.json"` only.
+  Prior base was bin-only with no `main` / `exports`, so any path under the
+  published `files: dist` tree was reachable by deep import.
+  - **Before:** `import … from 'agent-doctor/dist/engine/run-checks.js'` (or
+    `agent-doctor/dist/commands/dashboard.js`, or other `dist/**` paths) resolved
+    because Node had no package exports map.
+  - **After:** those deep paths fail under Node with
+    `ERR_PACKAGE_PATH_NOT_EXPORTED`. Supported path is the package root only:
+    `import { … } from 'agent-doctor'` (public façade `src/index.ts` /
+    `dist/index.js`).
+  - **Supported root exports** (from `src/index.ts`; do not deep-import
+    internals): values `PACKAGE_NAME`, `PACKAGE_VERSION`, `runChecks`,
+    `buildFixPlan`, `applyFixPlan`, `loadMap`, `saveMap`; types `Report`,
+    `HomeMap`, `Finding`, `RunChecksOptions`, `BuildFixPlanInput`,
+    `BuildFixPlanOptions`, `ApplyContext`, `ActionResult`, `MapIoOptions`.
+  - **Action for integrators:** replace deep `agent-doctor/dist/...` imports
+    with package-root imports from the façade above. `exports` stays root-only
+    (no re-export of private `dist/**` subpaths).
 - **`Report.fix_plan` authority (upgrade note)** — `runChecks` always attaches
   the full `buildFixPlan({ findings, map, adapters, hub, … })` result when
   non-empty. Domain suite `fix_actions` are internal checker hints only and are
