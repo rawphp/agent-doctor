@@ -60,21 +60,25 @@ cuts this section into a versioned heading.
   - **Action for integrators:** replace deep `agent-doctor/dist/...` imports
     with package-root imports from the façade above. `exports` stays root-only
     (no re-export of private `dist/**` subpaths).
-- **`Report.fix_plan` authority (upgrade note)** — `runChecks` always attaches
+- **Report.fix_plan authority (upgrade note)** — `runChecks` always attaches
   the full `buildFixPlan({ findings, map, adapters, hub, … })` result when
-  non-empty. Domain suite `fix_actions` are internal checker hints only and are
-  **never** copied onto the user-visible report.
-  - **Before:** consumers of `status --json` / `Report.fix_plan` could see a
-    partial plan (domain stubs only), which could diverge from what
-    `fix --dry-run` rebuilds via `buildFixPlan`.
-  - **After:** `Report.fix_plan` matches the full fix planner (e.g. includes
-    hierarchy `create_agents_stub` when AGENTS.md is missing, `set_sync_target`
-    on hub conflict, hub wire/`symlink_skills_hub` for off-hub agents). Empty
-    plans omit the field.
+  non-empty (field name stays `fix_plan`; omit when empty). Domain suite
+  `fix_actions` are internal checker hints only and are **never** the
+  user-visible plan source (not copied onto the report).
+  - **Before:** machine clients of `status --json` and the dashboard (and any
+    consumer of `Report.fix_plan`) could see a partial plan (domain stubs only),
+    which could diverge from what `fix --dry-run` rebuilds via `buildFixPlan`.
+  - **After:** `Report.fix_plan` is the same full planner contract as
+    `fix --dry-run` (intentional parity). Content includes the complete
+    `buildFixPlan` action set, not domain stubs alone — e.g. hierarchy
+    `create_agents_stub` when AGENTS.md is missing, `append_agents_pointer`
+    for vendor instruction pointers, `set_sync_target` on hub conflict, and
+    adapter wire proposals (`symlink_skills_hub` / hub wire for off-hub
+    agents). Empty plans omit the field.
   - **Action for integrators:** treat `report.fix_plan` as the same contract as
-    `buildFixPlan` / `fix --dry-run`. Do not assume domain-only action ids or
-    partial plans. This is a 0.x behavioral change under **Changed**, not a
-    blanket BREAKING banner for the additive package API above.
+    `buildFixPlan` / `fix --dry-run`. Do not assume domain-only / partial
+    plans. This is a 0.x behavioral change under **Changed**, not a blanket
+    BREAKING banner for the additive package API above.
 - **`fix` CLI adapter assembly** uses `buildDefaultAdapters` (or injected
   `options.checks.adapters`) instead of a private `adaptersForPlan` duplicate,
   so live fix planning and diagnose share one construction path.
