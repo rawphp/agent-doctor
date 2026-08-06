@@ -29,6 +29,7 @@ import {
 import { HIERARCHY_FINDING_IDS } from '../domains/instructions.js';
 import { discover } from '../map/discover.js';
 import { agentDoctorHome, loadMap } from '../map/load.js';
+import { buildFixPlan } from '../fix/plan.js';
 import { computeOverall, scoreToGrade } from './score.js';
 import { resolveSkillsHub } from './skills-hub.js';
 import {
@@ -588,8 +589,22 @@ export async function runChecks(options: RunChecksOptions = {}): Promise<Report>
     recommendations,
   };
 
-  if (domainSuite.fix_actions.length > 0) {
-    report.fix_plan = domainSuite.fix_actions;
+  // ORI-780 / UR-003 C2 — single authority for user-visible Report.fix_plan:
+  // Always attach the full `buildFixPlan` result (omit when empty). Domain suite
+  // `fix_actions` may remain internal hints for checkers only — never attach
+  // those partial domain plans here. status --json / dashboard must match
+  // what `fix --dry-run` rebuilds via buildFixPlan.
+  const fixPlan = buildFixPlan({
+    findings,
+    map,
+    adapters,
+    hub,
+    agentsInScope: agents_in_scope,
+    projectRoot,
+    doctorHome: home,
+  });
+  if (fixPlan.length > 0) {
+    report.fix_plan = fixPlan;
   }
 
   return report;
