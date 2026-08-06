@@ -5,6 +5,25 @@
 project:
   name: "agent-doctor"
 
+# Work-item store: Linear is sole backend (config-only cutover 2026-08-06).
+# Historical .do-work/user-requests/ + archive/ remain on disk as read-only history.
+# Agents must ignore those trees for work-item ops (no dual-write).
+tracker:
+  backend: linear
+  linear:
+    team_id: "90eb3f11-da37-4bbb-a4a0-bfe245646f5d"
+    team_key: "ORI"
+    product_project: "fd5cce1a-4742-4fb2-83f0-dcd207b7e8f9"
+    status_map:
+      backlog: "Todo"
+      in_progress: "In Progress"
+      stopped: "Canceled"
+      done: "Done"
+    decisions_doc_title: "do-work/decisions"
+    calibration_doc_title: "do-work/calibration"
+    agent_claim_marker: "<!-- do-work-claim -->"
+    ur_milestone_name_pattern: "{ur_id}: {title}"
+
 # CLI product layers (UR-001 clarification)
 layers: [cli, engine, adapters, surfaces]
 

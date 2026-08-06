@@ -1,0 +1,55 @@
+req: ORI-782
+status: done
+commit: ab29619
+isolation: worktree
+closure_proof: "checkpoint_log:passed commit:ab29619; npm run build && npm test 330 passed; src/index.ts exports stable surface"
+last_good_step: 2
+failed_step: 0
+checkpoint_log:
+  status: passed
+  checkpoints:
+    - step: 1
+      total: 2
+      type: test
+      command: "npm test -- tests/public-api.test.ts"
+      expected: "exports present"
+      actual: "3 passed"
+      status: passed
+    - step: 2
+      total: 2
+      type: build
+      command: "npm run build && npm test"
+      expected: "green"
+      actual: "330 tests passed"
+      status: passed
+deferred_checks: []
+acceptance:
+  AC1:
+    status: passed
+    evidence:
+      - type: file
+        ref: src/index.ts
+      - type: test
+        ref: tests/public-api.test.ts
+  AC2:
+    status: passed
+    evidence:
+      - type: command
+        ref: "npm run build"
+  AC3:
+    status: passed
+    evidence:
+      - type: file
+        ref: src/index.ts
+  AC4:
+    status: passed
+    evidence:
+      - type: test
+        ref: "npm test (330 passed)"
+outputs:
+  - path: src/index.ts
+    description: "Package public API re-exports"
+  - path: package.json
+    description: "main/types/exports package root entry"
+  - path: tests/public-api.test.ts
+    description: "TDD contract for public API"

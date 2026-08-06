@@ -1,0 +1,55 @@
+req: ORI-781
+status: done
+commit: b8d7ae9
+isolation: worktree
+closure_proof: "checkpoint_log:passed commit:b8d7ae9"
+last_good_step: 2
+failed_step: 0
+checkpoint_log:
+  status: passed
+  checkpoints:
+    - step: 1
+      total: 2
+      type: test
+      command: "rg dashboard imports"
+      expected: "fix no dashboard"
+      actual: "fix imports open-browser"
+      status: passed
+    - step: 2
+      total: 2
+      type: test
+      command: "npm test"
+      expected: "green"
+      actual: "333 passed"
+      status: passed
+deferred_checks: []
+acceptance:
+  AC1:
+    status: passed
+    evidence:
+      - type: test
+        ref: "src/surfaces/open-browser.test.ts"
+  AC2:
+    status: passed
+    evidence:
+      - type: file
+        ref: "src/surfaces/open-browser.ts"
+  AC3:
+    status: passed
+    evidence:
+      - type: file
+        ref: "src/commands/dashboard.ts"
+  AC4:
+    status: passed
+    evidence:
+      - type: test
+        ref: "npm test — 333 passed"
+outputs:
+  - path: src/surfaces/open-browser.ts
+    description: Shared defaultOpenBrowser
+  - path: src/surfaces/open-browser.test.ts
+    description: Unit tests
+  - path: src/commands/dashboard.ts
+    description: Import shared helper
+  - path: src/commands/fix.ts
+    description: Import open-browser from surfaces

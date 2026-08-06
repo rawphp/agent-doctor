@@ -8,6 +8,14 @@
             "command": "/Users/tomkaczocha/.claude/skills/do-work/lib/session-hook.sh start"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/tomkaczocha/.grok/skills/do-work/lib/session-hook.sh start"
+          }
+        ]
       }
     ],
     "Stop": [
@@ -16,6 +24,14 @@
           {
             "type": "command",
             "command": "/Users/tomkaczocha/.claude/skills/do-work/lib/session-hook.sh end"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/tomkaczocha/.grok/skills/do-work/lib/session-hook.sh end"
           }
         ]
       }

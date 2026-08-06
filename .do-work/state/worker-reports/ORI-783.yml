@@ -1,0 +1,46 @@
+req: ORI-783
+status: done
+commit: b08d41a
+isolation: worktree
+closure_proof: "checkpoint_log:passed commit:b08d41a"
+last_good_step: 2
+failed_step: 0
+checkpoint_log:
+  status: passed
+  checkpoints:
+    - step: 1
+      total: 2
+      type: test
+      command: "npm test"
+      expected: "pass"
+      actual: "328 passed"
+      status: passed
+    - step: 2
+      total: 2
+      type: test
+      command: "rg runProjectScopedDomains"
+      expected: "export + single call site"
+      actual: "export L176; call L510"
+      status: passed
+deferred_checks: []
+acceptance:
+  AC1:
+    status: passed
+    evidence:
+      - type: file
+        ref: "src/engine/run-checks.ts"
+  AC2:
+    status: passed
+    evidence:
+      - type: file
+        ref: "src/engine/run-checks.ts"
+  AC3:
+    status: passed
+    evidence:
+      - type: test
+        ref: "npm test (328 passed)"
+outputs:
+  - path: src/engine/run-checks.ts
+    description: "Exported runProjectScopedDomains"
+  - path: src/engine/run-checks.test.ts
+    description: "Unit test for helper"
