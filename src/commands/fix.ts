@@ -7,11 +7,7 @@ import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import { defaultOpenBrowser } from '../surfaces/open-browser.js';
 import { EXIT_TOOL_ERROR, exitCodeForGrade } from '../engine/score.js';
-import {
-  buildDefaultAdapters,
-  runChecks,
-  type RunChecksOptions,
-} from '../engine/run-checks.js';
+import { buildDefaultAdapters, runChecks, type RunChecksOptions } from '../engine/run-checks.js';
 import type { FixAction, HomeMap, Report } from '../engine/types.js';
 import { agentDoctorHome, loadMap } from '../map/load.js';
 import {

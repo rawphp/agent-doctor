@@ -30,9 +30,7 @@ describe('no sibling-command coupling for browser open', () => {
       fs.readFile(new URL('../commands/fix.ts', import.meta.url), 'utf8'),
     );
     const codeOnly = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-    expect(codeOnly).toMatch(
-      /from\s+['"]\.\.\/surfaces\/open-browser\.js['"]/,
-    );
+    expect(codeOnly).toMatch(/from\s+['"]\.\.\/surfaces\/open-browser\.js['"]/);
     expect(codeOnly).toMatch(/\bdefaultOpenBrowser\b/);
   });
 
@@ -41,9 +39,7 @@ describe('no sibling-command coupling for browser open', () => {
       fs.readFile(new URL('../commands/dashboard.ts', import.meta.url), 'utf8'),
     );
     const codeOnly = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-    expect(codeOnly).toMatch(
-      /from\s+['"]\.\.\/surfaces\/open-browser\.js['"]/,
-    );
+    expect(codeOnly).toMatch(/from\s+['"]\.\.\/surfaces\/open-browser\.js['"]/);
     // Implementation must not still define the helper locally under that name.
     expect(codeOnly).not.toMatch(/export\s+async\s+function\s+defaultOpenBrowser\b/);
   });

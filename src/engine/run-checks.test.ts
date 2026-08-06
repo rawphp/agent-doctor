@@ -764,4 +764,3 @@ describe('runChecks Report.fix_plan authority (ORI-780)', () => {
     expect(plan).toEqual(expected);
   });
 });
-
