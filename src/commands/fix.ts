@@ -6,7 +6,7 @@
 import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import { createAdapterRegistry, type AgentAdapter } from '../adapters/index.js';
-import { defaultOpenBrowser } from './dashboard.js';
+import { defaultOpenBrowser } from '../surfaces/open-browser.js';
 import { EXIT_TOOL_ERROR, exitCodeForGrade } from '../engine/score.js';
 import { runChecks, type RunChecksOptions } from '../engine/run-checks.js';
 import type { FixAction, HomeMap, Report } from '../engine/types.js';
