@@ -161,10 +161,19 @@ function ensureProjectInEvidence(findings: readonly Finding[], projectPath: stri
 }
 
 /**
- * Run instruction + product domain checks for each project (no count cap).
- * Used by machine scope after global domain suite.
+ * Machine-scope project-domain re-run (named owner — single call site in runChecks).
+ *
+ * Contract (hybrid vs machine):
+ * - Hybrid: DomainCheckContext.projectRoot is the cwd/project; instructions + product
+ *   run once inside the global suite with that overlay.
+ * - Machine: projectRoot is stripped (undefined) for the global suite so
+ *   presence/skills/obsidian/consistency stay machine-wide; then this helper re-runs
+ *   **only** instructions + product once per enumerated project with projectRoot set.
+ *
+ * No count cap — every project in `projects` is visited. Export is for unit tests;
+ * behavior is unchanged from the prior private helper.
  */
-async function runProjectScopedDomains(
+export async function runProjectScopedDomains(
   baseCtx: DomainCheckContext,
   projects: readonly string[],
   onAccessDenied: (finding: Finding) => void,
@@ -448,8 +457,8 @@ export async function runChecks(options: RunChecksOptions = {}): Promise<Report>
   const hubConflict = hubResolution.findings.some((f) => f.id === 'skills.hub_conflict');
 
   // 5. DomainCheckContext + runAllDomainChecks
-  // Hybrid: single projectRoot. Machine: global suite without project overlay first;
-  // project-scoped domains (instructions/product) run per enumerated project below.
+  // Hybrid: single projectRoot. Machine: strip projectRoot for global suite; then
+  // runProjectScopedDomains re-runs instructions/product per project (see helper).
   const domainCtx: DomainCheckContext = {
     map,
     agents,

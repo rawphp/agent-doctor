@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AgentAdapter, AdapterContext } from '../adapters/types.js';
 import type { AgentPresence, FixAction, HomeMap } from './types.js';
-import { isAgentOnHub, runChecks } from './run-checks.js';
+import { isAgentOnHub, runChecks, runProjectScopedDomains } from './run-checks.js';
 
 const temps: string[] = [];
 
@@ -548,6 +548,56 @@ describe('runChecks machine scope multi-project', () => {
   });
 });
 
+describe('runProjectScopedDomains (machine-scope contract)', () => {
+  /**
+   * Contract: machine scope strips projectRoot for the global domain suite
+   * (presence/skills/obsidian/consistency), then re-runs only instructions + product
+   * per enumerated project via this helper.
+   */
+  it('is the named owner of per-project instructions + product checks', async () => {
+    expect(typeof runProjectScopedDomains).toBe('function');
+
+    const base = tempDir('scoped-domains-');
+    const hub = makePopulatedRoot(base, 'hub');
+    const projectsRoot = join(base, 'Projects');
+    const projA = join(projectsRoot, 'a');
+    const projB = join(projectsRoot, 'b');
+    mkdirSync(projA, { recursive: true });
+    mkdirSync(projB, { recursive: true });
+
+    const adapters = [stubAdapter('claude-code', { roots: [hub] })];
+    const map = baseMap({
+      skills: { global_roots: [hub], sync_target: hub },
+      projects: { roots: [projectsRoot], entries: [] },
+    });
+
+    const denied: unknown[] = [];
+    const result = await runProjectScopedDomains(
+      {
+        map,
+        agents: [],
+        // Intentionally no projectRoot — mirrors machine global suite strip
+        projectRoot: undefined,
+        hub,
+        agentRoots: {},
+        adapters,
+      },
+      [projA, projB],
+      (f) => {
+        denied.push(f);
+      },
+    );
+
+    expect(result.instructions.length).toBeGreaterThanOrEqual(2);
+    expect(result.product.length).toBeGreaterThanOrEqual(0);
+
+    const instrEvidence = result.instructions.map((f) => f.evidence.join('\n'));
+    expect(instrEvidence.some((e) => e.includes(projA))).toBe(true);
+    expect(instrEvidence.some((e) => e.includes(projB))).toBe(true);
+    expect(denied).toHaveLength(0);
+  });
+});
+
 describe('isAgentOnHub', () => {
   it('matches resolved paths', () => {
     const base = tempDir();
@@ -557,3 +607,4 @@ describe('isAgentOnHub', () => {
     expect(isAgentOnHub([makePopulatedRoot(base, 'other')], hub)).toBe(false);
   });
 });
+
