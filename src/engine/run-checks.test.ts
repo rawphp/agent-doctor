@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AgentAdapter, AdapterContext } from '../adapters/types.js';
+import { buildFixPlan } from '../fix/plan.js';
 import type { AgentPresence, FixAction, HomeMap } from './types.js';
 import { isAgentOnHub, runChecks, runProjectScopedDomains } from './run-checks.js';
 
@@ -605,6 +606,162 @@ describe('isAgentOnHub', () => {
     expect(isAgentOnHub([hub], hub)).toBe(true);
     expect(isAgentOnHub([realpathSync(hub)], hub)).toBe(true);
     expect(isAgentOnHub([makePopulatedRoot(base, 'other')], hub)).toBe(false);
+  });
+});
+
+/**
+ * ORI-780: Report.fix_plan is always full buildFixPlan output (or empty).
+ * Domain fix_actions are internal hints only — never attached as partial user-visible plans.
+ */
+describe('runChecks Report.fix_plan authority (ORI-780)', () => {
+  it('sets report.fix_plan to buildFixPlan result for off-hub agents (not domain stubs alone)', async () => {
+    const base = tempDir();
+    const hub = makePopulatedRoot(base, 'hub');
+    const privateRoot = makePopulatedRoot(base, 'codex-private');
+    const wireProposal: FixAction = {
+      id: 'fix.wire_codex_skills',
+      kind: 'symlink_skills_hub',
+      description: `Symlink ${privateRoot} → ${hub}`,
+      target: privateRoot,
+      value: hub,
+      agent_id: 'codex',
+    };
+    const adapters: AgentAdapter[] = [
+      stubAdapter('claude-code', { roots: [hub] }),
+      {
+        ...stubAdapter('codex', { roots: [privateRoot], home: join(base, 'codex') }),
+        proposeWireToSkillsHub(h: string): FixAction[] {
+          return [{ ...wireProposal, value: h }];
+        },
+      },
+    ];
+    const map = baseMap({
+      skills: { global_roots: [hub], sync_target: hub },
+    });
+
+    const report = await runChecks({
+      map,
+      adapters,
+      projectRoot: base,
+    });
+
+    expect(report.findings.some((f) => f.id === 'skills.agent_not_on_hub')).toBe(true);
+
+    const expected = buildFixPlan({
+      findings: report.findings,
+      map,
+      adapters,
+      hub: report.sync.skills_hub,
+      agentsInScope: report.sync.agents_in_scope,
+      projectRoot: report.project_root,
+    });
+
+    expect(report.fix_plan).toEqual(expected);
+    expect(report.fix_plan?.some((a) => a.kind === 'symlink_skills_hub')).toBe(true);
+  });
+
+  it('includes hierarchy create_agents_stub from buildFixPlan when AGENTS.md is missing', async () => {
+    // Domain suite does not emit hierarchy fix_actions — only skills does.
+    // Partial domain attach would leave fix_plan empty/undefined; full plan must include stub.
+    const base = tempDir();
+    const hub = makePopulatedRoot(base, 'hub');
+    const projectRoot = tempDir('hierarchy-proj-');
+    // No AGENTS.md at project root
+
+    const report = await runChecks({
+      map: baseMap({
+        skills: { global_roots: [hub], sync_target: hub },
+      }),
+      adapters: [stubAdapter('claude-code', { roots: [hub] })],
+      projectRoot,
+    });
+
+    expect(
+      report.findings.some(
+        (f) =>
+          f.id === 'instructions.hierarchy_missing_agents_md' ||
+          f.id === 'instructions.missing_agents_md',
+      ),
+    ).toBe(true);
+
+    const expected = buildFixPlan({
+      findings: report.findings,
+      map: baseMap({
+        skills: { global_roots: [hub], sync_target: hub },
+      }),
+      adapters: [stubAdapter('claude-code', { roots: [hub] })],
+      hub: report.sync.skills_hub,
+      agentsInScope: report.sync.agents_in_scope,
+      projectRoot: report.project_root,
+    });
+
+    expect(report.fix_plan).toEqual(expected);
+    expect(report.fix_plan?.some((a) => a.kind === 'create_agents_stub')).toBe(true);
+  });
+
+  it('includes set_sync_target from buildFixPlan on hub conflict (domain wires blocked)', async () => {
+    const base = tempDir();
+    const a = makePopulatedRoot(base, 'hub-a');
+    const b = makePopulatedRoot(base, 'hub-b');
+    const map = baseMap({
+      skills: { global_roots: [a, b], sync_target: null },
+    });
+    const adapters = [
+      stubAdapter('claude-code', { roots: [a] }),
+      stubAdapter('codex', { roots: [b] }),
+    ];
+
+    const report = await runChecks({
+      map,
+      adapters,
+      projectRoot: base,
+    });
+
+    expect(report.findings.some((f) => f.id === 'skills.hub_conflict')).toBe(true);
+
+    const expected = buildFixPlan({
+      findings: report.findings,
+      map,
+      adapters,
+      hub: report.sync.skills_hub,
+      agentsInScope: report.sync.agents_in_scope,
+      projectRoot: report.project_root,
+    });
+
+    expect(report.fix_plan).toEqual(expected);
+    expect(report.fix_plan?.some((a) => a.kind === 'set_sync_target')).toBe(true);
+  });
+
+  it('omits fix_plan or sets empty when buildFixPlan yields no actions', async () => {
+    const base = tempDir();
+    const hub = makePopulatedRoot(base, 'hub');
+    // Healthy aligned fleet — no fix actions expected
+    const report = await runChecks({
+      map: baseMap({
+        skills: { global_roots: [hub], sync_target: hub },
+      }),
+      adapters: [
+        stubAdapter('claude-code', { roots: [hub] }),
+        stubAdapter('codex', { roots: [hub] }),
+      ],
+      projectRoot: base,
+    });
+
+    const plan = report.fix_plan ?? [];
+    const expected = buildFixPlan({
+      findings: report.findings,
+      map: baseMap({
+        skills: { global_roots: [hub], sync_target: hub },
+      }),
+      adapters: [
+        stubAdapter('claude-code', { roots: [hub] }),
+        stubAdapter('codex', { roots: [hub] }),
+      ],
+      hub: report.sync.skills_hub,
+      agentsInScope: report.sync.agents_in_scope,
+      projectRoot: report.project_root,
+    });
+    expect(plan).toEqual(expected);
   });
 });
 
