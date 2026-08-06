@@ -1,6 +1,6 @@
 {
   "name": "agent-doctor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Diagnose and fix AI-agent project setup (skills hub, adapters, maps, status)",
   "type": "module",
   "main": "./dist/index.js",
