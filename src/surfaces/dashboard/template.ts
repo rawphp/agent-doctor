@@ -5,6 +5,7 @@
  */
 
 import type { Grade, Report } from '../../engine/types.js';
+import { domainLabel } from '../domain-labels.js';
 
 function escapeHtml(value: string): string {
   return value
@@ -86,18 +87,6 @@ export function renderDashboardHtml(report: Report): string {
 </tr>`;
           })
           .join('\n');
-
-  const domainLabel = (domain: string): string => {
-    const labels: Record<string, string> = {
-      agent_presence: 'presence',
-      shared_skills_path: 'skills hub',
-      instruction_files: 'instructions',
-      product_context: 'product',
-      obsidian: 'vaults',
-      cross_agent_consistency: 'consistency',
-    };
-    return labels[domain] ?? domain;
-  };
 
   const domainRows = report.domains
     .map(

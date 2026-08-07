@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`map` vault without `.obsidian` requires `--force` (upgrade note)** — non-Obsidian
+  paths no longer warn-and-record by default.
+  - **Before:** `agent-doctor map --vault <path>` with no `.obsidian` folder under the
+    path logged a warning and still wrote the vault as `source: manual`.
+  - **After:** the same invocation exits non-zero unless you pass `--force`. Real
+    Obsidian vaults (with `.obsidian`) are unchanged.
+  - **Action for integrators / scripts:** pass `--force` only when you intentionally
+    map a non-Obsidian directory; fix the path for real vaults. Example:
+    `agent-doctor map --vault ~/Notes --force`.
+- **Terminal / dashboard domain labels (0.x human surfaces)** — domain columns show
+  short labels (`presence`, `skills hub`, `instructions`, `product`, `vaults`,
+  `consistency`) instead of engine snake_case ids (`agent_presence`,
+  `shared_skills_path`, …). Report JSON / `status --json` domain ids are unchanged.
+  - **Action for integrators:** do not scrape human domain column text; use
+    `status --json` / `check --json` and `domains[].domain`.
+- **`fix --sync-target` missing path fails early** — if the given path does not
+  exist, `fix` exits 1 with a clear error before running checks or apply.
+  - **Action for integrators:** pass an existing skills hub directory (often
+    `~/.agents/skills`).
+
+### Added
+
+- **`map --force`** — allow recording a vault path that has no `.obsidian` folder
+  (replaces the previous silent warn-and-continue default).
+- Domain-focused `check` tips/headings, `status` unknown-flag warnings, agents listing
+  tip to `status`, and related UX clarity (version from `package.json`, init vault
+  preserve on re-init, `rec.dedupe_skill_trees` recommendation). Human-facing only;
+  machine JSON contracts unchanged except additive recommendation id.
+
 ## [0.2.0] - 2026-08-07
 
 ### Changed

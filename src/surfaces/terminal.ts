@@ -5,6 +5,7 @@
  */
 
 import type { Grade, Report } from '../engine/types.js';
+import { domainLabel } from './domain-labels.js';
 
 function gradeLabel(grade: Grade): string {
   switch (grade) {
@@ -35,20 +36,6 @@ function formatFindingIdList(ids: readonly string[]): string {
     counts.set(id, (counts.get(id) ?? 0) + 1);
   }
   return [...counts.entries()].map(([id, n]) => (n > 1 ? `${id} ×${n}` : id)).join(', ');
-}
-
-/** User-facing domain labels (engine still uses snake_case ids in JSON). */
-const DOMAIN_LABELS: Record<string, string> = {
-  agent_presence: 'presence',
-  shared_skills_path: 'skills hub',
-  instruction_files: 'instructions',
-  product_context: 'product',
-  obsidian: 'vaults',
-  cross_agent_consistency: 'consistency',
-};
-
-function domainLabel(domain: string): string {
-  return DOMAIN_LABELS[domain] ?? domain;
 }
 
 export type FormatTerminalOptions = {
