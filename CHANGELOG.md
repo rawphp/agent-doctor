@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Hierarchy `FixAction.id` values are path-qualified (upgrade note)** — multi-project
+  `status --all` / machine-scope plans no longer collapse every project into one
+  `create_agents_stub` / one pointer step per basename.
+  - **Before:** stable ids `fix.create_agents_stub` and
+    `fix.append_agents_pointer_<basename>` (e.g. `fix.append_agents_pointer_CLAUDE.md`).
+  - **After:** ids include the target path —
+    `fix.create_agents_stub:<AGENTS.md path>` and
+    `fix.append_agents_pointer:<vendor path>` (e.g.
+    `fix.create_agents_stub:/proj/AGENTS.md`,
+    `fix.append_agents_pointer:/proj/CLAUDE.md`).
+  - **Action for integrators:** key plan steps by `kind` + `target` (or the new
+    path-qualified `id`), not the old fixed id strings. `applyFixPlan` still
+    executes by `kind`/`target`/`value`; only consumers that hard-coded the old
+    id literals need updates. Prefer one plan entry per project path when
+    multiple hierarchy findings share the same finding id.
+- **Hierarchy finding messages embed project paths** — `instructions.hierarchy_*`
+  messages include the project root or vendor file path so multi-project
+  reports are actionable without hunting `evidence` alone.
+  - **Action for integrators:** do not assert exact prior message strings; match
+    on finding `id` / severity / `evidence`, or use substring checks. Terminal and
+    HTML surfaces also surface a path column/hint when the message does not already
+    include `evidence[0]`.
+- **Domain healthy summaries no longer prefix the domain key** — empty-finding
+  domain rows use short human copy (e.g. `Expected agents detected`) or plain
+  `healthy`, not `` `${domain}: healthy` ``.
+  - **Action for integrators:** do not parse `domains[].summary` as
+    `"<domain>: healthy"`; use `domains[].grade` / `score` / empty findings.
+- **Hierarchy recommendations dedupe `finding_ids` and count projects** —
+  `rec.ensure_agents_md` / `rec.ensure_agents_md_pointers` list each finding id
+  once (no N-way duplicate of the same id). Messages name project/file counts
+  when machine scope aggregates multiple projects.
+  - **Action for integrators:** do not use `finding_ids.length` as a project
+    count; use the recommendation message counts or distinct finding `evidence`
+    paths.
+- **`skills.duplicated_trees` message when deep agents already on hub** — if every
+  deep-scoped agent is already on the skills hub but extra populated trees still
+  exist, the message says extras exist outside the hub (not “wire agents to one
+  hub”). Finding id and severity are unchanged.
+- **Terminal / dashboard presentation (0.x human surfaces)** — findings may append
+  ` → <path>` when the path is not in the message; machine-scope terminal findings
+  cap at 40 lines with a remainder hint; recommendation id lists show `id ×N`
+  when duplicates remain; dashboard Findings table adds a Path column; fix plan
+  hints prefer `fix --dry-run --html` and `fix --yes`. Prefer `status --json`
+  for machine consumers.
+
+### Added
+
+- **Release skill** (`.agents/skills/release`) and Claude `/release` command —
+  documented production ship path (CHANGELOG cut, quality gates, `npm version`,
+  tag push → GitHub Actions `release.yml`). Agent/operator tooling only; no
+  package API change.
+
 ## [0.1.1] - 2026-08-06
 
 Inventory of client-visible work from the `refactor/happy-single-choke-points`
