@@ -712,8 +712,7 @@ function buildRecommendations(
   const missingPointers = findings.filter((f) => f.id === HIERARCHY_FINDING_IDS.MISSING_POINTER);
   if (missingPointers.length > 0) {
     const pointerCount = missingPointers.length;
-    const scopeNote =
-      pointerCount > 1 ? ` (${pointerCount} file(s) across projects)` : '';
+    const scopeNote = pointerCount > 1 ? ` (${pointerCount} file(s) across projects)` : '';
     recs.push({
       id: 'rec.ensure_agents_md_pointers',
       finding_ids: uniqueFindingIds(missingPointers),

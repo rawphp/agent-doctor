@@ -34,9 +34,7 @@ function formatFindingIdList(ids: readonly string[]): string {
   for (const id of ids) {
     counts.set(id, (counts.get(id) ?? 0) + 1);
   }
-  return [...counts.entries()]
-    .map(([id, n]) => (n > 1 ? `${id} ×${n}` : id))
-    .join(', ');
+  return [...counts.entries()].map(([id, n]) => (n > 1 ? `${id} ×${n}` : id)).join(', ');
 }
 
 /**
@@ -164,8 +162,7 @@ export function formatTerminalReport(report: Report): string {
       .slice(0, 5);
     for (let i = 0; i < top.length; i++) {
       const rec = top[i]!;
-      const ids =
-        rec.finding_ids.length > 0 ? `  [${formatFindingIdList(rec.finding_ids)}]` : '';
+      const ids = rec.finding_ids.length > 0 ? `  [${formatFindingIdList(rec.finding_ids)}]` : '';
       lines.push(`  ${i + 1}. ${rec.message}${ids}`);
     }
   }

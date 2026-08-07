@@ -103,8 +103,7 @@ export function renderDashboardHtml(report: Report): string {
       ? `<tr><td colspan="5">(no findings)</td></tr>`
       : report.findings
           .map((f) => {
-            const path =
-              f.evidence?.[0] && !f.message.includes(f.evidence[0]) ? f.evidence[0] : '';
+            const path = f.evidence?.[0] && !f.message.includes(f.evidence[0]) ? f.evidence[0] : '';
             return `<tr data-finding-id="${escapeHtml(f.id)}">
   <td><code>${escapeHtml(f.id)}</code></td>
   <td>${escapeHtml(f.severity)}</td>

@@ -668,9 +668,7 @@ export function formatFixPlan(plan: FixAction[], options: FormatFixPlanOptions =
     lines.push('');
     // Tip: --html always helps; --sync-target only when the user still needs to pick a hub.
     if (options.syncTarget) {
-      lines.push(
-        `Tip: agent-doctor fix --dry-run --sync-target ${options.syncTarget} --html`,
-      );
+      lines.push(`Tip: agent-doctor fix --dry-run --sync-target ${options.syncTarget} --html`);
       lines.push('     opens this plan in the browser (easier to read).');
     } else {
       lines.push('Tip: agent-doctor fix --dry-run --html');
