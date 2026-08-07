@@ -16,7 +16,7 @@
     "agent-doctor": "./dist/cli.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node -e \"import('node:fs').then(fs=>fs.chmodSync('dist/cli.js',0o755))\"",
     "prepare": "node scripts/prepare.mjs",
     "test": "vitest run",
     "cli": "tsx src/cli.ts",

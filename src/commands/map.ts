@@ -76,9 +76,18 @@ export async function runMapCommand(options: MapCommandOptions = {}): Promise<Co
       err(`agent-doctor map: vault path does not exist: ${vaultPath}`);
       return emptyMapResult(1);
     }
-    if (!existsSync(join(vaultPath, '.obsidian'))) {
+    const hasObsidian = existsSync(join(vaultPath, '.obsidian'));
+    const forceVault = args.includes('--force');
+    if (!hasObsidian && !forceVault) {
+      err(
+        `agent-doctor map: no .obsidian folder under ${vaultPath}. ` +
+          `Pass a real Obsidian vault, or re-run with --force to record it anyway.`,
+      );
+      return emptyMapResult(1);
+    }
+    if (!hasObsidian && forceVault) {
       log(
-        `warning: no .obsidian folder under ${vaultPath} — still recording as vault (source: manual)`,
+        `warning: no .obsidian folder under ${vaultPath} — recording as vault with --force (source: manual)`,
       );
     }
   }

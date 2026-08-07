@@ -45,7 +45,8 @@ export function formatAgentsListing(entries: readonly AdapterSupportEntry[]): st
   const idWidth = Math.max(...entries.map((e) => e.id.length), 8);
   const levelWidth = Math.max(...entries.map((e) => e.supportLevel.length), 8);
 
-  lines.push('Detected agents / adapter support:');
+  // Registry listing is support depth, not live install detection (status matrix owns that).
+  lines.push('Registered adapters / support depth:');
   for (const entry of entries) {
     const id = entry.id.padEnd(idWidth);
     const level = entry.supportLevel.padEnd(levelWidth);
@@ -55,6 +56,8 @@ export function formatAgentsListing(entries: readonly AdapterSupportEntry[]): st
       lines.push(`  ${id}  ${level}`);
     }
   }
+  lines.push('');
+  lines.push('Tip: agent-doctor status   # live install matrix for agents on this machine');
 
   return lines.join('\n');
 }

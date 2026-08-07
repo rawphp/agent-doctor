@@ -3,7 +3,9 @@
  * Plan-then-apply: dry-run prints plan; apply requires confirm (or --yes).
  */
 
+import { existsSync } from 'node:fs';
 import { createInterface } from 'node:readline/promises';
+import { resolve } from 'node:path';
 import { stdin as input, stdout as output } from 'node:process';
 import { defaultOpenBrowser } from '../surfaces/open-browser.js';
 import { EXIT_TOOL_ERROR, exitCodeForGrade } from '../engine/score.js';
@@ -136,6 +138,32 @@ export async function runFix(options: FixRunOptions = {}): Promise<FixResult> {
   const flags = parseFixFlags(options.args ?? []);
   const doctorHome = options.doctorHome ?? options.checks?.home;
 
+  if (flags.syncTarget !== undefined) {
+    const resolved = resolve(flags.syncTarget);
+    if (!existsSync(resolved)) {
+      writeErr(
+        `agent-doctor fix: --sync-target path does not exist: ${flags.syncTarget}\n` +
+          `  Pick an existing skills hub directory (often ~/.agents/skills).`,
+      );
+      return {
+        report: {
+          generated_at: new Date().toISOString(),
+          scope: 'hybrid',
+          sync: { memory_hubs: [], agents_in_scope: [], aligned: false },
+          overall: { score: 0, grade: 'red' },
+          agents: [],
+          domains: [],
+          findings: [],
+          recommendations: [],
+        },
+        plan: [],
+        results: [],
+        applied: false,
+        exitCode: 1,
+      };
+    }
+  }
+
   try {
     const home = doctorHome ?? options.checks?.home ?? agentDoctorHome();
     const report = await runChecks({
@@ -265,13 +293,20 @@ export async function runFix(options: FixRunOptions = {}): Promise<FixResult> {
     // Confirmation required unless --yes
     let confirmed = flags.yes;
     if (!confirmed) {
-      writeOut('Confirmation required before apply (pass --yes to skip prompt).');
+      const nonTty = !process.stdin.isTTY || !process.stdout.isTTY;
+      if (nonTty && options.confirm === undefined) {
+        writeOut(
+          'No interactive terminal (non-TTY). Re-run with --yes to apply, or run in a terminal for a y/N prompt.',
+        );
+      } else {
+        writeOut('Confirmation required before apply (pass --yes to skip prompt).');
+      }
       const confirmFn = options.confirm ?? defaultConfirm;
       confirmed = await confirmFn(plan);
     }
 
     if (!confirmed) {
-      writeOut('Apply cancelled — confirmation required (use --yes to apply).');
+      writeOut('Apply cancelled — no changes written (use --yes to apply without a prompt).');
       return {
         report,
         plan,

@@ -67,7 +67,8 @@ function isDirectory(path: string): boolean {
  * Honest v1 limitation for presence-only agents (design §8).
  * Surface this in fleet / agents listings.
  */
-export const PRESENCE_ONLY_LIMITATION = 'detected; limited checks / limited auto-fix in v1';
+export const PRESENCE_ONLY_LIMITATION =
+  'presence-only adapter (limited checks / limited auto-fix in v1)';
 
 export type PresenceAdapterOptions = {
   /** Agent / adapter id (e.g. gemini, cursor). */

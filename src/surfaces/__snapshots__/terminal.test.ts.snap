@@ -13,8 +13,8 @@ Memory hubs (vaults):
   /vaults/notes
 
 Domains:
-  agent_presence      100 GREEN   2 first-class agent(s) detected
-  shared_skills_path   50 YELLOW  1 agent(s) off skills hub
+  presence    100 GREEN   2 first-class agent(s) detected
+  skills hub   50 YELLOW  1 agent(s) off skills hub
 
 Findings:
   error  skills.agent_not_on_hub  codex is not wired to the skills sync target → /h/.codex/skills

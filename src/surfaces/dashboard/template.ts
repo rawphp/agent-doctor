@@ -87,10 +87,22 @@ export function renderDashboardHtml(report: Report): string {
           })
           .join('\n');
 
+  const domainLabel = (domain: string): string => {
+    const labels: Record<string, string> = {
+      agent_presence: 'presence',
+      shared_skills_path: 'skills hub',
+      instruction_files: 'instructions',
+      product_context: 'product',
+      obsidian: 'vaults',
+      cross_agent_consistency: 'consistency',
+    };
+    return labels[domain] ?? domain;
+  };
+
   const domainRows = report.domains
     .map(
       (d) => `<tr>
-  <td>${escapeHtml(d.domain)}</td>
+  <td>${escapeHtml(domainLabel(d.domain))}</td>
   <td>${d.score}</td>
   <td>${escapeHtml(gradeLabel(d.grade))}</td>
   <td>${escapeHtml(d.summary ?? '')}</td>

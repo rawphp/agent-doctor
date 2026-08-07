@@ -40,12 +40,16 @@ export type StatusRunOptions = {
 };
 
 /**
- * Parse status subcommand flags. Unknown flags are ignored for forward compat.
+ * Parse status subcommand flags.
+ * Known: --json, --all. Other --* flags are collected as unknown (warned at run).
  */
-export function parseStatusFlags(args: string[]): StatusFlags {
+export function parseStatusFlags(args: string[]): StatusFlags & { unknown: string[] } {
+  const known = new Set(['--json', '--all']);
+  const unknown = args.filter((a) => a.startsWith('-') && !known.has(a));
   return {
     json: args.includes('--json'),
     all: args.includes('--all'),
+    unknown,
   };
 }
 
@@ -73,6 +77,13 @@ export async function runStatus(options: StatusRunOptions = {}): Promise<StatusR
 
   const flags = parseStatusFlags(options.args ?? []);
   const scope = scopeFromFlags(flags);
+
+  if (flags.unknown.length > 0) {
+    writeErr(
+      `agent-doctor status: ignoring unknown flag(s): ${flags.unknown.join(', ')}. ` +
+        `Known: --all, --json.`,
+    );
+  }
 
   try {
     // Flag-derived scope is default; checks.scope can override in unit tests.

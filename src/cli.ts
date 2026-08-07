@@ -11,6 +11,7 @@ import { runDashboard } from './commands/dashboard.js';
 import { runFix } from './commands/fix.js';
 import { runAgents } from './commands/agents.js';
 import { runCheck } from './commands/check.js';
+import { PACKAGE_VERSION } from './version.js';
 
 const V1_COMMANDS = [
   { name: 'init', description: 'Discover environment and write the home map' },
@@ -33,6 +34,8 @@ function wantsHelp(args: string[]): boolean {
 
 function printHelp(): void {
   const lines = [
+    `agent-doctor ${PACKAGE_VERSION}`,
+    '',
     'Usage: agent-doctor <command> [options]',
     '',
     'Diagnose and fix AI-agent project setup (skills hub, adapters, maps).',
@@ -78,12 +81,14 @@ function printCommandHelp(command: CommandName): void {
       '  --add-vault <path>        Same as --vault (explicit add)',
       '  --set-vault <path>        Replace: this path becomes the only vault',
       '  --vault <path> --replace  Same as --set-vault',
+      '  --force                   Allow vault path without .obsidian folder',
       '  --yes, --non-interactive  Skip prompts',
       '',
       'Examples:',
       '  agent-doctor map --add-vault ~/Notes',
       '  agent-doctor map --set-vault ~/EA/cowork/meaning-of-life',
       '  agent-doctor map --vault ~/Work --replace',
+      '  agent-doctor map --vault ~/Notes --force   # non-Obsidian path',
     ],
     status: [
       'Usage: agent-doctor status [options]',
@@ -150,7 +155,7 @@ function printCommandHelp(command: CommandName): void {
 }
 
 function printVersion(): void {
-  console.log('0.1.0');
+  console.log(PACKAGE_VERSION);
 }
 
 async function main(argv: string[]): Promise<number> {

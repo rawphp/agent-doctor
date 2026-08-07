@@ -175,8 +175,19 @@ export async function runCheck(options: CheckRunOptions = {}): Promise<CheckResu
 
     if (flags.json) {
       writeOut(JSON.stringify(report, null, 2));
+    } else if (flags.domain === undefined) {
+      // Bare `check` still runs full hybrid, but tell users how to focus one domain.
+      writeOut(
+        `Tip: agent-doctor check <domain> for a focused report. Domains: ${CHECK_DOMAIN_KEYS.join(', ')}.`,
+      );
+      writeOut('');
+      writeOut(formatTerminalReport(report, { heading: 'Agent Doctor — hybrid status (full check)' }));
     } else {
-      writeOut(formatTerminalReport(report));
+      writeOut(
+        formatTerminalReport(report, {
+          heading: `Agent Doctor — check: ${flags.domain}`,
+        }),
+      );
     }
 
     const exitCode = exitCodeForGrade(report.overall.grade);

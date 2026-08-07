@@ -37,9 +37,15 @@ export function formatMapSummary(map: HomeMap, path: string, mode: 'init' | 'map
     `  version: ${map.version}`,
     `  agents: ${map.agents.map((a) => a.id).join(', ') || '(none)'}`,
     `  skills roots: ${map.skills.global_roots.length} candidate(s)`,
-    `  vaults: ${map.vaults.length}`,
-    `  project roots: ${map.projects.roots.length}`,
   ];
+  for (const root of map.skills.global_roots) {
+    lines.push(`    - ${root}`);
+  }
+  lines.push(`  vaults: ${map.vaults.length}`);
+  lines.push(`  project roots: ${map.projects.roots.length}`);
+  for (const root of map.projects.roots) {
+    lines.push(`    - ${root}`);
+  }
   if (map.skills.sync_target) {
     lines.push(`  sync_target: ${map.skills.sync_target}`);
   } else if (map.skills.global_roots.length > 1) {

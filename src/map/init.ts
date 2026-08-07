@@ -66,7 +66,13 @@ export async function runInit(options: InitRunOptions = {}): Promise<HomeMap> {
   let vaultsSkipped: boolean | undefined;
 
   if (discovered.vaults.length > 0) {
-    vaults = [...discovered.vaults];
+    // Keep prior manual vaults that discovery did not re-find.
+    vaults = mergeVaults(discovered.vaults, previous?.vaults ?? []);
+    vaultsSkipped = false;
+  } else if ((previous?.vaults?.length ?? 0) > 0) {
+    // Re-init must not wipe mapped vaults when discovery finds none
+    // (e.g. init --yes after a manual vault was configured).
+    vaults = mergeVaults([], previous?.vaults ?? []);
     vaultsSkipped = false;
   } else {
     const resolution = await resolveVaultPrompt(options);

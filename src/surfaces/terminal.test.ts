@@ -131,8 +131,8 @@ describe('formatTerminalReport', () => {
   it('includes domain lines with grades', () => {
     const text = formatTerminalReport(sampleReport());
     expect(text).toMatch(/Domains:/);
-    expect(text).toMatch(/agent_presence\s+100\s+GREEN/);
-    expect(text).toMatch(/shared_skills_path\s+50\s+YELLOW/);
+    expect(text).toMatch(/presence\s+100\s+GREEN/);
+    expect(text).toMatch(/skills hub\s+50\s+YELLOW/);
   });
 
   it('lists top recommendations from report.recommendations with finding ids', () => {
@@ -205,7 +205,7 @@ describe('formatTerminalReport', () => {
     expect(text).toMatch(/\/proj/);
     expect(text).toMatch(/CLAUDE\.md must exist and point at AGENTS\.md/);
     // Domain section still present (hierarchy not a special matrix)
-    expect(text).toMatch(/instruction_files/);
+    expect(text).toMatch(/instructions/);
   });
 
   it('dedupes recommendation finding ids with counts and appends evidence path when missing from message', () => {

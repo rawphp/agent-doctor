@@ -692,6 +692,17 @@ function buildRecommendations(
     });
   }
 
+  const duplicated = findings.filter((f) => f.id === 'skills.duplicated_trees');
+  if (duplicated.length > 0) {
+    recs.push({
+      id: 'rec.dedupe_skill_trees',
+      finding_ids: uniqueFindingIds(duplicated),
+      message:
+        'Review extra skill trees outside the hub (status evidence paths); merge unique skills into the hub, then remove or symlink private copies — auto-fix will not delete trees',
+      priority: 3,
+    });
+  }
+
   // Project Instruction Hierarchy (skill LOCAL POLICY §6 / REQ-026 path contract)
   // Surfaces copy (REQ-037): point humans/agents at fix --dry-run when hierarchy is broken.
   const missingAgentsMd = findings.filter((f) => f.id === HIERARCHY_FINDING_IDS.MISSING_AGENTS_MD);

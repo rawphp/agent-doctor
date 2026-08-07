@@ -37,6 +37,25 @@ function formatFindingIdList(ids: readonly string[]): string {
   return [...counts.entries()].map(([id, n]) => (n > 1 ? `${id} ×${n}` : id)).join(', ');
 }
 
+/** User-facing domain labels (engine still uses snake_case ids in JSON). */
+const DOMAIN_LABELS: Record<string, string> = {
+  agent_presence: 'presence',
+  shared_skills_path: 'skills hub',
+  instruction_files: 'instructions',
+  product_context: 'product',
+  obsidian: 'vaults',
+  cross_agent_consistency: 'consistency',
+};
+
+function domainLabel(domain: string): string {
+  return DOMAIN_LABELS[domain] ?? domain;
+}
+
+export type FormatTerminalOptions = {
+  /** Override the first heading line (e.g. domain-scoped check). */
+  heading?: string;
+};
+
 /**
  * Whether a report agent appears on the skills hub (for matrix rows).
  * Uses findings + sync evidence from the Report — never re-queries disk.
@@ -85,12 +104,21 @@ function matrixMark(agentId: string, report: Report): { mark: string; note: stri
  * Format a Report as a human-readable terminal dashboard (design §10).
  * Read-only over Report fields — no scoring or FS access.
  */
-export function formatTerminalReport(report: Report): string {
+export function formatTerminalReport(
+  report: Report,
+  options: FormatTerminalOptions = {},
+): string {
   const lines: string[] = [];
 
-  lines.push(`Agent Doctor — ${report.scope} status`);
+  lines.push(options.heading ?? `Agent Doctor — ${report.scope} status`);
   lines.push('');
   lines.push(`Overall: ${report.overall.score} (${gradeLabel(report.overall.grade)})`);
+  const worstDomain = report.domains.find((d) => d.grade === 'red' || d.grade === 'yellow');
+  if (report.overall.grade === 'green' && worstDomain) {
+    lines.push(
+      `Note: overall is GREEN, but ${domainLabel(worstDomain.domain)} is ${gradeLabel(worstDomain.grade)} — see Findings.`,
+    );
+  }
   lines.push('');
 
   // Sync matrix: one row per agents_in_scope entry (hub × agents)
@@ -122,12 +150,15 @@ export function formatTerminalReport(report: Report): string {
   if (report.domains.length === 0) {
     lines.push('  (none)');
   } else {
-    const domainWidth = Math.max(...report.domains.map((d) => d.domain.length), 8);
-    for (const domain of report.domains) {
+    const labels = report.domains.map((d) => domainLabel(d.domain));
+    const domainWidth = Math.max(...labels.map((l) => l.length), 8);
+    for (let i = 0; i < report.domains.length; i++) {
+      const domain = report.domains[i]!;
+      const label = labels[i]!;
       const score = String(domain.score).padStart(3);
       const grade = gradeLabel(domain.grade).padEnd(6);
       const summary = domain.summary ? `  ${domain.summary}` : '';
-      lines.push(`  ${domain.domain.padEnd(domainWidth)}  ${score} ${grade}${summary}`);
+      lines.push(`  ${label.padEnd(domainWidth)}  ${score} ${grade}${summary}`);
     }
   }
 
@@ -168,8 +199,19 @@ export function formatTerminalReport(report: Report): string {
   }
 
   lines.push('');
-  lines.push('Next: agent-doctor fix --dry-run | agent-doctor dashboard');
+  lines.push(formatNextLine(report));
   lines.push('');
 
   return lines.join('\n');
+}
+
+/** Contextual next-step line from findings / plan presence. */
+function formatNextLine(report: Report): string {
+  const hasPlan = (report.fix_plan?.length ?? 0) > 0;
+  const hasRecs = report.recommendations.length > 0;
+  if (hasPlan || hasRecs || report.findings.length > 0) {
+    // Always offer dry-run when there is something to review; empty plans explain why.
+    return 'Next: agent-doctor fix --dry-run | agent-doctor dashboard';
+  }
+  return 'Next: agent-doctor status   # re-check after installing agents or skills';
 }

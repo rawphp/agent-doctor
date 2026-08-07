@@ -13,7 +13,7 @@
  */
 
 export const PACKAGE_NAME = 'agent-doctor';
-export const PACKAGE_VERSION = '0.1.0';
+export { PACKAGE_VERSION } from './version.js';
 
 export { runChecks, type RunChecksOptions } from './engine/run-checks.js';
 export type { Finding, HomeMap, Report } from './engine/types.js';

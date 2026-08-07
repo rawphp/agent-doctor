@@ -48,4 +48,12 @@ try {
   process.exit(1);
 }
 
+// Ensure bin shebang works when invoked as a path (not only via npm wrapper).
+try {
+  const { chmod } = await import('node:fs/promises');
+  await chmod(cli, 0o755);
+} catch {
+  // non-fatal on exotic FS
+}
+
 process.exit(0);
