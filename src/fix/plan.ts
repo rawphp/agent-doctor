@@ -161,11 +161,11 @@ function hierarchyActionsFromFindings(findings: Finding[], projectRoot?: string)
     if (HIERARCHY_PLAN_FINDING_IDS.MISSING_AGENTS_MD.has(finding.id)) {
       const target = finding.evidence?.[0] ?? defaultAgentsMd;
       if (!target) continue;
+      // Id includes target so status --all plans one stub per project (dedupeById).
       out.push({
-        id: 'fix.create_agents_stub',
+        id: `fix.create_agents_stub:${target}`,
         kind: 'create_agents_stub',
-        description:
-          'Create minimal AGENTS.md stub at project root (canonical shared instructions; do not invent long policy)',
+        description: `Create minimal AGENTS.md stub at project root (${target}) — canonical shared instructions; do not invent long policy`,
         target,
         finding_ids: [finding.id],
       });
@@ -179,8 +179,9 @@ function hierarchyActionsFromFindings(findings: Finding[], projectRoot?: string)
       const agentsPath =
         evidence.find((p) => basename(p).toLowerCase() === 'agents.md') ?? defaultAgentsMd;
       const base = basename(vendorPath);
+      // Id includes full vendor path so multi-project plans keep one step per file.
       out.push({
-        id: `fix.append_agents_pointer_${base}`,
+        id: `fix.append_agents_pointer:${vendorPath}`,
         kind: 'append_agents_pointer',
         description: `Append AGENTS.md pointer in ${base} (append-only; never wholesale rewrite vendor body)`,
         target: vendorPath,
@@ -665,8 +666,16 @@ export function formatFixPlan(plan: FixAction[], options: FormatFixPlanOptions =
     lines.push('Then confirm health:');
     lines.push('  agent-doctor status');
     lines.push('');
-    lines.push('Tip: agent-doctor fix --dry-run --sync-target <hub> --html');
-    lines.push('     opens this plan in the browser (easier to read).');
+    // Tip: --html always helps; --sync-target only when the user still needs to pick a hub.
+    if (options.syncTarget) {
+      lines.push(
+        `Tip: agent-doctor fix --dry-run --sync-target ${options.syncTarget} --html`,
+      );
+      lines.push('     opens this plan in the browser (easier to read).');
+    } else {
+      lines.push('Tip: agent-doctor fix --dry-run --html');
+      lines.push('     opens this plan in the browser (easier to read).');
+    }
   }
   lines.push('');
   return lines.join('\n');

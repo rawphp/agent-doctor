@@ -18,6 +18,28 @@ function gradeLabel(grade: Grade): string {
 }
 
 /**
+ * When the finding message already embeds a path, do not re-print evidence.
+ * Otherwise append the first evidence path so multi-project status is actionable.
+ */
+function formatFindingPathHint(message: string, evidence: readonly string[]): string {
+  const path = evidence[0];
+  if (!path) return '';
+  if (message.includes(path)) return '';
+  return ` → ${path}`;
+}
+
+/** Dedupe recommendation finding_ids; show ×N when the same id repeats (machine scope). */
+function formatFindingIdList(ids: readonly string[]): string {
+  const counts = new Map<string, number>();
+  for (const id of ids) {
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([id, n]) => (n > 1 ? `${id} ×${n}` : id))
+    .join(', ');
+}
+
+/**
  * Whether a report agent appears on the skills hub (for matrix rows).
  * Uses findings + sync evidence from the Report — never re-queries disk.
  */
@@ -116,9 +138,19 @@ export function formatTerminalReport(report: Report): string {
     lines.push('');
     lines.push('Findings:');
     const severityWidth = Math.max(...report.findings.map((f) => f.severity.length), 5);
-    for (const finding of report.findings) {
+    // Machine scope can list dozens of projects; keep the terminal scannable.
+    const FINDINGS_CAP = report.scope === 'machine' ? 40 : 80;
+    const shown = report.findings.slice(0, FINDINGS_CAP);
+    for (const finding of shown) {
       const sev = finding.severity.padEnd(severityWidth);
-      lines.push(`  ${sev}  ${finding.id}  ${finding.message}`);
+      const pathHint = formatFindingPathHint(finding.message, finding.evidence);
+      lines.push(`  ${sev}  ${finding.id}  ${finding.message}${pathHint}`);
+    }
+    const hidden = report.findings.length - shown.length;
+    if (hidden > 0) {
+      lines.push(
+        `  … and ${hidden} more finding(s). Re-run from a project directory for a focused report, or use status --json.`,
+      );
     }
   }
 
@@ -132,7 +164,8 @@ export function formatTerminalReport(report: Report): string {
       .slice(0, 5);
     for (let i = 0; i < top.length; i++) {
       const rec = top[i]!;
-      const ids = rec.finding_ids.length > 0 ? `  [${rec.finding_ids.join(', ')}]` : '';
+      const ids =
+        rec.finding_ids.length > 0 ? `  [${formatFindingIdList(rec.finding_ids)}]` : '';
       lines.push(`  ${i + 1}. ${rec.message}${ids}`);
     }
   }

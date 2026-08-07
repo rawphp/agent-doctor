@@ -104,7 +104,7 @@ export function filterReportToDomain(report: Report, domainKey: CheckDomainKey):
         domain: resultName,
         score: findings.length === 0 ? 100 : 0,
         grade: findings.length === 0 ? 'green' : 'red',
-        summary: findings.length === 0 ? `${resultName}: healthy` : `${findings.length} finding(s)`,
+        summary: findings.length === 0 ? 'healthy' : `${findings.length} finding(s)`,
       },
     ];
   }

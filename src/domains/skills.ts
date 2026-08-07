@@ -140,13 +140,25 @@ export async function checkSkills(ctx: DomainCheckContext): Promise<SkillsCheckR
   if (distinctTrees.length >= 2) {
     const agentsInvolved = [...new Set(distinctTrees.flatMap(([, owners]) => owners))].sort();
     if (agentsInvolved.length >= 2) {
+      const paths = distinctTrees.map(([path]) => path);
+      const hubResolved = hub ? resolvePath(hub) : undefined;
+      const allDeepOnHub =
+        Boolean(hubResolved) &&
+        inScope
+          .filter((a) => a.depth === 'deep')
+          .every((a) => isOnHub(agentRoots[a.id] ?? [], hub!));
+      const extraOutsideHub = hubResolved
+        ? paths.filter((p) => resolvePath(p) !== hubResolved)
+        : paths;
+      const message = allDeepOnHub
+        ? `Extra populated skill trees still exist outside the hub (${extraOutsideHub.length} path(s)); remove private/project copies or keep only if intentional. Hub remains ${hub}.`
+        : 'Duplicated skill trees across agent homes; wire agents to one hub (symlink, no content copy).';
       findings.push({
         id: 'skills.duplicated_trees',
         severity: 'warn',
         domain: 'skills',
-        message:
-          'Duplicated skill trees across agent homes; wire agents to one hub (symlink, no content copy).',
-        evidence: distinctTrees.map(([path]) => path),
+        message,
+        evidence: paths,
         agents_affected: agentsInvolved,
         sync_target: hub,
       });

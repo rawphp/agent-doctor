@@ -120,11 +120,30 @@ describe('renderDashboardHtml', () => {
 
   it('includes CLI copy hints for fix plan (apply stays in CLI)', () => {
     const html = renderDashboardHtml(sampleReport());
-    expect(html).toMatch(/agent-doctor fix --dry-run/);
-    expect(html).toMatch(/agent-doctor fix/);
+    expect(html).toMatch(/agent-doctor fix --dry-run --html/);
+    expect(html).toMatch(/agent-doctor fix --yes/);
     // Must not claim apply happened in-browser
     expect(html).not.toMatch(/data-fix-applied=["']true["']/i);
     expect(html).toContain('fix.wire_codex_skills');
+  });
+
+  it('shows finding path column when evidence is not already in the message', () => {
+    const html = renderDashboardHtml(
+      sampleReport({
+        findings: [
+          {
+            id: 'instructions.hierarchy_missing_agents_md',
+            severity: 'error',
+            domain: 'instructions',
+            message: 'Missing AGENTS.md',
+            evidence: ['/proj/AGENTS.md'],
+            agents_affected: [],
+          },
+        ],
+      }),
+    );
+    expect(html).toMatch(/<th>Path<\/th>/i);
+    expect(html).toContain('/proj/AGENTS.md');
   });
 
   it('escapes untrusted report strings in HTML', () => {

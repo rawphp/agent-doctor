@@ -164,8 +164,7 @@ describe('formatTerminalReport', () => {
             id: 'instructions.hierarchy_missing_agents_md',
             severity: 'error',
             domain: 'instructions',
-            message:
-              'Project instruction hierarchy requires AGENTS.md at the project root (canonical shared instructions).',
+            message: 'Missing AGENTS.md at project root (canonical shared instructions): /proj',
             evidence: ['/proj/AGENTS.md'],
             agents_affected: [],
           },
@@ -174,7 +173,7 @@ describe('formatTerminalReport', () => {
             severity: 'warn',
             domain: 'instructions',
             message:
-              'Required vendor instruction file missing for hierarchy: CLAUDE.md must exist and point at AGENTS.md',
+              'Required vendor instruction file missing for hierarchy: CLAUDE.md must exist and point at AGENTS.md (/proj/CLAUDE.md)',
             evidence: ['/proj/CLAUDE.md', '/proj/AGENTS.md'],
             agents_affected: ['claude-code'],
           },
@@ -202,10 +201,47 @@ describe('formatTerminalReport', () => {
     expect(text).toMatch(/Findings:/);
     expect(text).toMatch(/instructions\.hierarchy_missing_agents_md/);
     expect(text).toMatch(/instructions\.hierarchy_missing_pointer/);
-    expect(text).toMatch(/Project instruction hierarchy requires AGENTS\.md/);
+    expect(text).toMatch(/Missing AGENTS\.md at project root/);
+    expect(text).toMatch(/\/proj/);
     expect(text).toMatch(/CLAUDE\.md must exist and point at AGENTS\.md/);
     // Domain section still present (hierarchy not a special matrix)
     expect(text).toMatch(/instruction_files/);
+  });
+
+  it('dedupes recommendation finding ids with counts and appends evidence path when missing from message', () => {
+    const text = formatTerminalReport(
+      sampleReport({
+        scope: 'machine',
+        findings: [
+          {
+            id: 'instructions.hierarchy_missing_agents_md',
+            severity: 'error',
+            domain: 'instructions',
+            message: 'Missing AGENTS.md',
+            evidence: ['/a/AGENTS.md'],
+            agents_affected: [],
+          },
+        ],
+        recommendations: [
+          {
+            id: 'rec.ensure_agents_md',
+            finding_ids: [
+              'instructions.hierarchy_missing_agents_md',
+              'instructions.hierarchy_missing_agents_md',
+              'instructions.hierarchy_missing_agents_md',
+            ],
+            message: 'Create AGENTS.md in 3 projects',
+            priority: 1,
+          },
+        ],
+      }),
+    );
+
+    expect(text).toMatch(/→ \/a\/AGENTS\.md/);
+    expect(text).toMatch(/instructions\.hierarchy_missing_agents_md ×3/);
+    expect(text).not.toMatch(
+      /instructions\.hierarchy_missing_agents_md, instructions\.hierarchy_missing_agents_md/,
+    );
   });
 
   it('omits Findings section when report has no findings', () => {

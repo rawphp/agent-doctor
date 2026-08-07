@@ -230,8 +230,7 @@ export function checkInstructionHierarchy(ctx: DomainCheckContext): Finding[] {
       id: HIERARCHY_FINDING_IDS.MISSING_AGENTS_MD,
       severity: 'error',
       domain: 'instructions',
-      message:
-        'Project instruction hierarchy requires AGENTS.md at the project root (canonical shared instructions).',
+      message: `Missing AGENTS.md at project root (canonical shared instructions): ${projectRoot}`,
       evidence: [agentsMdPath],
       agents_affected: agentsAffected,
     });
@@ -243,7 +242,7 @@ export function checkInstructionHierarchy(ctx: DomainCheckContext): Finding[] {
         id: HIERARCHY_FINDING_IDS.MISSING_POINTER,
         severity: 'warn',
         domain: 'instructions',
-        message: `Required vendor instruction file missing for hierarchy: ${vendor.basename} must exist and point at AGENTS.md`,
+        message: `Required vendor instruction file missing for hierarchy: ${vendor.basename} must exist and point at AGENTS.md (${vendor.path})`,
         evidence: [vendor.path, agentsMdPath],
         agents_affected: vendor.agentId === 'project' ? agentsAffected : [vendor.agentId],
       });
@@ -258,7 +257,7 @@ export function checkInstructionHierarchy(ctx: DomainCheckContext): Finding[] {
         id: HIERARCHY_FINDING_IDS.MISSING_POINTER,
         severity: 'warn',
         domain: 'instructions',
-        message: `Could not read ${vendor.basename} to verify AGENTS.md pointer`,
+        message: `Could not read ${vendor.basename} to verify AGENTS.md pointer (${vendor.path})`,
         evidence: [vendor.path],
         agents_affected: vendor.agentId === 'project' ? agentsAffected : [vendor.agentId],
       });
@@ -270,7 +269,7 @@ export function checkInstructionHierarchy(ctx: DomainCheckContext): Finding[] {
         id: HIERARCHY_FINDING_IDS.MISSING_POINTER,
         severity: 'warn',
         domain: 'instructions',
-        message: `${vendor.basename} must point at AGENTS.md (link or “read AGENTS.md” pointer); do not fork full policy into vendor files`,
+        message: `${vendor.basename} must point at AGENTS.md (link or “read AGENTS.md” pointer); do not fork full policy into vendor files (${vendor.path})`,
         evidence: [vendor.path, agentsMdPath],
         agents_affected: vendor.agentId === 'project' ? agentsAffected : [vendor.agentId],
       });

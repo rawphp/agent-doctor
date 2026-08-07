@@ -100,16 +100,19 @@ export function renderDashboardHtml(report: Report): string {
 
   const findingRows =
     report.findings.length === 0
-      ? `<tr><td colspan="4">(no findings)</td></tr>`
+      ? `<tr><td colspan="5">(no findings)</td></tr>`
       : report.findings
-          .map(
-            (f) => `<tr data-finding-id="${escapeHtml(f.id)}">
+          .map((f) => {
+            const path =
+              f.evidence?.[0] && !f.message.includes(f.evidence[0]) ? f.evidence[0] : '';
+            return `<tr data-finding-id="${escapeHtml(f.id)}">
   <td><code>${escapeHtml(f.id)}</code></td>
   <td>${escapeHtml(f.severity)}</td>
   <td>${escapeHtml(f.domain)}</td>
   <td>${escapeHtml(f.message)}</td>
-</tr>`,
-          )
+  <td>${path ? `<code>${escapeHtml(path)}</code>` : '—'}</td>
+</tr>`;
+          })
           .join('\n');
 
   const fixRows =
@@ -199,7 +202,7 @@ ${agentRows}
   <section id="findings">
     <h2>Findings</h2>
     <table>
-      <thead><tr><th>Id</th><th>Severity</th><th>Domain</th><th>Message</th></tr></thead>
+      <thead><tr><th>Id</th><th>Severity</th><th>Domain</th><th>Message</th><th>Path</th></tr></thead>
       <tbody>
 ${findingRows}
       </tbody>
@@ -210,8 +213,8 @@ ${findingRows}
     <h2>Fix plan</h2>
     <p>Apply stays in the CLI for safer confirmation. Copy and run:</p>
     <div class="hint">
-      <p><code>agent-doctor fix --dry-run</code></p>
-      <p><code>agent-doctor fix</code></p>
+      <p><code>agent-doctor fix --dry-run --html</code> — browser preview (read-only)</p>
+      <p><code>agent-doctor fix --yes</code> — apply after you review the plan</p>
     </div>
     <table>
       <thead><tr><th>Action id</th><th>Kind</th><th>Description</th></tr></thead>

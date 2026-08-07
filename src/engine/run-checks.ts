@@ -351,9 +351,19 @@ function scoreFromFindings(findings: readonly Finding[]): number {
   return Math.max(0, Math.min(100, score));
 }
 
+/** Human-readable healthy-domain copy (avoid tautologies like "agent_presence: healthy"). */
+const HEALTHY_DOMAIN_SUMMARY: Record<string, string> = {
+  agent_presence: 'Expected agents detected',
+  shared_skills_path: 'Skills hub aligned',
+  instruction_files: 'Instruction hierarchy OK',
+  product_context: 'Product context linked',
+  obsidian: 'Vault pointers OK',
+  cross_agent_consistency: 'Agents agree on hub/pointers',
+};
+
 function summarizeDomain(domain: string, findings: readonly Finding[], score: number): string {
   if (findings.length === 0) {
-    return `${domain}: healthy`;
+    return HEALTHY_DOMAIN_SUMMARY[domain] ?? 'healthy';
   }
   const errors = findings.filter((f) => f.severity === 'error').length;
   const warns = findings.filter((f) => f.severity === 'warn').length;
@@ -610,6 +620,19 @@ export async function runChecks(options: RunChecksOptions = {}): Promise<Report>
   return report;
 }
 
+/** Unique finding ids (status --all repeats the same id per project). */
+function uniqueFindingIds(findings: readonly Finding[]): string[] {
+  return [...new Set(findings.map((f) => f.id))];
+}
+
+/** Count distinct first evidence paths (approx. project count for hierarchy findings). */
+function uniqueFindingPathCount(findings: readonly Finding[]): number {
+  const paths = new Set(
+    findings.map((f) => f.evidence?.[0]).filter((p): p is string => Boolean(p)),
+  );
+  return paths.size > 0 ? paths.size : findings.length;
+}
+
 function buildRecommendations(
   findings: Finding[],
   hub: string | undefined,
@@ -673,22 +696,28 @@ function buildRecommendations(
   // Surfaces copy (REQ-037): point humans/agents at fix --dry-run when hierarchy is broken.
   const missingAgentsMd = findings.filter((f) => f.id === HIERARCHY_FINDING_IDS.MISSING_AGENTS_MD);
   if (missingAgentsMd.length > 0) {
+    const projectCount = uniqueFindingPathCount(missingAgentsMd);
+    const where =
+      projectCount > 1
+        ? `${projectCount} projects missing AGENTS.md`
+        : 'the project root (canonical shared instructions; do not invent long policy)';
     recs.push({
       id: 'rec.ensure_agents_md',
-      finding_ids: missingAgentsMd.map((f) => f.id),
-      message:
-        'Create minimal AGENTS.md stub at the project root (canonical shared instructions; do not invent long policy) — preview with `agent-doctor fix --dry-run`',
+      finding_ids: uniqueFindingIds(missingAgentsMd),
+      message: `Create minimal AGENTS.md stub for ${where} — preview with \`agent-doctor fix --dry-run\` (status --all: apply per project or review the multi-step plan)`,
       priority: 1,
     });
   }
 
   const missingPointers = findings.filter((f) => f.id === HIERARCHY_FINDING_IDS.MISSING_POINTER);
   if (missingPointers.length > 0) {
+    const pointerCount = missingPointers.length;
+    const scopeNote =
+      pointerCount > 1 ? ` (${pointerCount} file(s) across projects)` : '';
     recs.push({
       id: 'rec.ensure_agents_md_pointers',
-      finding_ids: missingPointers.map((f) => f.id),
-      message:
-        'Ensure required vendor instruction files (CLAUDE.md / GEMINI.md / GROK.md / …) point at AGENTS.md — preview with `agent-doctor fix --dry-run`',
+      finding_ids: uniqueFindingIds(missingPointers),
+      message: `Ensure required vendor instruction files (CLAUDE.md / GEMINI.md / GROK.md / …) point at AGENTS.md${scopeNote} — preview with \`agent-doctor fix --dry-run\``,
       priority: 1,
     });
   }

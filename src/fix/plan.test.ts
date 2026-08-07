@@ -511,7 +511,7 @@ describe('buildFixPlan hierarchy (REQ-030)', () => {
 
     const stub = plan.find((a) => a.kind === 'create_agents_stub');
     expect(stub).toBeDefined();
-    expect(stub!.id).toBe('fix.create_agents_stub');
+    expect(stub!.id).toBe('fix.create_agents_stub:/proj/AGENTS.md');
     expect(stub!.target).toBe('/proj/AGENTS.md');
     expect(stub!.finding_ids).toContain('instructions.hierarchy_missing_agents_md');
     expect(stub!.description).toMatch(/minimal|stub|AGENTS\.md/i);
@@ -549,7 +549,7 @@ describe('buildFixPlan hierarchy (REQ-030)', () => {
     for (const p of pointers) {
       expect(p.value).toBe('/proj/AGENTS.md');
       expect(p.finding_ids).toContain('instructions.hierarchy_missing_pointer');
-      expect(p.id).toMatch(/^fix\.append_agents_pointer_/);
+      expect(p.id).toMatch(/^fix\.append_agents_pointer:/);
       expect(p.description).toMatch(/pointer|append|AGENTS/i);
     }
   });
@@ -631,7 +631,7 @@ describe('buildFixPlan hierarchy (REQ-030)', () => {
 
     const stub = plan.find((a) => a.kind === 'create_agents_stub');
     expect(stub).toBeDefined();
-    expect(stub!.id).toBe('fix.create_agents_stub');
+    expect(stub!.id).toBe('fix.create_agents_stub:/proj/AGENTS.md');
     expect(stub!.target).toBe('/proj/AGENTS.md');
     expect(stub!.finding_ids).toContain('instructions.missing_agents_md');
     expect(stub!.description).toMatch(/minimal|stub|AGENTS\.md/i);
@@ -656,7 +656,7 @@ describe('buildFixPlan hierarchy (REQ-030)', () => {
 
     const pointer = plan.find((a) => a.kind === 'append_agents_pointer');
     expect(pointer).toBeDefined();
-    expect(pointer!.id).toBe('fix.append_agents_pointer_CLAUDE.md');
+    expect(pointer!.id).toBe('fix.append_agents_pointer:/proj/CLAUDE.md');
     expect(pointer!.target).toBe('/proj/CLAUDE.md');
     expect(pointer!.value).toBe('/proj/AGENTS.md');
     expect(pointer!.finding_ids).toContain('instructions.missing_agents_pointer');
@@ -775,13 +775,54 @@ describe('buildFixPlan hierarchy (REQ-030)', () => {
 
     const stubs = plan.filter((a) => a.kind === 'create_agents_stub');
     expect(stubs).toHaveLength(1);
-    expect(stubs[0]!.id).toBe('fix.create_agents_stub');
+    expect(stubs[0]!.id).toBe('fix.create_agents_stub:/proj/AGENTS.md');
     expect(stubs[0]!.finding_ids).toEqual(
       expect.arrayContaining([
         'instructions.hierarchy_missing_agents_md',
         'instructions.missing_agents_md',
       ]),
     );
+  });
+
+  it('keeps one create_agents_stub per project path (status --all multi-project)', () => {
+    const plan = buildFixPlan({
+      findings: [
+        finding({
+          id: 'instructions.hierarchy_missing_agents_md',
+          severity: 'error',
+          domain: 'instructions',
+          evidence: ['/a/AGENTS.md'],
+        }),
+        finding({
+          id: 'instructions.hierarchy_missing_agents_md',
+          severity: 'error',
+          domain: 'instructions',
+          evidence: ['/b/AGENTS.md'],
+        }),
+        finding({
+          id: 'instructions.hierarchy_missing_pointer',
+          severity: 'warn',
+          domain: 'instructions',
+          evidence: ['/a/CLAUDE.md', '/a/AGENTS.md'],
+          agents_affected: ['claude-code'],
+        }),
+        finding({
+          id: 'instructions.hierarchy_missing_pointer',
+          severity: 'warn',
+          domain: 'instructions',
+          evidence: ['/b/CLAUDE.md', '/b/AGENTS.md'],
+          agents_affected: ['claude-code'],
+        }),
+      ],
+      map: emptyMap({ sync_target: '/hub' }),
+      projectRoot: '/a',
+      hub: '/hub',
+    });
+
+    const stubs = plan.filter((a) => a.kind === 'create_agents_stub');
+    expect(stubs.map((a) => a.target).sort()).toEqual(['/a/AGENTS.md', '/b/AGENTS.md']);
+    const pointers = plan.filter((a) => a.kind === 'append_agents_pointer');
+    expect(pointers.map((a) => a.target).sort()).toEqual(['/a/CLAUDE.md', '/b/CLAUDE.md']);
   });
 });
 
