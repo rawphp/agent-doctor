@@ -181,7 +181,9 @@ export async function runCheck(options: CheckRunOptions = {}): Promise<CheckResu
         `Tip: agent-doctor check <domain> for a focused report. Domains: ${CHECK_DOMAIN_KEYS.join(', ')}.`,
       );
       writeOut('');
-      writeOut(formatTerminalReport(report, { heading: 'Agent Doctor — hybrid status (full check)' }));
+      writeOut(
+        formatTerminalReport(report, { heading: 'Agent Doctor — hybrid status (full check)' }),
+      );
     } else {
       writeOut(
         formatTerminalReport(report, {
