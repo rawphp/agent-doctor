@@ -1,6 +1,6 @@
 # Agent Doctor
 
-CLI that checks whether your AI coding agents (Claude Code, Codex, Grok, …) share the **same skills hub, memory (vault), and product context** — with little or no duplication — and can safely wire them when you choose a hub.
+CLI that checks whether your AI coding agents (Claude Code, Codex, Grok, Gemini / Antigravity, …) share the **same skills hub, memory (vault), and product context** — with little or no duplication — and can safely wire them when you choose a hub.
 
 It does **not** run agents or call LLMs. It inspects config on disk, scores sync health, and optionally applies plan-then-apply fixes.
 
@@ -49,7 +49,7 @@ Goal: one **skills hub** that every agent can see; map + status green enough to 
 agent-doctor init
 ```
 
-This looks for Claude / Codex / Grok homes, candidate skills roots, Obsidian vaults, and project roots, then writes:
+This looks for Claude / Codex / Grok / Gemini homes, candidate skills roots, Obsidian vaults, and project roots, then writes:
 
 `~/.agent-doctor/map.yml`
 

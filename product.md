@@ -45,7 +45,7 @@ Until schedule/email ships, the product still earns the habit via: fast green/re
 
 ## Who it's for
 
-1. **Beachhead:** People with **two or more** AI coding / project agents on one machine (Claude Code, Codex, Grok, …).  
+1. **Beachhead:** People with **two or more** AI coding / project agents on one machine (Claude Code, Codex, Grok, Gemini / Antigravity, …).  
 2. **Expansion:** Anyone whose machine runs multiple AI assistants that load skills, memory, or project instructions — not only “software engineers,” but **anyone doing real work with agents**.  
 3. **Ultimate:** Every multi-agent computer, with Doctor as the default hygiene layer (install once, run monthly, forget the config maze).
 
@@ -142,7 +142,7 @@ If a feature does not improve **shared, non-duplicated agent setup** or **recurr
 
 ## Beachhead → world
 
-1. **Now:** Coding / project agents on one Mac (or similar) — Claude, Codex, Grok deep; others presence-honest.  
+1. **Now:** Coding / project agents on one Mac (or similar) — Claude, Codex, Grok, Gemini / Antigravity deep; others presence-honest.  
 2. **Next:** Habit layer (schedule, report artifact, optional email); more adapters; agent-callable CLI contract.  
 3. **Then:** Any AI-assisted project type on the machine under the same setup contract.  
 4. **Ambition:** Default hygiene install wherever multi-agent work happens — “every computer” meaning every computer that needs shared agent setup truth.
