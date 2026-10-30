@@ -353,7 +353,7 @@ Polling: None.
 
 Safety:
 - Use results to decide which pointer files (`CLAUDE.md`, `GEMINI.md`, …) to ensure under LOCAL POLICY §6.
-- Gemini / Antigravity reports **full**; other agents (e.g. Cursor) report **presence**. Hierarchy still applies via map primary + file presence; enforce `GEMINI.md` → `AGENTS.md` either way.
+- Gemini / Antigravity reports **full**; other agents (e.g. Cursor) report **presence**. Hierarchy still applies via map primary / installed + file presence; enforce `GEMINI.md` → `AGENTS.md` either way.
 
 Example:
 
