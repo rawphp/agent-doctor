@@ -6,3 +6,5 @@ factory:
     - npm test
     - npx tsc --noEmit
     - npm run format:check
+  limits: { gate_retries: 2 }
+  autonomy: pr
