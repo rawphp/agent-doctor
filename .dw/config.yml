@@ -1,0 +1,8 @@
+factory:
+  instructors: [rawphp, tomkaczocha]
+  base: main
+  provision: [npm ci]
+  gate:
+    - npm test
+    - npx tsc --noEmit
+    - npm run format:check
