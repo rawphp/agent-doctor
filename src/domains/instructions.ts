@@ -44,7 +44,7 @@ export type HierarchyFindingId = (typeof HIERARCHY_FINDING_IDS)[keyof typeof HIE
 /**
  * Vendor project instruction basenames that must point at AGENTS.md when required.
  * Codex/native AGENTS.md readers are intentionally omitted (AGENTS.md is the hub).
- * Gemini is presence-only in v1 but still participates via primary/file presence.
+ * Gemini is a deep adapter (AGENTS.md | GEMINI.md); the pointer rule is unchanged.
  */
 export const VENDOR_POINTER_BASENAMES: Readonly<Record<string, string>> = {
   'claude-code': 'CLAUDE.md',
@@ -120,9 +120,8 @@ export type RequiredVendorPointer = {
 /**
  * Which vendor pointer files are required for this project.
  * Required when the file already exists on disk OR the matching agent is
- * installed / primary (including presence-only adapters such as Gemini).
- * Gemini participates via map primary / installed presence + GEMINI.md file only
- * — no deep Gemini adapter package.
+ * installed / primary (including presence-only adapters).
+ * Map primary / installed presence + GEMINI.md file presence drive the Gemini pointer.
  */
 export function requiredVendorPointers(
   projectRoot: string,

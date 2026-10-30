@@ -4,10 +4,10 @@
  * and proposes hub wiring via symlink — never content copy.
  */
 
-import { access, lstat, readlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import type { AgentPresence, FixAction } from '../engine/types.js';
+import { isSymlinkToHub, pathExists } from './fs.js';
 import type { AdapterContext, AgentAdapter } from './types.js';
 
 const ADAPTER_ID = 'claude-code';
@@ -20,35 +20,9 @@ export type ClaudeCodeAdapterOptions = {
   home?: string;
 };
 
-async function pathExists(path: string): Promise<boolean> {
-  try {
-    await access(path);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * True when `path` is a symlink whose resolved target equals `hub`
- * (or is already the hub path).
- */
-async function isSymlinkToHub(path: string, hub: string): Promise<boolean> {
-  try {
-    const stat = await lstat(path);
-    if (!stat.isSymbolicLink()) {
-      return false;
-    }
-    const target = await readlink(path);
-    const resolvedTarget = resolve(path, '..', target);
-    return resolve(resolvedTarget) === resolve(hub);
-  } catch {
-    return false;
-  }
-}
-
 export function createClaudeCodeAdapter(options: ClaudeCodeAdapterOptions = {}): AgentAdapter {
   const home = options.home ?? join(homedir(), '.claude');
+  const globalSkills = join(home, 'skills');
 
   return {
     id: ADAPTER_ID,
@@ -74,7 +48,6 @@ export function createClaudeCodeAdapter(options: ClaudeCodeAdapterOptions = {}):
 
     async skillsRoots(ctx: AdapterContext = {}): Promise<string[]> {
       const roots: string[] = [];
-      const globalSkills = join(home, 'skills');
       if (await pathExists(globalSkills)) {
         roots.push(globalSkills);
       }
@@ -87,6 +60,10 @@ export function createClaudeCodeAdapter(options: ClaudeCodeAdapterOptions = {}):
       }
 
       return roots;
+    },
+
+    globalSkillsRoot(): string {
+      return globalSkills;
     },
 
     async instructionFiles(projectRoot?: string): Promise<string[]> {

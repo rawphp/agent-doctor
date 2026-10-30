@@ -91,10 +91,7 @@ function matrixMark(agentId: string, report: Report): { mark: string; note: stri
  * Format a Report as a human-readable terminal dashboard (design §10).
  * Read-only over Report fields — no scoring or FS access.
  */
-export function formatTerminalReport(
-  report: Report,
-  options: FormatTerminalOptions = {},
-): string {
+export function formatTerminalReport(report: Report, options: FormatTerminalOptions = {}): string {
   const lines: string[] = [];
 
   lines.push(options.heading ?? `Agent Doctor — ${report.scope} status`);

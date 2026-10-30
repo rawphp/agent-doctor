@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Gemini / Antigravity skills-hub support** — `gemini` is now a full adapter
+  (`~/.gemini/config/skills` is checked against the hub and `fix` can symlink it).
+  - **Upgrade note:** any machine with `~/.gemini` is now checked as a full agent
+    automatically, with or without a map row (skills hub, `GEMINI.md` pointer, vault
+    link), so it may report findings until `~/.gemini/config/skills` is linked to the
+    hub. Re-run `agent-doctor init`, or add a `gemini` row to
+    `~/.agent-doctor/map.yml`, to record it in the map (`config_home` / `primary`).
+    A `gemini` row with `ignored: true` opts out.
+
 ### Changed
 
 - **`map` vault without `.obsidian` requires `--force` (upgrade note)** — non-Obsidian

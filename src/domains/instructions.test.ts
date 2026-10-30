@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { createGeminiAdapter } from '../adapters/gemini.js';
 import type { AgentAdapter, AdapterContext } from '../adapters/types.js';
 import {
   INSTRUCTION_FINDING_IDS,
@@ -279,7 +280,7 @@ describe('Project Instruction Hierarchy (diagnose path contract)', () => {
     expect(missingPtr.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('requires GEMINI.md pointer via primary or file presence (presence-only ok)', async () => {
+  it('requires GEMINI.md pointer via primary or file presence (deep gemini)', async () => {
     const project = tempDir();
     writeFileSync(join(project, 'AGENTS.md'), '# AGENTS\n');
     writeFileSync(join(project, 'GEMINI.md'), '# Gemini\nno pointer yet\n');
@@ -291,12 +292,13 @@ describe('Project Instruction Hierarchy (diagnose path contract)', () => {
           id: 'gemini',
           adapter: 'gemini',
           installed: true,
-          depth: 'presence-only',
+          depth: 'deep',
           config_home: '/tmp/gemini',
           primary: true,
         },
       ],
       projectRoot: project,
+      adapters: [createGeminiAdapter({ home: tempDir() })],
     });
 
     expect(
@@ -308,7 +310,7 @@ describe('Project Instruction Hierarchy (diagnose path contract)', () => {
     ).toBe(true);
   });
 
-  it('requires GEMINI.md when presence-only gemini is primary even if file is missing', async () => {
+  it('requires GEMINI.md when deep gemini is primary even if file is missing', async () => {
     const project = tempDir();
     writeFileSync(join(project, 'AGENTS.md'), '# AGENTS\n');
     // no GEMINI.md on disk
@@ -320,14 +322,13 @@ describe('Project Instruction Hierarchy (diagnose path contract)', () => {
           id: 'gemini',
           adapter: 'gemini',
           installed: true,
-          depth: 'presence-only',
+          depth: 'deep',
           config_home: '/tmp/gemini',
           primary: true,
         },
       ],
       projectRoot: project,
-      // No deep gemini adapter package — presence + map only
-      adapters: [],
+      adapters: [createGeminiAdapter({ home: tempDir() })],
     });
 
     const missing = findings.filter(
@@ -337,6 +338,39 @@ describe('Project Instruction Hierarchy (diagnose path contract)', () => {
     );
     expect(missing.length).toBeGreaterThanOrEqual(1);
     expect(missing[0]!.agents_affected).toContain('gemini');
+  });
+
+  it('flags missing_file for deep gemini when neither AGENTS.md nor GEMINI.md exists', async () => {
+    const project = tempDir();
+
+    const findings = await checkInstructions({
+      map: emptyMap(),
+      agents: [presence('gemini')],
+      projectRoot: project,
+      adapters: [createGeminiAdapter({ home: tempDir() })],
+    });
+
+    const missing = findings.filter((f) => f.id === 'instructions.missing_file');
+    expect(missing.length).toBeGreaterThanOrEqual(1);
+    expect(missing.some((f) => f.agents_affected.includes('gemini'))).toBe(true);
+  });
+
+  it('does not flag missing_file for deep gemini when a pointer-correct AGENTS.md exists', async () => {
+    const project = tempDir();
+    writeFileSync(join(project, 'AGENTS.md'), '# AGENTS\n');
+
+    const findings = await checkInstructions({
+      map: emptyMap(),
+      agents: [presence('gemini')],
+      projectRoot: project,
+      adapters: [createGeminiAdapter({ home: tempDir() })],
+    });
+
+    expect(
+      findings.filter(
+        (f) => f.id === 'instructions.missing_file' && f.agents_affected.includes('gemini'),
+      ),
+    ).toEqual([]);
   });
 
   it('requires pointer when GEMINI.md exists without pointer content even if gemini agent is absent', async () => {

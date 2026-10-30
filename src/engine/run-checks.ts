@@ -310,6 +310,9 @@ function wrapAdapterForAccess(
         depth: 'presence-only' as const,
       }),
     skillsRoots: (ctx?: AdapterContext) => wrap('skillsRoots', () => adapter.skillsRoots(ctx), []),
+    ...(adapter.globalSkillsRoot && {
+      globalSkillsRoot: () => adapter.globalSkillsRoot!(),
+    }),
     instructionFiles: (projectRoot?: string) =>
       wrap('instructionFiles', () => adapter.instructionFiles(projectRoot), []),
     memoryPointers: (projectRoot?: string) =>

@@ -28,6 +28,12 @@ export interface AgentAdapter {
   skillsRoots(ctx?: AdapterContext): Promise<string[]>;
 
   /**
+   * Optional: the agent's own global skills dir. When set, only this root decides
+   * whether the agent is on the hub; project overlay roots count for duplication only.
+   */
+  globalSkillsRoot?(): string;
+
+  /**
    * Instruction files the agent reads (user + project).
    * When projectRoot is set, include project-level files such as CLAUDE.md.
    * AGENTS.md-first: deep adapters should also list project AGENTS.md when present.
@@ -37,8 +43,8 @@ export interface AgentAdapter {
   /**
    * Optional: expected project instruction paths for presence / missing_file checks.
    * Paths may not exist yet — domain treats missing paths as findings.
-   * AGENTS.md-first: Codex → AGENTS.md; Claude → CLAUDE.md pointer; Grok → AGENTS.md then GROK.md.
-   * Presence-only agents (e.g. Gemini) omit this — hierarchy uses map primary + file presence.
+   * AGENTS.md-first: Codex → AGENTS.md; Claude → CLAUDE.md pointer; Grok → AGENTS.md then GROK.md; Gemini → AGENTS.md then GEMINI.md.
+   * Presence-only agents (e.g. Cursor) omit this — hierarchy uses map primary + file presence.
    */
   expectedInstructionFiles?(projectRoot?: string): string[];
 

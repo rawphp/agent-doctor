@@ -8,10 +8,10 @@
  * via AGENTS.md / GROK.md / related; user config at ~/.grok/config.toml.
  */
 
-import { access, lstat, readlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import type { AgentPresence, FixAction } from '../engine/types.js';
+import { isSymlinkToHub, pathExists } from './fs.js';
 import type { AdapterContext, AgentAdapter } from './types.js';
 
 const ADAPTER_ID = 'grok';
@@ -34,35 +34,9 @@ export type GrokAdapterOptions = {
   home?: string;
 };
 
-async function pathExists(path: string): Promise<boolean> {
-  try {
-    await access(path);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * True when `path` is a symlink whose resolved target equals `hub`
- * (or is already the hub path).
- */
-async function isSymlinkToHub(path: string, hub: string): Promise<boolean> {
-  try {
-    const stat = await lstat(path);
-    if (!stat.isSymbolicLink()) {
-      return false;
-    }
-    const target = await readlink(path);
-    const resolvedTarget = resolve(path, '..', target);
-    return resolve(resolvedTarget) === resolve(hub);
-  } catch {
-    return false;
-  }
-}
-
 export function createGrokAdapter(options: GrokAdapterOptions = {}): AgentAdapter {
   const home = options.home ?? join(homedir(), '.grok');
+  const globalSkills = join(home, 'skills');
 
   return {
     id: ADAPTER_ID,
@@ -90,9 +64,8 @@ export function createGrokAdapter(options: GrokAdapterOptions = {}): AgentAdapte
       const roots: string[] = [];
 
       // User skills (~/.grok/skills)
-      const userSkills = join(home, 'skills');
-      if (await pathExists(userSkills)) {
-        roots.push(userSkills);
+      if (await pathExists(globalSkills)) {
+        roots.push(globalSkills);
       }
 
       // Bundled skills (~/.grok/bundled/skills)
@@ -110,6 +83,10 @@ export function createGrokAdapter(options: GrokAdapterOptions = {}): AgentAdapte
       }
 
       return roots;
+    },
+
+    globalSkillsRoot(): string {
+      return globalSkills;
     },
 
     async instructionFiles(projectRoot?: string): Promise<string[]> {

@@ -5,6 +5,7 @@
 
 import { createClaudeCodeAdapter } from './claude-code.js';
 import { createCodexAdapter } from './codex.js';
+import { createGeminiAdapter } from './gemini.js';
 import { createGrokAdapter } from './grok.js';
 import {
   DEFAULT_PRESENCE_AGENT_IDS,
@@ -29,7 +30,7 @@ export type AdapterSupportEntry = {
 export type AdapterRegistryOptions = {
   /**
    * Unknown agent ids registered as presence-only.
-   * Default: gemini, cursor.
+   * Default: cursor.
    */
   presenceIds?: readonly string[];
   /**
@@ -54,7 +55,7 @@ export type AdapterRegistry = {
   ids: () => string[];
 };
 
-const DEEP_IDS = ['claude-code', 'codex', 'grok'] as const;
+const DEEP_IDS = ['claude-code', 'codex', 'grok', 'gemini'] as const;
 
 function defaultDeepFactory(id: string, options: AdapterFactoryOptions = {}): AgentAdapter {
   switch (id) {
@@ -64,6 +65,8 @@ function defaultDeepFactory(id: string, options: AdapterFactoryOptions = {}): Ag
       return createCodexAdapter({ home: options.home });
     case 'grok':
       return createGrokAdapter({ home: options.home });
+    case 'gemini':
+      return createGeminiAdapter({ home: options.home });
     default:
       throw new Error(`Unknown deep adapter id: ${id}`);
   }

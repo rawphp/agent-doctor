@@ -45,6 +45,14 @@ function adapterById(adapters: AgentAdapter[] | undefined, id: string): AgentAda
   return adapters?.find((a) => a.id === id);
 }
 
+/** Roots that decide on-hub status: the adapter's global root when it names one. */
+function hubCheckRoots(adapter: AgentAdapter | undefined, roots: string[]): string[] {
+  const own = adapter?.globalSkillsRoot?.();
+  if (own === undefined) return roots;
+  const ownResolved = resolvePath(own);
+  return roots.filter((root) => resolvePath(root) === ownResolved);
+}
+
 /**
  * Check skills hub alignment and duplication for non-ignored installed agents.
  */
@@ -76,7 +84,7 @@ export async function checkSkills(ctx: DomainCheckContext): Promise<SkillsCheckR
       const populatedRoots = roots.filter(isPopulated);
 
       // Agent with no skills roots at all: still off-hub if deep (cannot see hub)
-      const onHub = roots.length > 0 && isOnHub(roots, hub);
+      const onHub = isOnHub(hubCheckRoots(adapterById(ctx.adapters, agent.id), roots), hub);
 
       if (!onHub) {
         // If only empty roots and no private content, still off-hub when deep
@@ -146,7 +154,9 @@ export async function checkSkills(ctx: DomainCheckContext): Promise<SkillsCheckR
         Boolean(hubResolved) &&
         inScope
           .filter((a) => a.depth === 'deep')
-          .every((a) => isOnHub(agentRoots[a.id] ?? [], hub!));
+          .every((a) =>
+            isOnHub(hubCheckRoots(adapterById(ctx.adapters, a.id), agentRoots[a.id] ?? []), hub!),
+          );
       const extraOutsideHub = hubResolved
         ? paths.filter((p) => resolvePath(p) !== hubResolved)
         : paths;

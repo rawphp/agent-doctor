@@ -41,9 +41,10 @@ describe('detectFirstClassAgents (thin presence)', () => {
     mkdirSync(join(fixtureHome, '.claude'), { recursive: true });
     mkdirSync(join(fixtureHome, '.codex'), { recursive: true });
     mkdirSync(join(fixtureHome, '.grok'), { recursive: true });
+    mkdirSync(join(fixtureHome, '.gemini'), { recursive: true });
 
     const agents = detectFirstClassAgents({ homeDir: fixtureHome });
-    expect(agents.map((a) => a.id).sort()).toEqual(['claude-code', 'codex', 'grok']);
+    expect(agents.map((a) => a.id).sort()).toEqual(['claude-code', 'codex', 'gemini', 'grok']);
     for (const agent of agents) {
       expect(agent.adapter).toBe(agent.id);
       expect(agent.primary).toBe(false);
@@ -68,19 +69,21 @@ function homeRel(id: string): string {
       return '.codex';
     case 'grok':
       return '.grok';
+    case 'gemini':
+      return '.gemini';
     default:
       return id;
   }
 }
 
-describe('presence-only adapter (gemini / map-only hierarchy)', () => {
-  it('gemini remains presence-only — no deep expectedInstructionFiles package required', () => {
+describe('presence-only adapter (cursor / map-only hierarchy)', () => {
+  it('cursor remains presence-only — no deep expectedInstructionFiles package required', () => {
     const support = listAdapterSupport();
-    const gemini = support.find((e) => e.id === 'gemini');
-    expect(gemini?.supportLevel).toBe('presence');
-    const adapter = createPresenceAdapter({ id: 'gemini' });
-    // Hierarchy for Gemini is map primary + file presence in instructions domain,
-    // not a deep gemini adapter with expectedInstructionFiles.
+    const cursor = support.find((e) => e.id === 'cursor');
+    expect(cursor?.supportLevel).toBe('presence');
+    const adapter = createPresenceAdapter({ id: 'cursor' });
+    // Hierarchy for presence-only agents is map primary + file presence in the
+    // instructions domain, not a deep adapter with expectedInstructionFiles.
     expect(adapter.expectedInstructionFiles).toBeUndefined();
   });
 
@@ -88,13 +91,13 @@ describe('presence-only adapter (gemini / map-only hierarchy)', () => {
     const home = makeTempDir();
     mkdirSync(join(home, 'config'), { recursive: true });
     const adapter = createPresenceAdapter({
-      id: 'gemini',
+      id: 'cursor',
       home: join(home, 'config'),
     });
 
     const presence = await adapter.detect();
-    expect(presence.id).toBe('gemini');
-    expect(presence.adapter).toBe('gemini');
+    expect(presence.id).toBe('cursor');
+    expect(presence.adapter).toBe('cursor');
     expect(presence.installed).toBe(true);
     expect(presence.config_home).toBe(join(home, 'config'));
     expect(presence.depth).toBe('presence-only');
@@ -118,7 +121,7 @@ describe('presence-only adapter (gemini / map-only hierarchy)', () => {
     mkdirSync(join(home, 'skills'), { recursive: true });
     writeFileSync(join(home, 'skills', 'x.md'), 'nope');
 
-    const adapter = createPresenceAdapter({ id: 'gemini', home });
+    const adapter = createPresenceAdapter({ id: 'cursor', home });
     const roots = await adapter.skillsRoots({ projectRoot: home });
     expect(roots).toEqual([]);
   });
@@ -126,7 +129,7 @@ describe('presence-only adapter (gemini / map-only hierarchy)', () => {
   it('never reports skills on hub true without evidence', async () => {
     const home = makeTempDir();
     mkdirSync(join(home, 'skills'), { recursive: true });
-    const adapter = createPresenceAdapter({ id: 'gemini', home });
+    const adapter = createPresenceAdapter({ id: 'cursor', home });
 
     expect(reportsSkillsOnHub(adapter)).toBe(false);
     expect(reportsSkillsOnHub(adapter, '/any/hub')).toBe(false);
@@ -138,18 +141,18 @@ describe('presence-only adapter (gemini / map-only hierarchy)', () => {
   });
 
   it('exposes honest limited-checks limitation message', () => {
-    const adapter = createPresenceAdapter({ id: 'gemini' });
-    expect(adapter.id).toBe('gemini');
+    const adapter = createPresenceAdapter({ id: 'cursor' });
+    expect(adapter.id).toBe('cursor');
     expect(PRESENCE_ONLY_LIMITATION).toMatch(/limited checks/i);
     expect(PRESENCE_ONLY_LIMITATION).toMatch(/limited auto-fix/i);
   });
 });
 
 describe('adapter registry', () => {
-  it('returns deep adapters for claude-code, codex, grok', async () => {
+  it('returns deep adapters for claude-code, codex, grok, gemini', async () => {
     const registry = createAdapterRegistry();
 
-    for (const id of ['claude-code', 'codex', 'grok'] as const) {
+    for (const id of ['claude-code', 'codex', 'grok', 'gemini'] as const) {
       const adapter = registry.getAdapter(id);
       expect(adapter, `expected adapter for ${id}`).toBeDefined();
       expect(adapter!.id).toBe(id);
@@ -162,10 +165,10 @@ describe('adapter registry', () => {
 
   it('returns presence adapters for configured unknown ids', async () => {
     const registry = createAdapterRegistry({
-      presenceIds: ['gemini', 'cursor'],
+      presenceIds: ['cursor', 'other-agent'],
     });
 
-    for (const id of ['gemini', 'cursor'] as const) {
+    for (const id of ['cursor', 'other-agent'] as const) {
       const adapter = registry.getAdapter(id);
       expect(adapter, `expected presence adapter for ${id}`).toBeDefined();
       expect(adapter!.id).toBe(id);
@@ -186,8 +189,9 @@ describe('adapter registry', () => {
     expect(byId['claude-code']).toBe('full');
     expect(byId['codex']).toBe('full');
     expect(byId['grok']).toBe('full');
-    expect(byId['gemini']).toBe('presence');
+    expect(byId['gemini']).toBe('full');
     expect(byId['cursor']).toBe('presence');
+    expect(listing.find((e) => e.id === 'gemini')?.limitation).toBeUndefined();
 
     // Shape is stable for a future agents command
     for (const entry of listing) {

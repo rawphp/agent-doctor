@@ -104,6 +104,38 @@ describe('formatTerminalReport', () => {
     expect(text).not.toMatch(/^\s*grok\b/m);
   });
 
+  it('prints a gemini row under Sync target (skills) when gemini is in scope', () => {
+    const text = formatTerminalReport(
+      sampleReport({
+        sync: {
+          skills_hub: '/hub/skills',
+          memory_hubs: [],
+          agents_in_scope: ['claude-code', 'gemini'],
+          aligned: false,
+        },
+        agents: [
+          {
+            id: 'claude-code',
+            adapter: 'claude-code',
+            installed: true,
+            depth: 'deep',
+          },
+          {
+            id: 'gemini',
+            adapter: 'gemini',
+            installed: true,
+            config_home: '/h/.gemini',
+            depth: 'deep',
+          },
+        ],
+        findings: [],
+      }),
+    );
+    const syncIdx = text.indexOf('Sync target (skills)');
+    expect(syncIdx).toBeGreaterThanOrEqual(0);
+    expect(text.slice(syncIdx)).toMatch(/^\s*gemini\s+✓/m);
+  });
+
   it('includes a matrix row for every agents_in_scope id even if agents list omits it', () => {
     const text = formatTerminalReport(
       sampleReport({
