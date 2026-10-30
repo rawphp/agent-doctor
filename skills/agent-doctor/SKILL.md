@@ -56,7 +56,7 @@ Diagnose hierarchy whenever scope is **project** (cwd/project root has project s
 | --- | --- |
 | Always (project scope) | `AGENTS.md` exists (create if missing) |
 | `CLAUDE.md` exists **or** Claude Code is installed/primary | `CLAUDE.md` → points to `AGENTS.md` |
-| `GEMINI.md` exists **or** Gemini is map-primary / installed as presence | `GEMINI.md` → points to `AGENTS.md` |
+| `GEMINI.md` exists **or** Gemini is map-primary / installed | `GEMINI.md` → points to `AGENTS.md` |
 | `GROK.md` exists **or** Grok is installed/primary and project uses GROK.md | `GROK.md` → points to `AGENTS.md` |
 | Other vendor project instruction `.md` exists | That file → points to `AGENTS.md` |
 
@@ -183,7 +183,7 @@ If install fails (no Node, no network), **stop** and tell the user. Do not inven
 1. Ensure the CLI is installed (`scripts/ensure-installed.sh` or version check).
 2. Detect scope: project vs machine vs user-explicit (see Picking table).
 3. Ensure map: `test -f ~/.agent-doctor/map.yml || agent-doctor init --yes`.
-4. If **project scope**: diagnose **Project Instruction Hierarchy** via `status` / `check instructions` (LOCAL POLICY §6) — look for `instructions.hierarchy_missing_agents_md` / `instructions.hierarchy_missing_pointer`. Use `agent-doctor agents` when unsure which vendors are in play (Gemini = map primary + file presence only).
+4. If **project scope**: diagnose **Project Instruction Hierarchy** via `status` / `check instructions` (LOCAL POLICY §6) — look for `instructions.hierarchy_missing_agents_md` / `instructions.hierarchy_missing_pointer`. Use `agent-doctor agents` when unsure which vendors are in play (Gemini = map primary / installed + file presence).
 5. Diagnose with the narrowest matching command (`status`, `status --all`, `check`, `agents`).
 6. If grade is green enough for the task **and** hierarchy findings are clear, report and stop.
 7. **CLI hierarchy plan before freestyle:** `agent-doctor fix --dry-run` (+ `--sync-target` if conflict and hub is known). When hierarchy findings exist, expect kinds `create_agents_stub` / `append_agents_pointer` in the plan — use that path; do not hand-write AGENTS/pointer files first.
@@ -353,7 +353,7 @@ Polling: None.
 
 Safety:
 - Use results to decide which pointer files (`CLAUDE.md`, `GEMINI.md`, …) to ensure under LOCAL POLICY §6.
-- Gemini / Antigravity reports **deep** depth; other agents (e.g. Cursor) may report **presence-only**. Hierarchy still applies via map primary + file presence; enforce `GEMINI.md` → `AGENTS.md` either way.
+- Gemini / Antigravity reports **full**; other agents (e.g. Cursor) report **presence**. Hierarchy still applies via map primary + file presence; enforce `GEMINI.md` → `AGENTS.md` either way.
 
 Example:
 
