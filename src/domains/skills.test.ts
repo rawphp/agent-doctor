@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { createCodexAdapter } from '../adapters/codex.js';
 import { createGeminiAdapter } from '../adapters/gemini.js';
 import type { AgentAdapter, AdapterContext } from '../adapters/types.js';
 import type { AgentPresence, FixAction, HomeMap } from '../engine/types.js';
@@ -193,6 +194,28 @@ describe('checkSkills', () => {
     expect(wire).toBeDefined();
     expect(wire!.agent_id).toBe('grok');
     expect(wire!.finding_ids).toContain('skills.agent_not_on_hub');
+  });
+
+  it('flags codex off hub when only a project .agents/skills points at the hub', async () => {
+    const base = tempDir();
+    const hub = populated(base, 'hub');
+    const home = join(base, '.codex');
+    mkdirSync(home, { recursive: true });
+    const project = join(base, 'project');
+    mkdirSync(join(project, '.agents'), { recursive: true });
+    symlinkSync(hub, join(project, '.agents', 'skills'));
+
+    const { findings } = await checkSkills({
+      map: baseMap({ sync_target: hub }),
+      agents: [presence('codex', { config_home: home })],
+      hub: realpathSync(hub),
+      projectRoot: project,
+      adapters: [createCodexAdapter({ home })],
+    });
+
+    const offHub = findings.filter((f) => f.id === 'skills.agent_not_on_hub');
+    expect(offHub).toHaveLength(1);
+    expect(offHub[0]!.agents_affected).toEqual(['codex']);
   });
 
   describe('gemini (Antigravity) deep adapter', () => {

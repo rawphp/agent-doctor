@@ -64,6 +64,7 @@ async function isSymlinkToHub(path: string, hub: string): Promise<boolean> {
 
 export function createCodexAdapter(options: CodexAdapterOptions = {}): AgentAdapter {
   const home = options.home ?? join(homedir(), '.codex');
+  const globalSkills = join(home, 'skills');
 
   return {
     id: ADAPTER_ID,
@@ -89,7 +90,6 @@ export function createCodexAdapter(options: CodexAdapterOptions = {}): AgentAdap
 
     async skillsRoots(ctx: AdapterContext = {}): Promise<string[]> {
       const roots: string[] = [];
-      const globalSkills = join(home, 'skills');
       if (await pathExists(globalSkills)) {
         roots.push(globalSkills);
       }
@@ -103,6 +103,10 @@ export function createCodexAdapter(options: CodexAdapterOptions = {}): AgentAdap
       }
 
       return roots;
+    },
+
+    globalSkillsRoot(): string {
+      return globalSkills;
     },
 
     async instructionFiles(projectRoot?: string): Promise<string[]> {
