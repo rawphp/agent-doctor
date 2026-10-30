@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { createGeminiAdapter } from '../adapters/gemini.js';
 import type { AgentAdapter, AdapterContext } from '../adapters/types.js';
 import type { AgentPresence, FixAction, HomeMap } from '../engine/types.js';
 import type { DomainCheckContext } from './context.js';
@@ -192,6 +193,44 @@ describe('checkSkills', () => {
     expect(wire).toBeDefined();
     expect(wire!.agent_id).toBe('grok');
     expect(wire!.finding_ids).toContain('skills.agent_not_on_hub');
+  });
+
+  describe('gemini (Antigravity) deep adapter', () => {
+    it('is on hub when <home>/config/skills is a symlink to the hub', async () => {
+      const base = tempDir();
+      const hub = populated(base, 'hub');
+      const home = join(base, '.gemini');
+      mkdirSync(join(home, 'config'), { recursive: true });
+      symlinkSync(hub, join(home, 'config', 'skills'));
+
+      const { findings } = await checkSkills({
+        map: baseMap({ sync_target: hub }),
+        agents: [presence('gemini', { config_home: home })],
+        hub: realpathSync(hub),
+        adapters: [createGeminiAdapter({ home })],
+      });
+
+      expect(findings.filter((f) => f.id === 'skills.agent_not_on_hub')).toEqual([]);
+    });
+
+    it('flags a real config/skills dir and plans fix.wire_gemini_skills', async () => {
+      const base = tempDir();
+      const hub = populated(base, 'hub');
+      const home = join(base, '.gemini');
+      populated(join(home, 'config'), 'skills');
+
+      const { findings, fix_actions } = await checkSkills({
+        map: baseMap({ sync_target: hub }),
+        agents: [presence('gemini', { config_home: home })],
+        hub: realpathSync(hub),
+        adapters: [createGeminiAdapter({ home })],
+      });
+
+      const offHub = findings.filter((f) => f.id === 'skills.agent_not_on_hub');
+      expect(offHub).toHaveLength(1);
+      expect(offHub[0]!.agents_affected).toEqual(['gemini']);
+      expect(fix_actions.map((a) => a.id)).toContain('fix.wire_gemini_skills');
+    });
   });
 
   it('skips ignored agents for off-hub and duplication', async () => {

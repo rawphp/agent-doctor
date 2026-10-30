@@ -24,12 +24,13 @@ describe('runAgents', () => {
     expect(byId['claude-code']).toBe('full');
     expect(byId['codex']).toBe('full');
     expect(byId['grok']).toBe('full');
-    expect(byId['gemini']).toBe('presence');
+    expect(byId['gemini']).toBe('full');
     expect(byId['cursor']).toBe('presence');
 
     const text = lines.join('\n');
     expect(text).toMatch(/claude-code/);
     expect(text).toMatch(/full/);
+    expect(text).toMatch(/cursor/);
     expect(text).toMatch(/gemini/);
     expect(text).toMatch(/presence/);
   });

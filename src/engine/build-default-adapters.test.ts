@@ -96,17 +96,17 @@ describe('buildDefaultAdapters (shared assembly)', () => {
       baseMap({
         agents: [
           {
-            id: 'gemini',
-            adapter: 'gemini',
+            id: 'cursor',
+            adapter: 'cursor',
             installed: true,
-            config_home: join(tempDir(), 'gemini'),
+            config_home: join(tempDir(), 'cursor'),
             depth: 'shallow',
             ignored: false,
           },
         ],
       }),
     );
-    expect(adapters.map((a) => a.id)).toContain('gemini');
+    expect(adapters.map((a) => a.id)).toContain('cursor');
     for (const id of FULL_ADAPTER_IDS) {
       expect(adapters.map((a) => a.id)).toContain(id);
     }
