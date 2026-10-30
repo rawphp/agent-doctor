@@ -1,8 +1,8 @@
 /**
  * Presence helpers (design §8).
  *
- * - detectFirstClassAgents: thin map inventory for Claude Code / Codex / Grok homes
- * - createPresenceAdapter: presence-only AgentAdapter for unknown agents (gemini, cursor, …)
+ * - detectFirstClassAgents: thin map inventory for Claude Code / Codex / Grok / Gemini homes
+ * - createPresenceAdapter: presence-only AgentAdapter for unknown agents (cursor, …)
  */
 
 import { existsSync, statSync } from 'node:fs';
@@ -26,10 +26,11 @@ const FIRST_CLASS_HOMES = [
   { id: 'claude-code', adapter: 'claude-code', rel: '.claude' },
   { id: 'codex', adapter: 'codex', rel: '.codex' },
   { id: 'grok', adapter: 'grok', rel: '.grok' },
+  { id: 'gemini', adapter: 'gemini', rel: '.gemini' },
 ] as const;
 
 /**
- * Detect Claude Code, Codex, and Grok config homes when present on disk.
+ * Detect Claude Code, Codex, Grok, and Gemini config homes when present on disk.
  * Returns only installed agents (no stubs for missing homes).
  */
 export function detectFirstClassAgents(options: PresenceDetectOptions = {}): MapAgent[] {
@@ -71,7 +72,7 @@ export const PRESENCE_ONLY_LIMITATION =
   'presence-only adapter (limited checks / limited auto-fix in v1)';
 
 export type PresenceAdapterOptions = {
-  /** Agent / adapter id (e.g. gemini, cursor). */
+  /** Agent / adapter id (e.g. cursor). */
   id: string;
   /**
    * Config home to detect. Defaults to ~/.{id} when omitted.
@@ -171,4 +172,4 @@ export function createPresenceAdapter(options: PresenceAdapterOptions): AgentAda
 }
 
 /** Built-in unknown agent ids registered as presence-only by default. */
-export const DEFAULT_PRESENCE_AGENT_IDS = ['gemini', 'cursor'] as const;
+export const DEFAULT_PRESENCE_AGENT_IDS = ['cursor'] as const;

@@ -37,8 +37,8 @@ export interface AgentAdapter {
   /**
    * Optional: expected project instruction paths for presence / missing_file checks.
    * Paths may not exist yet — domain treats missing paths as findings.
-   * AGENTS.md-first: Codex → AGENTS.md; Claude → CLAUDE.md pointer; Grok → AGENTS.md then GROK.md.
-   * Presence-only agents (e.g. Gemini) omit this — hierarchy uses map primary + file presence.
+   * AGENTS.md-first: Codex → AGENTS.md; Claude → CLAUDE.md pointer; Grok → AGENTS.md then GROK.md; Gemini → AGENTS.md then GEMINI.md.
+   * Presence-only agents (e.g. Cursor) omit this — hierarchy uses map primary + file presence.
    */
   expectedInstructionFiles?(projectRoot?: string): string[];
 

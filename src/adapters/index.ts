@@ -33,6 +33,12 @@ export {
   type CodexAdapterOptions,
 } from './codex.js';
 export {
+  createGeminiAdapter,
+  geminiAdapter,
+  geminiSkillsAlreadyWired,
+  type GeminiAdapterOptions,
+} from './gemini.js';
+export {
   createGrokAdapter,
   grokAdapter,
   grokSkillsAlreadyWired,
