@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AgentAdapter, AdapterContext } from '../adapters/types.js';
 import type { AgentPresence, FixAction, HomeMap } from '../engine/types.js';
+import { createGeminiAdapter } from '../adapters/gemini.js';
 import { checkObsidian } from './obsidian.js';
 
 const temps: string[] = [];
@@ -164,6 +165,29 @@ describe('checkObsidian', () => {
     });
 
     expect(findings.filter((f) => f.id === 'obsidian.missing_vault_link')).toEqual([]);
+  });
+
+  it('counts a vault mention in the gemini home GEMINI.md', async () => {
+    const vault = tempDir();
+    const geminiHome = tempDir();
+    const project = tempDir();
+    const run = () =>
+      checkObsidian({
+        map: mapWithVaults([{ path: vault, source: 'manual' }]),
+        agents: [presence('gemini')],
+        projectRoot: project,
+        adapters: [createGeminiAdapter({ home: geminiHome })],
+      });
+    const missing = (fs: Awaited<ReturnType<typeof run>>) =>
+      fs.filter(
+        (f) => f.id === 'obsidian.missing_vault_link' && f.agents_affected.includes('gemini'),
+      );
+
+    writeFileSync(join(geminiHome, 'GEMINI.md'), 'No vault here.\n');
+    expect(missing(await run())).toHaveLength(1);
+
+    writeFileSync(join(geminiHome, 'GEMINI.md'), `Vault at ${vault}\n`);
+    expect(missing(await run())).toEqual([]);
   });
 
   it('never writes vault content (check is read-only)', async () => {

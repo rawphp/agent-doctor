@@ -119,6 +119,22 @@ describe('Gemini / Antigravity adapter', () => {
     it('returns nothing without a project root', async () => {
       expect(await createGeminiAdapter({ home: tempDir() }).instructionFiles()).toEqual([]);
     });
+
+    it('returns the home GEMINI.md when it exists, first, with or without a project root', async () => {
+      const home = tempDir();
+      const project = tempDir();
+      const adapter = createGeminiAdapter({ home });
+      const homeFile = join(home, 'GEMINI.md');
+      writeFileSync(homeFile, '# home\n');
+
+      expect(await adapter.instructionFiles()).toEqual([homeFile]);
+
+      writeFileSync(join(project, 'AGENTS.md'), '# a\n');
+      expect(await adapter.instructionFiles(project)).toEqual([
+        homeFile,
+        join(project, 'AGENTS.md'),
+      ]);
+    });
   });
 
   describe('expectedInstructionFiles', () => {
