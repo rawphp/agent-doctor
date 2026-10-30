@@ -185,12 +185,12 @@ describe('checkConsistency', () => {
 
     const findings = await checkConsistency({
       map: baseMap(),
-      agents: [presence('claude-code'), presence('gemini', { depth: 'presence-only' })],
+      agents: [presence('claude-code'), presence('cursor', { depth: 'presence-only' })],
       agentRoots: {
         'claude-code': [claude],
-        gemini: [],
+        cursor: [],
       },
-      adapters: [stubAdapter('claude-code', [claude]), stubAdapter('gemini', [])],
+      adapters: [stubAdapter('claude-code', [claude]), stubAdapter('cursor', [])],
     });
 
     expect(findings.filter((f) => f.id === 'consistency.divergent_skills_roots')).toEqual([]);
