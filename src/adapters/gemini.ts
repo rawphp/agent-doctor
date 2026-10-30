@@ -93,8 +93,13 @@ export function createGeminiAdapter(options: GeminiAdapterOptions = {}): AgentAd
     },
 
     async instructionFiles(projectRoot?: string): Promise<string[]> {
-      if (!projectRoot) return [];
       const files: string[] = [];
+      // Home file first: proposeWireMemory writes the vault pointer here.
+      const homeFile = join(home, 'GEMINI.md');
+      if (await pathExists(homeFile)) {
+        files.push(homeFile);
+      }
+      if (!projectRoot) return files;
       for (const base of PROJECT_INSTRUCTION_BASENAMES) {
         const candidate = join(projectRoot, base);
         if (await pathExists(candidate)) {
