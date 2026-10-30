@@ -28,6 +28,12 @@ export interface AgentAdapter {
   skillsRoots(ctx?: AdapterContext): Promise<string[]>;
 
   /**
+   * Optional: the agent's own global skills dir. When set, only this root decides
+   * whether the agent is on the hub; project overlay roots count for duplication only.
+   */
+  globalSkillsRoot?(): string;
+
+  /**
    * Instruction files the agent reads (user + project).
    * When projectRoot is set, include project-level files such as CLAUDE.md.
    * AGENTS.md-first: deep adapters should also list project AGENTS.md when present.

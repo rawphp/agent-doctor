@@ -92,6 +92,10 @@ export function createGeminiAdapter(options: GeminiAdapterOptions = {}): AgentAd
       return roots;
     },
 
+    globalSkillsRoot(): string {
+      return globalSkills;
+    },
+
     async instructionFiles(projectRoot?: string): Promise<string[]> {
       const files: string[] = [];
       // Home file first: proposeWireMemory writes the vault pointer here.

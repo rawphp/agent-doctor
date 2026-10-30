@@ -231,6 +231,29 @@ describe('checkSkills', () => {
       expect(offHub[0]!.agents_affected).toEqual(['gemini']);
       expect(fix_actions.map((a) => a.id)).toContain('fix.wire_gemini_skills');
     });
+
+    it('is off hub when only a project .agents/skills points at the hub', async () => {
+      const base = tempDir();
+      const hub = populated(base, 'hub');
+      const home = join(base, '.gemini');
+      mkdirSync(home, { recursive: true });
+      const project = join(base, 'project');
+      mkdirSync(join(project, '.agents'), { recursive: true });
+      symlinkSync(hub, join(project, '.agents', 'skills'));
+
+      const { findings, fix_actions } = await checkSkills({
+        map: baseMap({ sync_target: hub }),
+        agents: [presence('gemini', { config_home: home })],
+        hub: realpathSync(hub),
+        projectRoot: project,
+        adapters: [createGeminiAdapter({ home })],
+      });
+
+      const offHub = findings.filter((f) => f.id === 'skills.agent_not_on_hub');
+      expect(offHub).toHaveLength(1);
+      expect(offHub[0]!.agents_affected).toEqual(['gemini']);
+      expect(fix_actions.map((a) => a.id)).toContain('fix.wire_gemini_skills');
+    });
   });
 
   it('skips ignored agents for off-hub and duplication', async () => {

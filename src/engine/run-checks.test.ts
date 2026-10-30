@@ -1,7 +1,8 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { createGeminiAdapter } from '../adapters/gemini.js';
 import type { AgentAdapter, AdapterContext } from '../adapters/types.js';
 import { buildFixPlan } from '../fix/plan.js';
 import type { AgentPresence, FixAction, HomeMap } from './types.js';
@@ -166,6 +167,29 @@ describe('runChecks hybrid scope', () => {
       ),
     ).toBe(true);
     expect(report.recommendations.length).toBeGreaterThan(0);
+  });
+
+  it('flags gemini off hub when only a project .agents/skills points at the hub', async () => {
+    const base = tempDir();
+    const hub = makePopulatedRoot(base, 'hub');
+    const home = join(base, '.gemini');
+    mkdirSync(home, { recursive: true });
+    const project = join(base, 'project');
+    mkdirSync(join(project, '.agents'), { recursive: true });
+    symlinkSync(hub, join(project, '.agents', 'skills'));
+
+    const report = await runChecks({
+      projectRoot: project,
+      map: baseMap({ skills: { global_roots: [hub], sync_target: hub } }),
+      adapters: [createGeminiAdapter({ home })],
+    });
+
+    expect(report.sync.aligned).toBe(false);
+    expect(
+      report.findings.some(
+        (f) => f.id === 'skills.agent_not_on_hub' && f.agents_affected.includes('gemini'),
+      ),
+    ).toBe(true);
   });
 
   it('never grades green on unresolved multi-hub conflict', async () => {
