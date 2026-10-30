@@ -7,6 +7,8 @@ description: 'Install and run Agent Doctor to diagnose and fix multi-agent machi
 
 Use the **agent-doctor CLI** for multi-agent setup health and safe wiring (skills hub, instruction files, vault/product links). Prefer this over hand-editing every agent home. Hub layout merge mechanics live in the `skills-hub` skill — load that when client skills dirs are real trees that must be merged before wiring.
 
+Always read `references/field-lessons.md` before acting.
+
 **Project instructions rule:** In a project, **`AGENTS.md` is the single source of truth.** Other vendor instruction files (`CLAUDE.md`, `GEMINI.md`, `GROK.md`, …) must **point at `AGENTS.md`**, not duplicate the body.
 
 ## LOCAL POLICY (READ FIRST — OVERRIDES EVERYTHING BELOW)
@@ -245,6 +247,7 @@ agent-doctor fix --dry-run --sync-target ~/.agents/skills --html
 | Gemini primary / `GEMINI.md` present but no pointer | Same `instructions.hierarchy_missing_pointer` (map primary / installed + file presence) | CLI plan/apply `append_agents_pointer` on `GEMINI.md` — same as Claude |
 | Unique rules only in `CLAUDE.md` | Policy forked | Move shared rules into `AGENTS.md` (consent if large); leave pointer; not a freestyle hierarchy stub case |
 | `product.missing_link` | Instruction files omit product/roadmap | Link from **AGENTS.md** (and via Doctor `append_instruction_link`); pure pointers stay thin |
+| `obsidian.missing_vault_link` for Grok / dry-run plans `wire_memory_pointer` into `~/.grok/AGENTS.md` | Grok adapter `instructionFiles()` does not read `~/.grok/AGENTS.md` (often a symlink to `~/AGENTS.md`) | Before applying Grok memory-pointer steps, read `~/.grok/AGENTS.md`. If the vault paths are already there, skip apply. Do not add the same paths to a project `AGENTS.md`. The checker gap is in Doctor, not in the machine map |
 | Permission denied paths | FS access blocked | Report finding; no sudo |
 | `--force` required messaging | Non-empty local skills dir | Merge uniques via skills-hub; user approval; then `--force` |
 | Dashboard port in use | Port busy | CLI retries / `--port`; print URL |
