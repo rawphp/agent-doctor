@@ -9,10 +9,10 @@
  * (~/.gemini/antigravity-cli/builtin/skills) are never reported as a root.
  */
 
-import { access, lstat, readlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import type { AgentPresence, FixAction } from '../engine/types.js';
+import { isSymlinkToHub, pathExists } from './fs.js';
 import type { AdapterContext, AgentAdapter } from './types.js';
 
 const ADAPTER_ID = 'gemini';
@@ -30,29 +30,6 @@ export type GeminiAdapterOptions = {
    */
   home?: string;
 };
-
-async function pathExists(path: string): Promise<boolean> {
-  try {
-    await access(path);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** True when `path` is a symlink whose resolved target equals `hub`. */
-async function isSymlinkToHub(path: string, hub: string): Promise<boolean> {
-  try {
-    const stat = await lstat(path);
-    if (!stat.isSymbolicLink()) {
-      return false;
-    }
-    const target = await readlink(path);
-    return resolve(resolve(path, '..', target)) === resolve(hub);
-  } catch {
-    return false;
-  }
-}
 
 export function createGeminiAdapter(options: GeminiAdapterOptions = {}): AgentAdapter {
   const home = options.home ?? join(homedir(), '.gemini');

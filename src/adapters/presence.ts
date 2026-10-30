@@ -6,10 +6,10 @@
  */
 
 import { existsSync, statSync } from 'node:fs';
-import { access } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { AgentPresence, FixAction, MapAgent } from '../engine/types.js';
+import { pathExists } from './fs.js';
 import type { AdapterContext, AgentAdapter } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -84,15 +84,6 @@ export type PresenceAdapterOptions = {
    */
   markers?: string[];
 };
-
-async function pathExists(path: string): Promise<boolean> {
-  try {
-    await access(path);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Presence-only adapters never gather hub/skills evidence in v1.
